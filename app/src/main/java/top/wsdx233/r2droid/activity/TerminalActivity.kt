@@ -1,4 +1,4 @@
-package top.wsdx233.r2droid
+package top.wsdx233.r2droid.activity
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -12,6 +12,7 @@ import com.termux.terminal.TerminalSession
 import com.termux.terminal.TerminalSessionClient
 import com.termux.view.TerminalView
 import com.termux.view.TerminalViewClient
+import top.wsdx233.r2droid.R
 import java.io.File
 
 class TerminalActivity : ComponentActivity() {

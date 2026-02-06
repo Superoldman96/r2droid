@@ -1,4 +1,4 @@
-package top.wsdx233.randroid
+package top.wsdx233.r2droid
 
 import org.junit.Test
 

@@ -1,4 +1,4 @@
-package top.wsdx233.randroid.screen.debug
+package top.wsdx233.r2droid.screen.debug
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import top.wsdx233.randroid.R2pipe
+import top.wsdx233.r2droid.util.R2pipe
 import java.io.File
 
 class DebugViewModel : ViewModel() {

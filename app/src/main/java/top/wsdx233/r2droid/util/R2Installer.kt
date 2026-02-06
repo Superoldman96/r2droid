@@ -1,5 +1,4 @@
-
-package top.wsdx233.randroid.util
+package top.wsdx233.r2droid.util
 
 import android.content.Context
 import android.system.Os

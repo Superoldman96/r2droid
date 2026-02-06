@@ -1,4 +1,4 @@
-package top.wsdx233.randroid.screen.debug
+package top.wsdx233.r2droid.screen.debug
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState

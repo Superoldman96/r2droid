@@ -1,7 +1,8 @@
-package top.wsdx233.r2droid
+package top.wsdx233.r2droid.util
 
 import android.content.Context
 import android.os.Build
+import android.util.Log
 import java.io.BufferedInputStream
 import java.io.BufferedWriter
 import java.io.ByteArrayOutputStream
@@ -9,7 +10,7 @@ import java.io.File
 import java.io.OutputStreamWriter
 import java.util.concurrent.TimeUnit
 
-class R2pipe(context: Context, private val filePath: String? = null) {
+class R2pipe(context: Context, private val filePath: String? = null, private val flags: String = "") {
 
     private val filesDir: File = context.filesDir
     private var process: Process? = null
@@ -31,7 +32,7 @@ class R2pipe(context: Context, private val filePath: String? = null) {
 
             // 使用 sh 启动
             val cmdArgs = if (filePath != null) {
-                "$r2Binary -q0 $filePath"
+                "$r2Binary -q0 $flags \"$filePath\""
             } else {
                 "$r2Binary -q0 -"
             }
@@ -46,6 +47,19 @@ class R2pipe(context: Context, private val filePath: String? = null) {
             processBuilder.redirectErrorStream(false)
 
             process = processBuilder.start()
+            
+            // 启动线程消耗 Stderr，防止缓冲区填满导致死锁
+            Thread {
+                try {
+                    val reader = process!!.errorStream.bufferedReader()
+                    while (reader.readLine() != null) {
+                        // 丢弃或记录日志
+                        // Log.d("R2Pipe", line)
+                    }
+                } catch (e: Exception) {
+                    // Ignore
+                }
+            }.start()
 
             writer = BufferedWriter(OutputStreamWriter(process!!.outputStream))
             inputStream = BufferedInputStream(process!!.inputStream)
@@ -106,11 +120,14 @@ class R2pipe(context: Context, private val filePath: String? = null) {
     }
 
     fun cmd(command: String): String {
+
+        Log.i("R2Pipe", "cmd:$command")
+
         if (!isRunning || process == null) {
             throw IllegalStateException("R2 process is not running")
         }
 
-        return try {
+        val result = try {
             // 1. 关键修复：发送命令前，先清理掉管道里残留的垃圾数据
             flushInputStream()
 
@@ -125,6 +142,10 @@ class R2pipe(context: Context, private val filePath: String? = null) {
             isRunning = false
             throw RuntimeException("Cmd execution failed: ${e.message}", e)
         }
+
+        Log.i("R2Pipe", "result:$result")
+
+        return result
     }
 
     private fun readResult(): String {
@@ -181,8 +202,8 @@ class R2pipe(context: Context, private val filePath: String? = null) {
     }
 
     companion object {
-        fun open(context: Context, filePath: String): R2pipe {
-            return R2pipe(context, filePath)
+        fun open(context: Context, filePath: String, flags: String = ""): R2pipe {
+            return R2pipe(context, filePath, flags)
         }
 
         fun open(context: Context): R2pipe {

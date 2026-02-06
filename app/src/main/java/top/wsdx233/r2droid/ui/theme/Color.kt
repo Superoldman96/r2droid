@@ -1,4 +1,4 @@
-package top.wsdx233.randroid.ui.theme
+package top.wsdx233.r2droid.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

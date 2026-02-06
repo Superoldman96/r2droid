@@ -1,4 +1,4 @@
-package top.wsdx233.randroid.screen.install
+package top.wsdx233.r2droid.screen.install
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -7,7 +7,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import top.wsdx233.randroid.util.InstallState
+import top.wsdx233.r2droid.util.InstallState
 
 @Composable
 fun InstallScreen(installState: InstallState) {

@@ -4,13 +4,13 @@ plugins {
 }
 
 android {
-    namespace = "top.wsdx233.randroid"
+    namespace = "top.wsdx233.r2droid"
     compileSdk {
         version = release(36)
     }
 
     defaultConfig {
-        applicationId = "top.wsdx233.randroid"
+        applicationId = "top.wsdx233.r2droid"
         minSdk = 24
         targetSdk = 26
         versionCode = 1

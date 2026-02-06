@@ -1,4 +1,4 @@
-package top.wsdx233.randroid.ui.theme
+package top.wsdx233.r2droid.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

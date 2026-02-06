@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">R2Droid</string>
+    <string name="terminal">终端</string>
+    
+    <!-- Home Screen -->
+    <string name="home_subtitle">基于R2的安卓逆向工具</string>
+    <string name="home_open_file_title">打开文件</string>
+    <string name="home_open_file_desc">选择要分析的二进制文件</string>
+    <string name="home_recent_projects">最近项目</string>
+    <string name="home_no_recent_projects">暂无最近项目</string>
+    <string name="home_settings">设置</string>
+    <string name="home_about">关于</string>
+    <string name="home_error_open_file">打开文件失败</string>
+    <string name="home_error_resolve_path">无法解析文件路径</string>
+    <string name="home_error_unknown">未知错误</string>
+
+    <!-- Permission Screen -->
+    <string name="perm_storage_required_title">需要存储权限</string>
+    <string name="perm_storage_required_desc">R2Droid 需要访问您的设备存储以读取和分析二进制文件。请授予完整的存储访问权限以继续。</string>
+    <string name="perm_grant_button">授予权限</string>
+    <string name="perm_toast_storage_required">需要存储权限</string>
+    <string name="perm_toast_all_files_required">需要所有文件访问权限</string>
+    <string name="perm_error_opening_settings">打开设置出错</string>
+
+    <!-- Project Screen -->
+    <string name="project_placeholder">项目界面 (占位符)</string>
+</resources>
