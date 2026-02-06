@@ -1,6 +1,7 @@
-package top.wsdx233.randroid
+package top.wsdx233.r2droid
 
-import android.content.Context
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.graphics.Color
 import android.os.Bundle
 import android.view.KeyEvent
@@ -38,7 +39,7 @@ class TerminalActivity : ComponentActivity() {
                 // 获取焦点
                 terminalView.requestFocus()
                 // 调用系统输入法管理器显示软键盘
-                val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
                 imm.showSoftInput(terminalView, InputMethodManager.SHOW_IMPLICIT)
             }
 
@@ -133,14 +134,14 @@ class TerminalActivity : ComponentActivity() {
 
                 override fun onCopyTextToClipboard(session: TerminalSession, text: String?) {
                     // 实现复制
-                    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                    val clip = android.content.ClipData.newPlainText("Terminal Output", text)
+                    val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                    val clip = ClipData.newPlainText("Terminal Output", text)
                     clipboard.setPrimaryClip(clip)
                 }
 
                 override fun onPasteTextFromClipboard(session: TerminalSession?) {
                     // 实现粘贴
-                    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
                     val clip = clipboard.primaryClip
                     if (clip != null && clip.itemCount > 0) {
                         val pasteText = clip.getItemAt(0).coerceToText(this@TerminalActivity).toString()

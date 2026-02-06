@@ -1,4 +1,4 @@
-package top.wsdx233.randroid
+package top.wsdx233.r2droid
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -17,14 +17,15 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
-import top.wsdx233.randroid.screen.debug.DebugScreen
-import top.wsdx233.randroid.screen.debug.DebugViewModel
-import top.wsdx233.randroid.screen.install.InstallScreen
-import top.wsdx233.randroid.ui.theme.RandroidTheme
-import top.wsdx233.randroid.util.R2Installer
+import top.wsdx233.r2droid.screen.debug.DebugScreen
+import top.wsdx233.r2droid.screen.debug.DebugViewModel
+import top.wsdx233.r2droid.screen.install.InstallScreen
+import top.wsdx233.r2droid.ui.theme.R2droidTheme
+import top.wsdx233.r2droid.util.R2Installer
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,7 +37,7 @@ class MainActivity : ComponentActivity() {
         }
         enableEdgeToEdge()
         setContent {
-            RandroidTheme {
+            R2droidTheme {
                 // 监听全局安装状态
                 val installState by R2Installer.installState.collectAsState()
                 if (installState.isInstalling) {
@@ -48,7 +49,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxSize(),
                         topBar = {
                             TopAppBar(
-                                title = { Text("Randroid") },
+                                title = { Text(stringResource(R.string.app_name)) },
                                 actions = {
                                     IconButton(onClick = {
                                         val intent = Intent(this@MainActivity, TerminalActivity::class.java)

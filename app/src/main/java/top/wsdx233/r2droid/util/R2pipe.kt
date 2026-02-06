@@ -1,7 +1,7 @@
-
-package top.wsdx233.randroid
+package top.wsdx233.r2droid
 
 import android.content.Context
+import android.os.Build
 import java.io.BufferedInputStream
 import java.io.BufferedWriter
 import java.io.ByteArrayOutputStream
@@ -9,8 +9,9 @@ import java.io.File
 import java.io.OutputStreamWriter
 import java.util.concurrent.TimeUnit
 
-class R2pipe(private val context: Context, private val filePath: String? = null) {
+class R2pipe(context: Context, private val filePath: String? = null) {
 
+    private val filesDir: File = context.filesDir
     private var process: Process? = null
     private var writer: BufferedWriter? = null
     private var inputStream: BufferedInputStream? = null
@@ -22,7 +23,7 @@ class R2pipe(private val context: Context, private val filePath: String? = null)
 
     private fun startR2Process() {
         try {
-            val workDir = File(context.filesDir, "radare2/bin")
+            val workDir = File(filesDir, "radare2/bin")
             if (!workDir.exists()) workDir.mkdirs()
 
             val envMap = parseEnvArray(buildEnvironmentVariables())
@@ -59,19 +60,19 @@ class R2pipe(private val context: Context, private val filePath: String? = null)
     private fun buildEnvironmentVariables(): List<String> {
         val envs = mutableListOf<String>()
         val existingLd = System.getenv("LD_LIBRARY_PATH")
-        val myLd = "${File(context.filesDir, "radare2/lib")}:${File(context.filesDir, "libs")}"
+        val myLd = "${File(filesDir, "radare2/lib")}:${File(filesDir, "libs")}"
         envs.add("LD_LIBRARY_PATH=$myLd${if (existingLd != null) ":$existingLd" else ""}")
 
-        envs.add("XDG_DATA_HOME=${File(context.filesDir, "r2work")}")
-        envs.add("XDG_CACHE_HOME=${File(context.filesDir, ".cache")}")
-        envs.add("HOME=${File(context.filesDir, "radare2/bin")}")
+        envs.add("XDG_DATA_HOME=${File(filesDir, "r2work")}")
+        envs.add("XDG_CACHE_HOME=${File(filesDir, ".cache")}")
+        envs.add("HOME=${File(filesDir, "radare2/bin")}")
 
         // 禁用颜色和控制码
         envs.add("TERM=dumb")
         envs.add("R2_NOCOLOR=1")
 
         val systemPath = System.getenv("PATH") ?: "/system/bin:/system/xbin"
-        val customBin = File(context.filesDir, "radare2/bin").absolutePath
+        val customBin = File(filesDir, "radare2/bin").absolutePath
         envs.add("PATH=$customBin:$systemPath")
 
         return envs
@@ -162,7 +163,7 @@ class R2pipe(private val context: Context, private val filePath: String? = null)
                 writer?.flush()
                 writer?.close()
                 inputStream?.close()
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     process?.waitFor(200, TimeUnit.MILLISECONDS)
                 }
                 process?.destroy()
