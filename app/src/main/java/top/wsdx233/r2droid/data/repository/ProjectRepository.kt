@@ -88,8 +88,8 @@ class ProjectRepository {
     }
 
     suspend fun getStrings(): Result<List<StringInfo>> {
-        // izj: Strings
-        return R2PipeManager.executeJson("izj").mapCatching { output ->
+        // izzj: Strings
+        return R2PipeManager.executeJson("izzj").mapCatching { output ->
             if (output.isBlank()) return@mapCatching emptyList()
             val jsonArray = JSONArray(output)
             val list = mutableListOf<StringInfo>()

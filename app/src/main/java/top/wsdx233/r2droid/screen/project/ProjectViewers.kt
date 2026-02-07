@@ -143,6 +143,12 @@ fun HexViewer(
         }
 
         //Dark Gray Line
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(Color(0xFFAAAAAA))
+        )
 
         
         Box(Modifier.weight(1f)) {
