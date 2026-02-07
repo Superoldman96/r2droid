@@ -192,6 +192,22 @@ class ProjectRepository {
         }
     }
 
+    suspend fun getXrefs(addr: Long): Result<List<Xref>> {
+        // afxj: Analyze function references
+        // Use s addr; afxj to ensure we analyze refs for the function at/containing addr
+        // But afxj takes an argument usually or works on current seek.
+        // Better: afxj @ addr
+        return R2PipeManager.executeJson("afxj @ $addr").mapCatching { output ->
+             if (output.isBlank()) return@mapCatching emptyList()
+            val jsonArray = JSONArray(output)
+            val list = mutableListOf<Xref>()
+            for (i in 0 until jsonArray.length()) {
+                list.add(Xref.fromJson(jsonArray.getJSONObject(i)))
+            }
+            list
+        }
+    }
+    
     }
 
 

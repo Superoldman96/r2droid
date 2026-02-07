@@ -232,3 +232,19 @@ data class EntryPoint(
     }
 }
 
+
+data class Xref(
+    val type: String,
+    val from: Long,
+    val to: Long
+) {
+    companion object {
+        fun fromJson(json: JSONObject): Xref {
+            return Xref(
+                type = json.optString("type", ""),
+                from = json.optLong("from", 0),
+                to = json.optLong("to", 0)
+            )
+        }
+    }
+}

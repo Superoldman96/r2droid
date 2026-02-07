@@ -280,6 +280,31 @@ class ProjectViewModel : ViewModel() {
         }
     }
 
+    // === Xrefs ===
+    data class XrefsState(
+        val visible: Boolean = false,
+        val data: List<Xref> = emptyList(),
+        val isLoading: Boolean = false
+    )
+    
+    private val _xrefsState = MutableStateFlow(XrefsState())
+    val xrefsState: StateFlow<XrefsState> = _xrefsState.asStateFlow()
+    
+    fun fetchXrefs(addr: Long) {
+        // Show loading
+        _xrefsState.value = _xrefsState.value.copy(visible = true, isLoading = true, data = emptyList())
+        
+        viewModelScope.launch {
+            val result = repository.getXrefs(addr)
+            val xrefs = result.getOrElse { emptyList() }
+            _xrefsState.value = _xrefsState.value.copy(isLoading = false, data = xrefs)
+        }
+    }
+    
+    fun dismissXrefs() {
+        _xrefsState.value = _xrefsState.value.copy(visible = false)
+    }
+
     // === Virtualized Hex Viewer ===
     
     /**

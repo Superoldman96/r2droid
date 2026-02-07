@@ -119,6 +119,30 @@ fun ProjectScreen(
     val listTabs = listOf("Overview", "Sections", "Symbols", "Imports", "Relocs", "Strings", "Functions")
     val detailTabs = listOf("Hex", "Disassembly", "Decompile")
     val projectTabs = listOf("Settings", "Terminal", "Logs")
+    
+    // Xrefs State
+    val xrefsState by viewModel.xrefsState.collectAsState()
+    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+    
+    // Define shared actions for list items
+    val listItemActions = ListItemActions(
+        onCopy = { text -> 
+            clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(text))
+        },
+        onJumpToHex = { addr ->
+            selectedCategory = MainCategory.Detail
+            selectedDetailTabIndex = 0
+            viewModel.jumpToAddress(addr)
+        },
+        onJumpToDisasm = { addr ->
+            selectedCategory = MainCategory.Detail
+            selectedDetailTabIndex = 1
+            viewModel.jumpToAddress(addr)
+        },
+        onShowXrefs = { addr ->
+            viewModel.fetchXrefs(addr)
+        }
+    )
 
     Scaffold(
         topBar = {
@@ -142,7 +166,7 @@ fun ProjectScreen(
                                         else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                              )
                          }
-                         // Show scroll-to-selection button for Hex, Disassembly and Decompile tabs
+                         // Show scroll-to-selection button for Hex and Disassembly tabs
                          if (selectedDetailTabIndex == 0 || selectedDetailTabIndex == 1 || selectedDetailTabIndex == 2) {
                              androidx.compose.material3.IconButton(onClick = { viewModel.requestScrollToSelection() }) {
                                  Icon(Icons.Filled.MyLocation, contentDescription = "Scroll to Selection")
@@ -166,6 +190,20 @@ fun ProjectScreen(
                     }
                 )
             }
+            
+            // Xrefs Dialog
+            if (xrefsState.visible) {
+                XrefsDialog(
+                    xrefs = xrefsState.data,
+                    onDismiss = { viewModel.dismissXrefs() },
+                    onJump = { addr ->
+                        selectedCategory = MainCategory.Detail
+                        selectedDetailTabIndex = 1 // Default to disasm for xref jumps
+                        viewModel.jumpToAddress(addr)
+                        viewModel.dismissXrefs()
+                    }
+                )
+            }
         },
         bottomBar = {
             // Two-layer Bottom Navigation
@@ -178,16 +216,16 @@ fun ProjectScreen(
                     when (selectedCategory) {
                         MainCategory.List -> {
                              ScrollableTabRow(
-                                selectedTabIndex = selectedListTabIndex,
-                                edgePadding = 0.dp,
-                                containerColor = MaterialTheme.colorScheme.surface,
-                                contentColor = MaterialTheme.colorScheme.primary,
-                                indicator = { tabPositions ->
-                                    TabRowDefaults.SecondaryIndicator(
-                                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedListTabIndex]),
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
+                                 selectedTabIndex = selectedListTabIndex,
+                                 edgePadding = 0.dp,
+                                 containerColor = MaterialTheme.colorScheme.surface,
+                                 contentColor = MaterialTheme.colorScheme.primary,
+                                 indicator = { tabPositions ->
+                                     TabRowDefaults.SecondaryIndicator(
+                                         modifier = Modifier.tabIndicatorOffset(tabPositions[selectedListTabIndex]),
+                                         color = MaterialTheme.colorScheme.primary
+                                     )
+                                 }
                             ) {
                                 listTabs.forEachIndexed { index, title ->
                                     Tab(
@@ -309,12 +347,12 @@ fun ProjectScreen(
 
                             when (selectedListTabIndex) {
                                 0 -> state.binInfo?.let { OverviewCard(it) } ?: Text("No Data", Modifier.align(Alignment.Center))
-                                1 -> if (state.sections == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else SectionList(state.sections)
-                                2 -> if (state.symbols == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else SymbolList(state.symbols)
-                                3 -> if (state.imports == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else ImportList(state.imports)
-                                4 -> if (state.relocations == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else RelocationList(state.relocations)
-                                5 -> if (state.strings == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else StringList(state.strings)
-                                6 -> if (state.functions == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else FunctionList(state.functions)
+                                1 -> if (state.sections == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else SectionList(state.sections, listItemActions)
+                                2 -> if (state.symbols == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else SymbolList(state.symbols, listItemActions)
+                                3 -> if (state.imports == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else ImportList(state.imports, listItemActions)
+                                4 -> if (state.relocations == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else RelocationList(state.relocations, listItemActions)
+                                5 -> if (state.strings == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else StringList(state.strings, listItemActions)
+                                6 -> if (state.functions == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else FunctionList(state.functions, listItemActions)
                             }
                         }
                         MainCategory.Detail -> {
