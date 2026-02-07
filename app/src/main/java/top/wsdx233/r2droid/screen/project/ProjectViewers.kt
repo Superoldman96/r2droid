@@ -733,6 +733,39 @@ fun DisassemblyViewer(
     }
     
     Box(Modifier.fillMaxSize()) {
+        // Build jump tracking maps for internal jumps
+        // These maps connect jump instructions to their targets with indices
+        val jumpMaps = remember(cacheVersion, loadedCount) {
+            val jumpToIndex = mutableMapOf<Long, Int>()     // jump instruction addr -> index
+            val targetToIndex = mutableMapOf<Long, Int>()   // jump target addr -> index
+            var jumpCounter = 1
+            
+            // Scan all loaded instructions to build jump maps
+            for (i in 0 until loadedCount) {
+                val instr = disasmDataManager.getInstructionAt(i) ?: continue
+                
+                // Check if this is an internal jump instruction
+                if (instr.type in listOf("jmp", "cjmp", "ujmp") && instr.jump != null) {
+                    // Check if it's internal (within the same function)
+                    val isInternal = instr.fcnAddr > 0 && 
+                                     instr.jump >= instr.fcnAddr && 
+                                     instr.jump <= instr.fcnLast
+                    
+                    if (isInternal) {
+                        // Assign index to this jump
+                        jumpToIndex[instr.addr] = jumpCounter
+                        // Also mark the target with the same index
+                        targetToIndex[instr.jump] = jumpCounter
+                        jumpCounter++
+                    }
+                }
+            }
+            
+            Pair(jumpToIndex, targetToIndex)
+        }
+        
+        val (jumpToIndex, targetToIndex) = jumpMaps
+        
         LazyColumn(
             state = listState,
             modifier = Modifier
@@ -754,6 +787,11 @@ fun DisassemblyViewer(
                 
                 if (instr != null) {
                     val isThisRowMenuTarget = showMenu && menuTargetAddress == instr.addr
+                    
+                    // Look up jump indices for this instruction
+                    val jumpIdx = jumpToIndex[instr.addr]
+                    val targetIdx = targetToIndex[instr.addr]
+                    
                     DisasmRow(
                         instr = instr, 
                         isSelected = instr.addr == cursorAddress, 
@@ -796,7 +834,9 @@ fun DisassemblyViewer(
                                     showMenu = false
                                 }
                             )
-                        }
+                        },
+                        jumpIndex = jumpIdx,
+                        jumpTargetIndex = targetIdx
                     )
                 } else {
                     // Placeholder row
@@ -991,21 +1031,50 @@ fun DisasmRow(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     showMenu: Boolean = false,
-    menuContent: @Composable () -> Unit = {}
+    menuContent: @Composable () -> Unit = {},
+    jumpIndex: Int? = null,           // Index for this jump (if it's a jump instruction)
+    jumpTargetIndex: Int? = null      // Index if this is a jump target
 ) {
+    // Color definitions
+    val commentColor = Color(0xFF6A9955)  // Green for comments
+    val flagColor = Color(0xFF4EC9B0)     // Teal for flags
+    val funcNameColor = Color(0xFFDCDCAA) // Yellow for function names
+    val funcIconColor = Color(0xFF569CD6) // Blue for function icon
+    val jumpOutColor = Color(0xFF66BB6A)  // Green arrow for jump out (external)
+    val jumpInColor = Color(0xFFFFCA28)   // Yellow arrow for jump in (external)
+    val jumpInternalColor = Color(0xFF64B5F6) // Blue for internal jumps
+    
     // Cutter style coloring logic
     val opcodeColor = when (instr.type) {
-        "call", "ucall" -> Color(0xFF42A5F5) // Blue
+        "call", "ucall", "ircall" -> Color(0xFF42A5F5) // Blue
         "jmp", "cjmp", "ujmp" -> Color(0xFF66BB6A) // Green
         "ret" -> Color(0xFFEF5350) // Red
         "push", "pop", "rpush" -> Color(0xFFAB47BC) // Purple
-        "cmp", "test" -> Color(0xFFFFCA28) // Orange/Yellow
+        "cmp", "test", "acmp" -> Color(0xFFFFCA28) // Orange/Yellow
         "nop" -> Color.Gray
+        "lea" -> Color(0xFF4FC3F7) // Light Blue
+        "mov" -> Color(0xFFE0E0E0) // White/Light Gray
         else -> MaterialTheme.colorScheme.onSurface
     }
-
+    
+    // Check if this is the start of a function
+    val isFunctionStart = instr.fcnAddr > 0 && instr.addr == instr.fcnAddr
+    
+    // Check for external jump out/in
+    val isExternalJumpOut = instr.isJumpOut()
+    val hasExternalJumpIn = instr.hasJumpIn()
+    
+    // Check if this is a jump instruction (internal or external)
+    val isJumpInstruction = instr.type in listOf("jmp", "cjmp", "ujmp")
+    val isInternalJump = isJumpInstruction && instr.jump != null && !isExternalJumpOut
+    
+    // Determine jump direction for internal jumps
+    val jumpDirection = if (isInternalJump && instr.jump != null) {
+        if (instr.jump > instr.addr) "↓" else "↑"
+    } else null
+    
     Box {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
@@ -1015,36 +1084,232 @@ fun DisasmRow(
                         onLongPress = { onLongClick() }
                     )
                 }
-                .padding(vertical = 1.dp) // tighter spacing
         ) {
-            // Addr
-            Text(
-                text = "0x%08x".format(instr.addr),
-                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else Color.Gray,
-                fontFamily = FontFamily.Monospace,
-                fontSize = 12.sp,
-                modifier = Modifier.width(90.dp)
-            )
+            // === Pre-instruction annotations ===
             
-            // Bytes (Optional - usually hidden in graph mode but shown in linear)
-            val bytesStr = if (instr.bytes.length > 12) instr.bytes.take(12) + ".." else instr.bytes
-            Text(
-                text = bytesStr.padEnd(14),
-                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else Color.DarkGray,
-                fontFamily = FontFamily.Monospace,
-                fontSize = 12.sp,
-                modifier = Modifier.width(100.dp)
-            )
+            // 1. Display flags (like ;-- _start: or ;-- rip:)
+            if (instr.flags.isNotEmpty()) {
+                instr.flags.forEach { flag ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 24.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = ";-- $flag:",
+                            color = flagColor,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
             
-            // Opcode / Disasm
-            Text(
-                text = instr.disasm,
-                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else opcodeColor,
-                fontFamily = FontFamily.Monospace,
-                fontSize = 12.sp,
-                fontWeight = if(instr.type in listOf("call", "jmp", "ret")) FontWeight.Bold else FontWeight.Normal,
-                modifier = Modifier.weight(1f)
-            )
+            // 2. Display function header if this is function start
+            if (isFunctionStart) {
+                val funcSize = if (instr.fcnLast > instr.fcnAddr) instr.fcnLast - instr.fcnAddr else 0
+                val funcName = instr.flags.firstOrNull { 
+                    !it.startsWith("section.") && !it.startsWith("reloc.") 
+                } ?: "fcn.${"%08x".format(instr.addr)}"
+                
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Blue function icon
+                    Text(
+                        text = "▶",
+                        color = funcIconColor,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(end = 4.dp)
+                    )
+                    Text(
+                        text = "$funcSize: ",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 12.sp
+                    )
+                    Text(
+                        text = "$funcName ();",
+                        color = funcNameColor,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            
+            // === Main instruction row ===
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 1.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Jump indicator column (fixed width)
+                Box(
+                    modifier = Modifier.width(28.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    when {
+                        // External jump out - green left arrow
+                        isExternalJumpOut -> {
+                            Text(
+                                text = "←",
+                                color = jumpOutColor,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        // External jump in target - yellow right arrow
+                        hasExternalJumpIn -> {
+                            Text(
+                                text = "→",
+                                color = jumpInColor,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        // Internal jump instruction - blue arrow with direction and number
+                        isInternalJump && jumpIndex != null -> {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = jumpDirection ?: "",
+                                    color = jumpInternalColor,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "${jumpIndex}",
+                                    color = jumpInternalColor,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
+                        // Jump target - show target indicator with number
+                        jumpTargetIndex != null -> {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "▸",
+                                    color = jumpInternalColor,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 11.sp
+                                )
+                                Text(
+                                    text = "${jumpTargetIndex}",
+                                    color = jumpInternalColor,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                // Address
+                Text(
+                    text = "0x%08x".format(instr.addr),
+                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else Color.Gray,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 12.sp,
+                    modifier = Modifier.width(82.dp)
+                )
+                
+                // Bytes
+                val bytesStr = if (instr.bytes.length > 16) instr.bytes.take(16) + ".." else instr.bytes
+                Text(
+                    text = bytesStr.padEnd(18),
+                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else Color.DarkGray,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 12.sp,
+                    modifier = Modifier.width(110.dp)
+                )
+                
+                // Opcode / Disasm
+                Text(
+                    text = instr.disasm,
+                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else opcodeColor,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 12.sp,
+                    fontWeight = if(instr.type in listOf("call", "jmp", "cjmp", "ret")) FontWeight.Bold else FontWeight.Normal,
+                    modifier = Modifier.weight(1f)
+                )
+                
+                // Inline comment for ptr/refs
+                val inlineComment = buildString {
+                    if (instr.ptr != null) {
+                        append("; 0x${"%x".format(instr.ptr)}")
+                    }
+                    if (instr.refptr && instr.refs.isNotEmpty()) {
+                        val dataRef = instr.refs.firstOrNull { it.type == "DATA" }
+                        if (dataRef != null) {
+                            if (isNotEmpty()) append(" ")
+                            append("; [0x${"%x".format(dataRef.addr)}]")
+                        }
+                    }
+                }.trim()
+                
+                if (inlineComment.isNotEmpty()) {
+                    Text(
+                        text = inlineComment,
+                        color = commentColor,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                }
+            }
+            
+            // === Post-instruction comment ===
+            if (!instr.comment.isNullOrEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 28.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "; ${instr.comment}",
+                        color = commentColor,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+            
+            // Show xref comments for jump targets
+            if (instr.xrefs.isNotEmpty()) {
+                val codeXrefs = instr.xrefs.filter { it.type == "CODE" }
+                if (codeXrefs.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 28.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val xrefText = if (codeXrefs.size == 1) {
+                            "; XREF from 0x${"%x".format(codeXrefs[0].addr)}"
+                        } else {
+                            "; XREF from ${codeXrefs.size} locations"
+                        }
+                        Text(
+                            text = xrefText,
+                            color = commentColor.copy(alpha = 0.7f),
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+            }
         }
         
         // Render menu inside Box so it anchors to this row
@@ -1053,6 +1318,8 @@ fun DisasmRow(
         }
     }
 }
+
+
 
 @Composable
 fun DecompilationViewer(

@@ -186,6 +186,23 @@ data class DecompilationAnnotation(
     }
 }
 
+/**
+ * Reference data from pdj output's refs array.
+ */
+data class DisasmRef(
+    val addr: Long,
+    val type: String  // "DATA", "CODE", "CALL", etc.
+) {
+    companion object {
+        fun fromJson(json: JSONObject): DisasmRef {
+            return DisasmRef(
+                addr = json.optLong("addr", 0),
+                type = json.optString("type", "")
+            )
+        }
+    }
+}
+
 data class DisasmInstruction(
     val addr: Long,
     val opcode: String,
@@ -193,19 +210,86 @@ data class DisasmInstruction(
     val type: String,
     val size: Int,
     val disasm: String,
-    val family: String?
+    val family: String?,
+    // Extended fields from pdj
+    val flags: List<String> = emptyList(),       // e.g. ["_start", "rip", "entry0"]
+    val comment: String? = null,                  // e.g. "; arg int64_t arg3 @ rdx"
+    val fcnAddr: Long = 0,                        // Function start address
+    val fcnLast: Long = 0,                        // Function last address
+    val jump: Long? = null,                       // Jump target address (for jmp, cjmp)
+    val fail: Long? = null,                       // Fail target for conditional jumps
+    val ptr: Long? = null,                        // Pointer value (e.g. for lea)
+    val refptr: Boolean = false,                  // Has reference pointer
+    val refs: List<DisasmRef> = emptyList(),      // References from this instruction
+    val xrefs: List<DisasmRef> = emptyList(),     // Cross-references to this instruction
+    val esil: String? = null                      // ESIL representation
 ) {
     companion object {
         fun fromJson(json: JSONObject): DisasmInstruction {
+            // Parse flags array
+            val flagsList = mutableListOf<String>()
+            json.optJSONArray("flags")?.let { arr ->
+                for (i in 0 until arr.length()) {
+                    arr.optString(i)?.let { flagsList.add(it) }
+                }
+            }
+            
+            // Parse refs array
+            val refsList = mutableListOf<DisasmRef>()
+            json.optJSONArray("refs")?.let { arr ->
+                for (i in 0 until arr.length()) {
+                    arr.optJSONObject(i)?.let { refsList.add(DisasmRef.fromJson(it)) }
+                }
+            }
+            
+            // Parse xrefs array
+            val xrefsList = mutableListOf<DisasmRef>()
+            json.optJSONArray("xrefs")?.let { arr ->
+                for (i in 0 until arr.length()) {
+                    arr.optJSONObject(i)?.let { xrefsList.add(DisasmRef.fromJson(it)) }
+                }
+            }
+            
             return DisasmInstruction(
-                addr = json.optLong("addr", 0),
+                addr = json.optLong("addr", json.optLong("offset", 0)),
                 opcode = json.optString("opcode", ""),
                 bytes = json.optString("bytes", ""),
                 type = json.optString("type", ""),
                 size = json.optInt("size", 0),
                 disasm = json.optString("disasm", ""),
-                family = json.optString("family", "")
+                family = json.optString("family", ""),
+                flags = flagsList,
+                comment = json.optString("comment").takeIf { it.isNotEmpty() },
+                fcnAddr = json.optLong("fcn_addr", 0),
+                fcnLast = json.optLong("fcn_last", 0),
+                jump = if (json.has("jump")) json.optLong("jump") else null,
+                fail = if (json.has("fail")) json.optLong("fail") else null,
+                ptr = if (json.has("ptr")) json.optLong("ptr") else null,
+                refptr = json.optBoolean("refptr", false),
+                refs = refsList,
+                xrefs = xrefsList,
+                esil = json.optString("esil").takeIf { it.isNotEmpty() }
             )
+        }
+    }
+    
+    /**
+     * Check if this instruction is a jump to an address outside the current function.
+     */
+    fun isJumpOut(): Boolean {
+        if (fcnAddr == 0L || fcnLast == 0L) return false
+        val target = jump ?: return false
+        return target < fcnAddr || target > fcnLast
+    }
+    
+    /**
+     * Check if this instruction has incoming jumps from outside the current function.
+     * This requires xrefs to be populated and checks if any caller is outside function bounds.
+     */
+    fun hasJumpIn(): Boolean {
+        if (fcnAddr == 0L || fcnLast == 0L) return false
+        return xrefs.any { xref ->
+            xref.type == "CODE" && (xref.addr < fcnAddr || xref.addr > fcnLast)
         }
     }
 }

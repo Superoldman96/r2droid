@@ -97,10 +97,14 @@ fun MainAppNavigation() {
             )
         }
         AppScreen.Project -> {
+            // BackHandler is now handled inside ProjectScreen for unsaved project confirmation
+            // This BackHandler only handles already-saved projects (or bypassed dialogs)
             BackHandler {
                 currentScreen = AppScreen.Home
             }
-            ProjectScreen()
+            ProjectScreen(
+                onNavigateBack = { currentScreen = AppScreen.Home }
+            )
         }
     }
 }

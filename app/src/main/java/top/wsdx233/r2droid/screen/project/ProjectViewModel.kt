@@ -12,6 +12,7 @@ import top.wsdx233.r2droid.data.DisasmDataManager
 import top.wsdx233.r2droid.data.HexDataManager
 import top.wsdx233.r2droid.data.model.*
 import top.wsdx233.r2droid.data.repository.ProjectRepository
+import top.wsdx233.r2droid.data.repository.SavedProjectRepository
 import top.wsdx233.r2droid.util.R2PipeManager
 
 sealed class ProjectUiState {
@@ -41,14 +42,27 @@ data class XrefsState(
     val data: List<Xref> = emptyList()
 )
 
+// Save project state
+sealed class SaveProjectState {
+    object Idle : SaveProjectState()
+    object Saving : SaveProjectState()
+    data class Success(val message: String) : SaveProjectState()
+    data class Error(val message: String) : SaveProjectState()
+}
+
 class ProjectViewModel : ViewModel() {
     private val repository = ProjectRepository()
+    private var savedProjectRepository: SavedProjectRepository? = null
 
     private val _uiState = MutableStateFlow<ProjectUiState>(ProjectUiState.Idle)
     val uiState: StateFlow<ProjectUiState> = _uiState.asStateFlow()
 
     // Expose logs from LogManager
     val logs: StateFlow<List<top.wsdx233.r2droid.util.LogEntry>> = top.wsdx233.r2droid.util.LogManager.logs
+    
+    // Save project state
+    private val _saveProjectState = MutableStateFlow<SaveProjectState>(SaveProjectState.Idle)
+    val saveProjectState: StateFlow<SaveProjectState> = _saveProjectState.asStateFlow()
     
     // Xrefs State
 //    private val _xrefsState = MutableStateFlow(XrefsState())
@@ -134,9 +148,16 @@ class ProjectViewModel : ViewModel() {
 
     fun initialize() {
         val path = R2PipeManager.pendingFilePath
+        val restoreFlags = R2PipeManager.pendingRestoreFlags
+        
         if (path != null) {
-            // New file waiting to be configured
-            _uiState.value = ProjectUiState.Configuring(path)
+            if (restoreFlags != null) {
+                // Restoring a saved project - skip config screen
+                _uiState.value = ProjectUiState.Analyzing
+            } else {
+                // New file waiting to be configured
+                _uiState.value = ProjectUiState.Configuring(path)
+            }
         } else {
              // No new file pending.
              // If we are already displaying data (Success), do nothing.
@@ -148,6 +169,57 @@ class ProjectViewModel : ViewModel() {
                      _uiState.value = ProjectUiState.Error("No file selected or session active")
                 }
              }
+        }
+    }
+    
+    /**
+     * Start a restore session for a saved project.
+     * Called from LaunchedEffect when restoring.
+     * Opens the binary file first, then loads the script using `. script_path` command.
+     */
+    fun startRestoreSession(context: Context) {
+        val path = R2PipeManager.pendingFilePath ?: return
+        val scriptPath = R2PipeManager.pendingRestoreFlags ?: return  // This now stores the script path
+        
+        viewModelScope.launch {
+            _uiState.value = ProjectUiState.Analyzing
+            
+            // Open Session without restore flags (just open the binary)
+            val openResult = R2PipeManager.open(context, path, "")
+            
+            if (openResult.isSuccess) {
+                // Load the script using `. script_path` command
+                // This executes all commands in the script file to restore analysis state
+                val loadScriptResult = R2PipeManager.execute(". $scriptPath")
+                
+                if (loadScriptResult.isFailure) {
+                    // Log warning but continue - script may have partial success
+                    android.util.Log.w("ProjectViewModel", "Script load warning: ${loadScriptResult.exceptionOrNull()?.message}")
+                }
+                
+                // Load Data (Overview only)
+                loadOverview()
+                
+                // Set initial offset to entry point if possible, else 0
+                val entryPointsResult = repository.getEntryPoints()
+                if (entryPointsResult.isSuccess) {
+                    val entries = entryPointsResult.getOrNull()
+                    currentOffset = entries?.firstOrNull()?.vAddr ?: 0L
+                } else {
+                    currentOffset = 0L
+                }
+                
+                // Update cursor address in state
+                (_uiState.value as? ProjectUiState.Success)?.let {
+                    _uiState.value = it.copy(cursorAddress = currentOffset)
+                }
+                
+                // Clear pending data
+                R2PipeManager.pendingFilePath = null
+                R2PipeManager.pendingRestoreFlags = null
+            } else {
+                _uiState.value = ProjectUiState.Error(openResult.exceptionOrNull()?.message ?: "Unknown error")
+            }
         }
     }
 
@@ -671,7 +743,7 @@ class ProjectViewModel : ViewModel() {
         viewModelScope.launch {
             // "wa [asm] @ [addr]"
             val escaped = asm.replace("\"", "\\\"") // enclose in quotes to be safe? usually wa instruction is fine
-            R2PipeManager.execute("wa \"$escaped\" @ $addr")
+            R2PipeManager.execute("wa $escaped @ $addr")
             
             hexDataManager?.clearCache()
             disasmDataManager?.clearCache()
@@ -688,6 +760,7 @@ class ProjectViewModel : ViewModel() {
         viewModelScope.launch {
             val result = R2PipeManager.execute(cmd)
             val output = result.getOrDefault("")
+            
             callback(output)
             
             // If command might modify data, reload
@@ -699,6 +772,88 @@ class ProjectViewModel : ViewModel() {
             }
         }
     }
+    
+    // === Project Saving ===
+    
+    /**
+     * Initialize the saved project repository with context.
+     * Should be called when entering the project screen.
+     */
+    fun initializeSavedProjectRepository(context: Context) {
+        if (savedProjectRepository == null) {
+            savedProjectRepository = SavedProjectRepository(context.applicationContext)
+        }
+    }
+    
+    /**
+     * Check if current session is from a restored project.
+     */
+    fun getCurrentProjectId(): String? = R2PipeManager.currentProjectId
+    
+    /**
+     * Save current analysis as a new project.
+     * 
+     * @param name Display name for the project
+     * @param analysisLevel The analysis level used
+     */
+    fun saveProject(name: String, analysisLevel: String = "") {
+        val repo = savedProjectRepository ?: run {
+            _saveProjectState.value = SaveProjectState.Error("Repository not initialized")
+            return
+        }
+        
+        viewModelScope.launch {
+            _saveProjectState.value = SaveProjectState.Saving
+            
+            val result = repo.saveCurrentProject(name, analysisLevel)
+            
+            if (result.isSuccess) {
+                val project = result.getOrNull()
+                // Update currentProjectId so future saves can update instead of create new
+                if (project != null) {
+                    R2PipeManager.currentProjectId = project.id
+                }
+                _saveProjectState.value = SaveProjectState.Success("Project saved successfully")
+            } else {
+                _saveProjectState.value = SaveProjectState.Error(
+                    result.exceptionOrNull()?.message ?: "Failed to save project"
+                )
+            }
+        }
+    }
+    
+    /**
+     * Update an existing saved project with current analysis.
+     * 
+     * @param projectId The ID of the project to update
+     */
+    fun updateProject(projectId: String) {
+        val repo = savedProjectRepository ?: run {
+            _saveProjectState.value = SaveProjectState.Error("Repository not initialized")
+            return
+        }
+        
+        viewModelScope.launch {
+            _saveProjectState.value = SaveProjectState.Saving
+            
+            val result = repo.updateProject(projectId)
+            
+            if (result.isSuccess) {
+                _saveProjectState.value = SaveProjectState.Success("Project updated successfully")
+            } else {
+                _saveProjectState.value = SaveProjectState.Error(
+                    result.exceptionOrNull()?.message ?: "Failed to update project"
+                )
+            }
+        }
+    }
+    
+    /**
+     * Reset save state (call after showing success/error message)
+     */
+    fun resetSaveState() {
+        _saveProjectState.value = SaveProjectState.Idle
+    }
 
     override fun onCleared() {
         super.onCleared()
@@ -707,3 +862,4 @@ class ProjectViewModel : ViewModel() {
         R2PipeManager.close()
     }
 }
+

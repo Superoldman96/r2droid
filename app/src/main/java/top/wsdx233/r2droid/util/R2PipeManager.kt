@@ -38,9 +38,19 @@ object R2PipeManager {
     // 待处理的文件路径，由 HomeViewModel 设置，ProjectViewModel 读取
     var pendingFilePath: String? = null
     
+    // 待处理的恢复标志 (如 "-i scriptPath")，用于恢复已保存的项目
+    var pendingRestoreFlags: String? = null
+    
+    // 待处理的项目 ID，用于关联已保存的项目（便于后续更新保存）
+    var pendingProjectId: String? = null
+    
     // 当前已打开的文件路径
     var currentFilePath: String? = null
         private set
+    
+    // 当前已打开的项目 ID (如果是从保存的项目恢复的)
+    // 可以公开设置，用于保存新项目后更新
+    var currentProjectId: String? = null
 
     /**
      * 状态封装类
@@ -99,10 +109,13 @@ object R2PipeManager {
 
                         _isConnected.set(true)
                         currentFilePath = filePath // 保存当前文件路径
+                        currentProjectId = pendingProjectId // 保存当前项目ID
+                        pendingProjectId = null // 清除pending
                         _state.value = State.Success("Open R2Pipe session", "Session started successfully")
                         Result.success(Unit)
                     } else {
                         currentFilePath = null
+                        currentProjectId = null
                         throw RuntimeException("R2Pipe process failed to start immediately.")
                     }
                 } catch (e: Exception) {

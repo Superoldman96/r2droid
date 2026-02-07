@@ -2,12 +2,17 @@ package top.wsdx233.r2droid.screen.home
 
 import android.content.Context
 import android.net.Uri
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import top.wsdx233.r2droid.data.model.SavedProject
+import top.wsdx233.r2droid.data.repository.SavedProjectRepository
 import top.wsdx233.r2droid.util.R2PipeManager
 import java.io.File
 import java.io.FileOutputStream
@@ -15,14 +20,49 @@ import java.io.FileOutputStream
 sealed class HomeUiEvent {
     data object NavigateToProject : HomeUiEvent()
     data class ShowError(val message: String) : HomeUiEvent()
+    data class ShowMessage(val message: String) : HomeUiEvent()
 }
 
 class HomeViewModel : ViewModel() {
     private val _uiEvent = Channel<HomeUiEvent>()
     val uiEvent: Flow<HomeUiEvent> = _uiEvent.receiveAsFlow()
 
-    // History projects data (Placeholder)
-    val historyProjects: List<String> = emptyList()
+    // Saved projects from repository
+    var savedProjects by mutableStateOf<List<SavedProject>>(emptyList())
+        private set
+    
+    // Loading state
+    var isLoadingProjects by mutableStateOf(false)
+        private set
+
+    // Repository instance (will be initialized with context)
+    private var repository: SavedProjectRepository? = null
+
+    /**
+     * Initialize the repository with context and load projects
+     */
+    fun initialize(context: Context) {
+        if (repository == null) {
+            repository = SavedProjectRepository(context.applicationContext)
+        }
+        loadSavedProjects()
+    }
+
+    /**
+     * Load all saved projects from repository
+     */
+    fun loadSavedProjects() {
+        viewModelScope.launch {
+            isLoadingProjects = true
+            try {
+                savedProjects = repository?.getAllProjects() ?: emptyList()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                isLoadingProjects = false
+            }
+        }
+    }
 
     fun onFileSelected(context: Context, uri: Uri) {
         viewModelScope.launch {
@@ -39,12 +79,73 @@ class HomeViewModel : ViewModel() {
 
                 if (filePath != null) {
                     R2PipeManager.pendingFilePath = filePath
+                    R2PipeManager.pendingRestoreFlags = null // Regular open, no restore
                     _uiEvent.send(HomeUiEvent.NavigateToProject)
                 } else {
                     _uiEvent.send(HomeUiEvent.ShowError(context.getString(top.wsdx233.r2droid.R.string.home_error_resolve_path)))
                 }
             } catch (e: Exception) {
                 _uiEvent.send(HomeUiEvent.ShowError(e.message ?: context.getString(top.wsdx233.r2droid.R.string.home_error_unknown)))
+            }
+        }
+    }
+
+    /**
+     * Restore a saved project
+     */
+    fun onRestoreProject(context: Context, project: SavedProject) {
+        viewModelScope.launch {
+            try {
+                // Check if binary is accessible
+                if (!project.isBinaryAccessible()) {
+                    _uiEvent.send(HomeUiEvent.ShowError(
+                        context.getString(top.wsdx233.r2droid.R.string.home_error_binary_not_found)
+                    ))
+                    return@launch
+                }
+
+                // Check if script is accessible
+                if (!project.isScriptAccessible()) {
+                    _uiEvent.send(HomeUiEvent.ShowError(
+                        context.getString(top.wsdx233.r2droid.R.string.home_error_script_not_found)
+                    ))
+                    return@launch
+                }
+
+                // Close existing session if any
+                if (R2PipeManager.isConnected) {
+                    R2PipeManager.quit()
+                }
+
+                // Set pending file path and restore script path
+                R2PipeManager.pendingFilePath = project.binaryPath
+                R2PipeManager.pendingRestoreFlags = project.scriptPath  // Store script path only
+                R2PipeManager.pendingProjectId = project.id
+
+                _uiEvent.send(HomeUiEvent.NavigateToProject)
+            } catch (e: Exception) {
+                _uiEvent.send(HomeUiEvent.ShowError(
+                    e.message ?: context.getString(top.wsdx233.r2droid.R.string.home_error_unknown)
+                ))
+            }
+        }
+    }
+
+    /**
+     * Delete a saved project
+     */
+    fun onDeleteProject(context: Context, project: SavedProject) {
+        viewModelScope.launch {
+            try {
+                repository?.deleteProject(project.id)
+                loadSavedProjects() // Refresh list
+                _uiEvent.send(HomeUiEvent.ShowMessage(
+                    context.getString(top.wsdx233.r2droid.R.string.home_project_deleted)
+                ))
+            } catch (e: Exception) {
+                _uiEvent.send(HomeUiEvent.ShowError(
+                    e.message ?: context.getString(top.wsdx233.r2droid.R.string.home_error_unknown)
+                ))
             }
         }
     }
@@ -89,10 +190,6 @@ class HomeViewModel : ViewModel() {
             e.printStackTrace()
             null
         }
-    }
-
-    fun onHistoryItemClicked(item: String) {
-        // Placeholder
     }
 
     fun onSettingsClicked() {

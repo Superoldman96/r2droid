@@ -80,15 +80,127 @@ enum class MainCategory(val title: String, val icon: ImageVector) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProjectScreen(
-    viewModel: ProjectViewModel = viewModel()
+    viewModel: ProjectViewModel = viewModel(),
+    onNavigateBack: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val logs by viewModel.logs.collectAsState()
+    val saveState by viewModel.saveProjectState.collectAsState()
     val context = LocalContext.current
+    
+    // State for exit confirmation dialog
+    var showExitDialog by remember { mutableStateOf(false) }
+    var showSaveBeforeExitDialog by remember { mutableStateOf(false) }
+    var exitProjectName by remember { mutableStateOf("") }
+    
+    // Initialize saved project repository
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        viewModel.initializeSavedProjectRepository(context)
+    }
     
     // Check intent on entry (handle new file selection)
     androidx.compose.runtime.LaunchedEffect(Unit) {
         viewModel.initialize()
+    }
+    
+    // Handle project restoration - trigger when Analyzing state is set from a restore
+    androidx.compose.runtime.LaunchedEffect(uiState) {
+        if (uiState is ProjectUiState.Analyzing && R2PipeManager.pendingRestoreFlags != null) {
+            viewModel.startRestoreSession(context)
+        }
+    }
+    
+    // Handle back press with save confirmation
+    androidx.activity.compose.BackHandler(
+        enabled = uiState is ProjectUiState.Success && R2PipeManager.currentProjectId == null
+    ) {
+        // Show save confirmation dialog if not already saved
+        showExitDialog = true
+    }
+    
+    // Handle save completion when exiting
+    androidx.compose.runtime.LaunchedEffect(saveState) {
+        if (showSaveBeforeExitDialog && saveState is SaveProjectState.Success) {
+            showSaveBeforeExitDialog = false
+            onNavigateBack()
+        }
+    }
+    
+    // Exit confirmation dialog
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = { Text(stringResource(top.wsdx233.r2droid.R.string.project_exit_title)) },
+            text = { Text(stringResource(top.wsdx233.r2droid.R.string.project_exit_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showExitDialog = false
+                        showSaveBeforeExitDialog = true
+                        // Set default name from file
+                        exitProjectName = R2PipeManager.currentFilePath?.let { 
+                            java.io.File(it).name 
+                        } ?: "Project"
+                    }
+                ) {
+                    Text(stringResource(top.wsdx233.r2droid.R.string.project_exit_save))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showExitDialog = false
+                        onNavigateBack()
+                    }
+                ) {
+                    Text(stringResource(top.wsdx233.r2droid.R.string.project_exit_discard))
+                }
+            }
+        )
+    }
+    
+    // Save before exit dialog
+    if (showSaveBeforeExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showSaveBeforeExitDialog = false },
+            title = { Text(stringResource(top.wsdx233.r2droid.R.string.project_save_title)) },
+            text = {
+                OutlinedTextField(
+                    value = exitProjectName,
+                    onValueChange = { exitProjectName = it },
+                    label = { Text(stringResource(top.wsdx233.r2droid.R.string.project_save_name_hint)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.saveProject(exitProjectName)
+                        // Dialog will be closed by LaunchedEffect when save succeeds
+                    },
+                    enabled = saveState !is SaveProjectState.Saving
+                ) {
+                    if (saveState is SaveProjectState.Saving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(end = 8.dp),
+                            strokeWidth = 2.dp
+                        )
+                    }
+                    Text(stringResource(top.wsdx233.r2droid.R.string.project_save))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showSaveBeforeExitDialog = false
+                        onNavigateBack()
+                    }
+                ) {
+                    Text(stringResource(top.wsdx233.r2droid.R.string.home_delete_cancel))
+                }
+            }
+        )
     }
     
     // Config state check
@@ -400,7 +512,7 @@ fun ProjectScreen(
                         MainCategory.Project -> {
                              // Project Category
                             when (selectedProjectTabIndex) {
-                                0 -> PlaceholderScreen("Settings (Coming Soon)")
+                                0 -> ProjectSettingsScreen(viewModel)
                                 1 -> PlaceholderScreen("Terminal (Coming Soon)")
                                 2 -> LogList(logs)
                             }
@@ -411,6 +523,318 @@ fun ProjectScreen(
             }
         }
     }
+}
+
+@Composable
+fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
+    val context = LocalContext.current
+    val saveState by viewModel.saveProjectState.collectAsState()
+    var showSaveDialog by remember { mutableStateOf(false) }
+    
+    // Initialize repository
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        viewModel.initializeSavedProjectRepository(context)
+    }
+    
+    // Handle save state changes
+    androidx.compose.runtime.LaunchedEffect(saveState) {
+        when (saveState) {
+            is SaveProjectState.Success -> {
+                android.widget.Toast.makeText(
+                    context, 
+                    (saveState as SaveProjectState.Success).message, 
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+                viewModel.resetSaveState()
+            }
+            is SaveProjectState.Error -> {
+                android.widget.Toast.makeText(
+                    context, 
+                    (saveState as SaveProjectState.Error).message, 
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+                viewModel.resetSaveState()
+            }
+            else -> {}
+        }
+    }
+    
+    // Save dialog
+    if (showSaveDialog) {
+        SaveProjectDialog(
+            existingProjectId = viewModel.getCurrentProjectId(),
+            onDismiss = { showSaveDialog = false },
+            onSaveNew = { name ->
+                viewModel.saveProject(name)
+                showSaveDialog = false
+            },
+            onUpdate = { projectId ->
+                viewModel.updateProject(projectId)
+                showSaveDialog = false
+            }
+        )
+    }
+    
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // File Info Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Current File",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                )
+                Text(
+                    text = R2PipeManager.currentFilePath ?: "No file loaded",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                
+                if (R2PipeManager.currentProjectId != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Project ID: ${R2PipeManager.currentProjectId}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f)
+                    )
+                }
+            }
+        }
+        
+        // Save Project Section
+        Text(
+            text = stringResource(top.wsdx233.r2droid.R.string.project_save),
+            style = MaterialTheme.typography.titleMedium
+        )
+        
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = saveState !is SaveProjectState.Saving) { 
+                    showSaveDialog = true 
+                },
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                if (saveState is SaveProjectState.Saving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(8.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Build,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+                
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (R2PipeManager.currentProjectId != null) 
+                            "Update Project" 
+                        else 
+                            stringResource(top.wsdx233.r2droid.R.string.project_save_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Text(
+                        text = if (R2PipeManager.currentProjectId != null)
+                            "Save changes to existing project"
+                        else
+                            "Save analysis results for later",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        }
+        
+        // Startup Flags Section (for saved projects)
+        if (R2PipeManager.currentProjectId != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = stringResource(top.wsdx233.r2droid.R.string.project_startup_flags),
+                style = MaterialTheme.typography.titleMedium
+            )
+            
+            var startupFlags by remember { mutableStateOf("") }
+            
+            OutlinedTextField(
+                value = startupFlags,
+                onValueChange = { startupFlags = it },
+                label = { Text(stringResource(top.wsdx233.r2droid.R.string.project_startup_flags_hint)) },
+                placeholder = { Text("-w -n") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            
+            Text(
+                text = stringResource(top.wsdx233.r2droid.R.string.project_startup_flags_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        
+        // Session Info
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Session Info",
+            style = MaterialTheme.typography.titleMedium
+        )
+        
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Status", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        if (R2PipeManager.isConnected) "Connected" else "Disconnected",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (R2PipeManager.isConnected) 
+                            MaterialTheme.colorScheme.primary 
+                        else 
+                            MaterialTheme.colorScheme.error
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Saved", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        if (R2PipeManager.currentProjectId != null) "Yes" else "No",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (R2PipeManager.currentProjectId != null) 
+                            MaterialTheme.colorScheme.primary 
+                        else 
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SaveProjectDialog(
+    existingProjectId: String?,
+    onDismiss: () -> Unit,
+    onSaveNew: (name: String) -> Unit,
+    onUpdate: (projectId: String) -> Unit
+) {
+    var projectName by remember { mutableStateOf("") }
+    var saveAsNew by remember { mutableStateOf(existingProjectId == null) }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(top.wsdx233.r2droid.R.string.project_save_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                if (existingProjectId != null) {
+                    // Options for existing project
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { saveAsNew = false }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = !saveAsNew,
+                            onClick = { saveAsNew = false }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Update existing project")
+                    }
+                    
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { saveAsNew = true }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = saveAsNew,
+                            onClick = { saveAsNew = true }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Save as new project")
+                    }
+                }
+                
+                if (saveAsNew || existingProjectId == null) {
+                    OutlinedTextField(
+                        value = projectName,
+                        onValueChange = { projectName = it },
+                        label = { Text(stringResource(top.wsdx233.r2droid.R.string.project_save_name_hint)) },
+                        placeholder = { 
+                            val fileName = R2PipeManager.currentFilePath?.let { 
+                                java.io.File(it).name 
+                            } ?: "Project"
+                            Text(fileName)
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    if (saveAsNew || existingProjectId == null) {
+                        val name = projectName.ifBlank {
+                            R2PipeManager.currentFilePath?.let { java.io.File(it).name } ?: "Project"
+                        }
+                        onSaveNew(name)
+                    } else {
+                        onUpdate(existingProjectId)
+                    }
+                }
+            ) {
+                Text(stringResource(top.wsdx233.r2droid.R.string.project_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(top.wsdx233.r2droid.R.string.home_delete_cancel))
+            }
+        }
+    )
 }
 
 @Composable
