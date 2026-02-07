@@ -231,7 +231,7 @@ fun ProjectScreen(
 
     val listTabs = listOf("Overview", "Sections", "Symbols", "Imports", "Relocs", "Strings", "Functions")
     val detailTabs = listOf("Hex", "Disassembly", "Decompile")
-    val projectTabs = listOf("Settings", "Terminal", "Command", "Logs")
+    val projectTabs = listOf("Settings", "Terminal", "Cmd", "Logs")
     
     // Xrefs State
     val xrefsState by viewModel.xrefsState.collectAsState()
