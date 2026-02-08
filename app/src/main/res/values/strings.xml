@@ -49,4 +49,20 @@
     <string name="project_startup_flags">Startup Flags</string>
     <string name="project_startup_flags_hint">Additional r2 flags (e.g. -w -n)</string>
     <string name="project_startup_flags_desc">These flags will be applied when restoring this project</string>
+    <!-- Settings Screen -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_font">Custom Font</string>
+    <string name="settings_font_desc">Select a custom font file (.ttf)</string>
+    <string name="settings_font_default">Default</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_desc">Application language</string>
+    <string name="settings_general">General</string>
+    <string name="settings_r2rc">Custom .radare2rc</string>
+    <string name="settings_r2rc_desc">Select your custom r2 configuration file</string>
+    <string name="settings_project_dir">Project Folder</string>
+    <string name="settings_project_dir_desc">Location where projects are saved</string>
+    <string name="settings_dir_picker_title">Select Directory</string>
+    <string name="settings_file_picker_title">Select File</string>
+    <string name="settings_reset">Reset</string>
 </resources>

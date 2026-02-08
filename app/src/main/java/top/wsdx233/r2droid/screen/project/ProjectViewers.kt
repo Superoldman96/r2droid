@@ -561,23 +561,23 @@ fun HexViewer(
                 }
                 Spacer(Modifier.width(8.dp))
                 val currentPos = hexDataManager.getRowAddress(listState.firstVisibleItemIndex)
-                Text("Pos: ${"0x%X".format(currentPos)}", fontSize = 12.sp, fontFamily = FontFamily.Monospace, color = hexByteText)
+                Text("Pos: ${"0x%X".format(currentPos)}", fontSize = 12.sp, fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current, color = hexByteText)
             }
             if (totalSize > 0L) {
-                Text("Range: ${"0x%X".format(hexDataManager.viewStartAddress)}-${"0x%X".format(hexDataManager.viewEndAddress)}", fontSize = 12.sp, fontFamily = FontFamily.Monospace, color = hexByteText)
+                Text("Range: ${"0x%X".format(hexDataManager.viewStartAddress)}-${"0x%X".format(hexDataManager.viewEndAddress)}", fontSize = 12.sp, fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current, color = hexByteText)
             }
         }
-        
-        // Hex Keyboard - shown when showKeyboard is true
+
+        // Hex Keyboard
         if (showKeyboard) {
             HexKeyboard(
                 onNibbleClick = { char ->
-                    // Build up 2-char hex input
+                    // Append nibble to editing buffer
                     val newBuffer = editingBuffer + char
                     if (newBuffer.length >= 2) {
-                        // Write the byte
-                        val byteValue = newBuffer.uppercase().toInt(16)
-                        viewModel.writeHex(cursorAddress, "%02X".format(byteValue))
+                        // Complete byte - write it
+                        val byteValue = newBuffer.take(2)
+                        viewModel.writeHex(cursorAddress, byteValue)
                         editingBuffer = ""
                         // Move to next byte
                         onByteClick(cursorAddress + 1)
@@ -587,10 +587,11 @@ fun HexViewer(
                 },
                 onBackspace = {
                     if (editingBuffer.isNotEmpty()) {
+                        // Delete last character from buffer
                         editingBuffer = editingBuffer.dropLast(1)
                     } else {
                         // Move to previous byte
-                        if (cursorAddress > hexDataManager.viewStartAddress) {
+                        if (cursorAddress > 0) {
                             onByteClick(cursorAddress - 1)
                         }
                     }
@@ -604,9 +605,6 @@ fun HexViewer(
     }
 }
 
-/**
- * Placeholder row shown when data is not yet loaded.
- */
 @Composable
 fun HexPlaceholderRow(
     addr: Long,
@@ -616,6 +614,7 @@ fun HexPlaceholderRow(
 ) {
     val hexPlaceholderRow = colorResource(R.color.hex_placeholder_row)
     val hexPlaceholderBlock = colorResource(R.color.hex_placeholder_block)
+    val appFont = top.wsdx233.r2droid.ui.theme.LocalAppFont.current
     
     Row(
         modifier = Modifier
@@ -634,7 +633,7 @@ fun HexPlaceholderRow(
             Text(
                 text = "%06X".format(addr),
                 color = hexAddressText,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = appFont,
                 fontSize = 12.sp,
                 lineHeight = 14.sp
             )
@@ -691,6 +690,7 @@ fun HexVisualRow(
 ) {
     // 8 bytes row
     val oddRow = (addr / 8) % 2 == 1L
+    val appFont = top.wsdx233.r2droid.ui.theme.LocalAppFont.current
     
     // Check if this row contains the cursor
     val rowStartAddr = addr
@@ -717,7 +717,7 @@ fun HexVisualRow(
             Text(
                 text = "%06X".format(addr), 
                 color = hexAddressText, // Dark gray
-                fontFamily = FontFamily.Monospace,
+                fontFamily = appFont,
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
                 lineHeight = 14.sp
@@ -784,7 +784,7 @@ fun HexVisualRow(
 
                         Text(
                              text = displayText,
-                             fontFamily = FontFamily.Monospace,
+                             fontFamily = appFont,
                              fontSize = 13.sp,
                              color = textColor,
                              textAlign = TextAlign.Center,
@@ -1187,12 +1187,12 @@ fun DisassemblyViewer(
             Text(
                 "Addr: ${"0x%X".format(currentAddr)}", 
                 fontSize = 12.sp, 
-                fontFamily = FontFamily.Monospace
+                fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current
             )
             Text(
                 "Loaded: $loadedCount instrs", 
                 fontSize = 12.sp, 
-                fontFamily = FontFamily.Monospace
+                fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current
             )
         }
         
@@ -1422,7 +1422,7 @@ fun DisasmRow(
                         Text(
                             text = ";-- $flag:",
                             color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else flagColor,
-                            fontFamily = FontFamily.Monospace,
+                            fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                             fontSize = 11.sp
                         )
                     }
@@ -1447,7 +1447,7 @@ fun DisasmRow(
                     Text(
                         text = "▶",
                         color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else funcIconColor,
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(end = 4.dp)
@@ -1455,13 +1455,13 @@ fun DisasmRow(
                     Text(
                         text = "$funcSize: ",
                         color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                         fontSize = 11.sp
                     )
                     Text(
                         text = "$funcName ();",
                         color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else funcNameColor,
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -1489,7 +1489,7 @@ fun DisasmRow(
                             Text(
                                 text = "←",
                                 color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else jumpOutColor,
-                                fontFamily = FontFamily.Monospace,
+                                fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -1499,7 +1499,7 @@ fun DisasmRow(
                             Text(
                                 text = "→",
                                 color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else jumpInColor,
-                                fontFamily = FontFamily.Monospace,
+                                fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -1509,7 +1509,7 @@ fun DisasmRow(
                             Text(
                                 text = "${jumpDirection ?: ""}${formatJumpIndex(jumpIndex)}",
                                 color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else jumpInternalColor,
-                                fontFamily = FontFamily.Monospace,
+                                fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -1519,7 +1519,7 @@ fun DisasmRow(
                             Text(
                                 text = "▸${formatJumpIndex(jumpTargetIndex)}",
                                 color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else jumpInternalColor,
-                                fontFamily = FontFamily.Monospace,
+                                fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                                 fontSize = 9.sp
                             )
                         }
@@ -1538,7 +1538,7 @@ fun DisasmRow(
                     Text(
                         text = formatCompactAddress(instr.addr),
                         color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else addressColor,
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -1556,7 +1556,7 @@ fun DisasmRow(
                     Text(
                         text = displayBytes,
                         color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else bytesColor,
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                         fontSize = 10.sp
                     )
                 }
@@ -1573,7 +1573,7 @@ fun DisasmRow(
                     Text(
                         text = instr.disasm,
                         color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else opcodeColor,
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                         fontSize = 12.sp,
                         fontWeight = if(instr.type in listOf("call", "jmp", "cjmp", "ret")) FontWeight.Bold else FontWeight.Normal
                     )
@@ -1591,7 +1591,7 @@ fun DisasmRow(
                         Text(
                             text = inlineComment,
                             color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else commentColor,
-                            fontFamily = FontFamily.Monospace,
+                            fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                             fontSize = 10.sp
                         )
                     }
@@ -1610,7 +1610,7 @@ fun DisasmRow(
                     Text(
                         text = inlineComment,
                         color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f) else commentColor,
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                         fontSize = 10.sp
                     )
                 }
@@ -1628,7 +1628,7 @@ fun DisasmRow(
                     Text(
                         text = "; ${instr.comment}",
                         color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else commentColor,
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                         fontSize = 10.sp
                     )
                 }
@@ -1653,7 +1653,7 @@ fun DisasmRow(
                         Text(
                             text = xrefText,
                             color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else commentColor,
-                            fontFamily = FontFamily.Monospace,
+                            fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                             fontSize = 10.sp
                         )
                     }
@@ -1848,7 +1848,7 @@ fun DecompilationViewer(
                         ) {
                             Text(
                                 text = (index + 1).toString(),
-                                fontFamily = FontFamily.Monospace,
+                                fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                                 fontSize = 13.sp,
                                 color = if (isCurrentLine) Color(0xFFFFFFFF) else Color(0xFF858585),
                                 modifier = Modifier.padding(end = 8.dp)
@@ -1867,7 +1867,7 @@ fun DecompilationViewer(
             ) {
                 Text(
                     text = annotatedString,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                     fontSize = 13.sp,
                     color = Color(0xFFD4D4D4), // Standard light gray text
                     lineHeight = 18.sp,
@@ -2064,7 +2064,7 @@ fun HexKeyboard(
                         Text(
                             text = char.toString(),
                             color = keyTextColor,
-                            fontFamily = FontFamily.Monospace,
+                            fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Medium
                         )
@@ -2089,7 +2089,7 @@ fun HexKeyboard(
                         Text(
                             text = char.toString(),
                             color = keyTextColor,
-                            fontFamily = FontFamily.Monospace,
+                            fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Medium
                         )

@@ -1,5 +1,6 @@
 package top.wsdx233.r2droid.activity
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -14,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.font.GenericFontFamily
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.lifecycleScope
@@ -28,8 +30,28 @@ import top.wsdx233.r2droid.util.PermissionManager
 import top.wsdx233.r2droid.util.R2Installer
 
 class MainActivity : ComponentActivity() {
+
+    override fun attachBaseContext(newBase: Context) {
+        // Apply language from settings
+        val prefs = newBase.getSharedPreferences("r2droid_settings", Context.MODE_PRIVATE)
+        val language = prefs.getString("language", "system")
+        
+        val context = if (language != null && language != "system") {
+            val locale = java.util.Locale(language)
+            val config = android.content.res.Configuration(newBase.resources.configuration)
+            config.setLocale(locale)
+            newBase.createConfigurationContext(config)
+        } else {
+            newBase
+        }
+        super.attachBaseContext(context)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Initialize SettingsManager
+        top.wsdx233.r2droid.data.SettingsManager.initialize(applicationContext)
         
         // 启动应用时检查并安装
         lifecycleScope.launch {
@@ -38,14 +60,23 @@ class MainActivity : ComponentActivity() {
         
         enableEdgeToEdge()
         setContent {
-            R2droidTheme {
-                // 监听全局安装状态
-                val installState by R2Installer.installState.collectAsState()
-                
-                if (installState.isInstalling) {
-                    InstallScreen(installState = installState)
-                } else {
-                    MainAppContent()
+            // Load custom font if available
+            val customFont = remember { 
+                top.wsdx233.r2droid.data.SettingsManager.getCustomFont() ?: androidx.compose.ui.text.font.FontFamily.Monospace 
+            }
+            
+            androidx.compose.runtime.CompositionLocalProvider(
+                top.wsdx233.r2droid.ui.theme.LocalAppFont provides customFont as GenericFontFamily
+            ) {
+                R2droidTheme {
+                    // 监听全局安装状态
+                    val installState by R2Installer.installState.collectAsState()
+                    
+                    if (installState.isInstalling) {
+                        InstallScreen(installState = installState)
+                    } else {
+                        MainAppContent()
+                    }
                 }
             }
         }
@@ -55,7 +86,8 @@ class MainActivity : ComponentActivity() {
 enum class AppScreen {
     Home,
     Project,
-    About
+    About,
+    Settings
 }
 
 @Composable
@@ -96,7 +128,8 @@ fun MainAppNavigation() {
         AppScreen.Home -> {
             HomeScreen(
                 onNavigateToProject = { currentScreen = AppScreen.Project },
-                onNavigateToAbout = { currentScreen = AppScreen.About }
+                onNavigateToAbout = { currentScreen = AppScreen.About },
+                onNavigateToSettings = { currentScreen = AppScreen.Settings }
             )
         }
         AppScreen.About -> {
@@ -104,6 +137,14 @@ fun MainAppNavigation() {
                 currentScreen = AppScreen.Home
             }
             AboutScreen(
+                onBackClick = { currentScreen = AppScreen.Home }
+            )
+        }
+        AppScreen.Settings -> {
+            BackHandler {
+                currentScreen = AppScreen.Home
+            }
+            top.wsdx233.r2droid.screen.settings.SettingsScreen(
                 onBackClick = { currentScreen = AppScreen.Home }
             )
         }

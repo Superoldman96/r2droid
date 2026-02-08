@@ -67,7 +67,8 @@ import top.wsdx233.r2droid.data.model.SavedProject
 fun HomeScreen(
     viewModel: HomeViewModel = viewModel(),
     onNavigateToProject: () -> Unit,
-    onNavigateToAbout: () -> Unit
+    onNavigateToAbout: () -> Unit,
+    onNavigateToSettings: () -> Unit
 ) {
     val context = LocalContext.current
     var showDeleteDialog by remember { mutableStateOf<SavedProject?>(null) }
@@ -91,6 +92,9 @@ fun HomeScreen(
                 }
                 is HomeUiEvent.NavigateToAbout -> {
                     onNavigateToAbout()
+                }
+                is HomeUiEvent.NavigateToSettings -> {
+                    onNavigateToSettings()
                 }
                 is HomeUiEvent.ShowError -> {
                     Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()

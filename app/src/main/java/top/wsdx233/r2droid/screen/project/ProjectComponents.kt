@@ -211,7 +211,7 @@ fun InfoRow(label: String, value: String) {
             text = value,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
-            fontFamily = FontFamily.Monospace
+            fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current
         )
     }
 }
@@ -269,7 +269,7 @@ fun SectionItem(section: Section, actions: ListItemActions) {
                     Text(
                         text = "VAddr: 0x${section.vAddr.toString(16)}",
                         style = MaterialTheme.typography.bodySmall,
-                        fontFamily = FontFamily.Monospace
+                        fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current
                     )
                 }
             }
@@ -320,7 +320,7 @@ fun SymbolItem(symbol: Symbol, actions: ListItemActions) {
                 Text(
                     text = "0x${symbol.vAddr.toString(16)}",
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
@@ -370,7 +370,7 @@ fun ImportItem(importInfo: ImportInfo, actions: ListItemActions) {
                      Text(
                         text = "PLT: 0x${importInfo.plt.toString(16)}",
                         style = MaterialTheme.typography.bodySmall,
-                        fontFamily = FontFamily.Monospace
+                        fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current
                     )
                 }
             }
@@ -405,7 +405,7 @@ fun RelocationItem(relocation: Relocation, actions: ListItemActions) {
                 Text(
                     "0x${relocation.vAddr.toString(16)}",
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace
+                    fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current
                 )
             },
             colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
@@ -449,7 +449,7 @@ fun StringItem(stringInfo: StringInfo, actions: ListItemActions) {
                      Text(
                         text = "0x${stringInfo.vAddr.toString(16)}",
                         style = MaterialTheme.typography.labelSmall,
-                        fontFamily = FontFamily.Monospace
+                        fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current
                     )
                     Text(
                         text = stringInfo.type,
@@ -509,7 +509,7 @@ fun FunctionItem(func: FunctionInfo, actions: ListItemActions) {
                     Text(
                         text = "0x${func.addr.toString(16)}",
                         style = MaterialTheme.typography.bodySmall,
-                        fontFamily = FontFamily.Monospace
+                        fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current
                     )
                     Text(
                         text = "bbs: ${func.nbbs}",
@@ -548,7 +548,7 @@ fun XrefsDialog(
                 Text(
                     text = "@ 0x${targetAddress.toString(16).uppercase()}",
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
@@ -734,7 +734,7 @@ private fun XrefItem(
                 Text(
                     text = "0x${address.toString(16).uppercase()}",
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -758,7 +758,7 @@ private fun XrefItem(
                 Text(
                     text = xref.disasm,
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2
                 )
@@ -780,7 +780,7 @@ private fun XrefItem(
                 Text(
                     text = xref.bytes.uppercase(),
                     style = MaterialTheme.typography.labelSmall,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = top.wsdx233.r2droid.ui.theme.LocalAppFont.current,
                     color = MaterialTheme.colorScheme.outline,
                     maxLines = 1
                 )

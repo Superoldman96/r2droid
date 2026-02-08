@@ -20,6 +20,7 @@ import java.io.FileOutputStream
 sealed class HomeUiEvent {
     data object NavigateToProject : HomeUiEvent()
     data object NavigateToAbout : HomeUiEvent()
+    data object NavigateToSettings : HomeUiEvent()
     data class ShowError(val message: String) : HomeUiEvent()
     data class ShowMessage(val message: String) : HomeUiEvent()
 }
@@ -175,7 +176,13 @@ class HomeViewModel : ViewModel() {
             // Use timestamp to ensure unique path, forcing R2 to treat it as a new file
             // Also try to preserve extension if possible (though R2 detects by magic bytes usually)
             val fileName = "r2_target_${System.currentTimeMillis()}" 
-            val file = File(context.cacheDir, fileName)
+            
+            // Use custom project home if set, otherwise cache dir
+            val baseDir = top.wsdx233.r2droid.data.SettingsManager.projectHome?.let { File(it) } 
+                ?.takeIf { it.exists() && it.isDirectory && it.canWrite() } 
+                ?: context.cacheDir
+                
+            val file = File(baseDir, fileName)
             
             // Cleanup old temp files to save space? (Optional)
             // context.cacheDir.listFiles()?.forEach { if (it.name.startsWith("r2_target")) it.delete() }
@@ -194,7 +201,9 @@ class HomeViewModel : ViewModel() {
     }
 
     fun onSettingsClicked() {
-        // Placeholder
+        viewModelScope.launch {
+            _uiEvent.send(HomeUiEvent.NavigateToSettings)
+        }
     }
 
     fun onAboutClicked() {
