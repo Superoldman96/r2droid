@@ -16,4 +16,5 @@ local.properties
 /*/build/
 app/release/*
 *.apk
-terminal-view/build/intermediates/runtime_library_classes_dir/debug/bundleLibRuntimeToDirDebug/com/termux/view/textselection/TextSelectionCursorController$2.class
+.claude
+.agent
