@@ -197,6 +197,10 @@
     <string name="analysis_startup_flags_label">附加启动参数</string>
     <string name="analysis_startup_flags_hint">-n -h</string>
     <string name="analysis_start_btn">开始分析</string>
+
+    <string name="analysis_large_file_warning_title">大文件警告</string>
+    <string name="analysis_large_file_warning_message">在大文件中使用全面自动分析可能导致分析和保存项目耗时过长，建议选择不分析，进入项目后手动局部分析</string>
+    <string name="analysis_large_file_warning_continue">仍然继续</string>
     
     <!-- Logs -->
     <string name="logs_clear_desc">清除日志</string>

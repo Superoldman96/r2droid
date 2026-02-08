@@ -226,6 +226,10 @@
     <string name="analysis_startup_flags_hint">-n -h</string>
     <string name="analysis_start_btn">Start Analysis</string>
     
+    <string name="analysis_large_file_warning_title">Large File Warning</string>
+    <string name="analysis_large_file_warning_message">Using full automatic analysis on large files may take a long time to analyze and save. It is recommended to choose \'None\', enter the project, and then manually analyze specific parts.</string>
+    <string name="analysis_large_file_warning_continue">Continue Anyway</string>
+    
     <!-- Logs -->
     <string name="logs_clear_desc">Clear Logs</string>
 

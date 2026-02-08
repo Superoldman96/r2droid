@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import top.wsdx233.r2droid.R
 import top.wsdx233.r2droid.util.R2PipeManager
+import androidx.core.net.toUri
 
 enum class MainCategory(@StringRes val titleRes: Int, val icon: ImageVector) {
     List(R.string.proj_category_list, Icons.Filled.List),
@@ -912,6 +913,32 @@ fun AnalysisConfigScreen(
         stringResource(R.string.analysis_level_experimental) to "aaaa",
         stringResource(R.string.analysis_level_custom) to "custom"
     )
+    
+    val context = LocalContext.current
+    var fileSize by remember { mutableStateOf(0L) }
+    
+    androidx.compose.runtime.LaunchedEffect(filePath) {
+        try {
+            val file = java.io.File(filePath)
+            if (file.exists()) {
+                fileSize = file.length()
+            } else if (filePath.startsWith("content://")) {
+                val uri = android.net.Uri.parse(filePath)
+                context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val sizeIndex = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                        if (sizeIndex != -1) fileSize = cursor.getLong(sizeIndex)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+    
+    val isHeavyAnalysis = selectedLevel == "aaa" || selectedLevel == "aaaa"
+    val isLargeFile = fileSize > 1024 * 1024 // 1MB
+    val showWarning = isHeavyAnalysis && isLargeFile
 
     Scaffold(
         topBar = {
@@ -963,6 +990,44 @@ fun AnalysisConfigScreen(
                     placeholder = { Text(stringResource(R.string.analysis_custom_cmd_hint)) },
                     modifier = Modifier.fillMaxWidth()
                 )
+            }
+            
+            // Warning Card
+            if (showWarning) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info, 
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.analysis_large_file_warning_title),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = stringResource(R.string.analysis_large_file_warning_message),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.9f)
+                            )
+                        }
+                    }
+                }
             }
             
             HorizontalDivider()

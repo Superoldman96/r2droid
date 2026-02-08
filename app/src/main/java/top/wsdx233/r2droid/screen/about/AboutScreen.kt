@@ -224,13 +224,26 @@ fun AboutScreen(
 @Composable
 fun AppHeader() {
     val r2DroidText = stringResource(R.string.about_r2droid)
+
+    // Rotating gradient animation
+    val infiniteTransition = rememberInfiniteTransition()
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(8000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "gradient_rotation"
+    )
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
             modifier = Modifier
-                .size(120.dp)
+                .size(130.dp)
                 .clip(CircleShape)
                 .background(
                     brush = Brush.sweepGradient(
@@ -241,20 +254,23 @@ fun AppHeader() {
                             MaterialTheme.colorScheme.primary
                         )
                     )
-                ),
+                )
+                .padding(4.dp),
             contentAlignment = Alignment.Center
         ) {
             Box(
                 modifier = Modifier
-                    .size(110.dp)
+                    .fillMaxSize()
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surface),
                  contentAlignment = Alignment.Center
             ) {
-                Image(
+                 Image(
                      painter = painterResource(id = R.drawable.icon),
                     contentDescription = stringResource(R.string.about_logo_desc),
-                    modifier = Modifier.size(150.dp)
+                    modifier = Modifier
+                        .size(90.dp)
+                        .clip(CircleShape)
                 )
             }
         }
