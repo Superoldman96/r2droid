@@ -38,4 +38,9 @@
     <color name="disasm_col_opcode">#FF1E1E1E</color>
     <color name="disasm_col_comment">#FF281E30</color>
     <color name="disasm_secondary_row">#FF252525</color>
+    <color name="disasm_col_flag">#FF1A3040</color>
+    <color name="disasm_col_func_header">#FF1A2840</color>
+    <color name="disasm_col_r2_comment">#FF401A28</color>
+    <color name="disasm_col_xref">#FF40301A</color>
+    <color name="disasm_col_inline_comment">#FF301A40</color>
 </resources>

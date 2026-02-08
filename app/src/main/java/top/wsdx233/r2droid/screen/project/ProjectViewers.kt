@@ -1058,6 +1058,11 @@ fun DisasmRow(
     val colBytesBg = colorResource(R.color.disasm_col_bytes)
     val colOpcodeBg = colorResource(R.color.disasm_col_opcode)
     val colCommentBg = colorResource(R.color.disasm_col_comment)
+    val colFlagBg = colorResource(R.color.disasm_col_flag)
+    val colFuncHeaderBg = colorResource(R.color.disasm_col_func_header)
+    val colR2CommentBg = colorResource(R.color.disasm_col_r2_comment)
+    val colXrefBg = colorResource(R.color.disasm_col_xref)
+    val colInlineCommentBg = colorResource(R.color.disasm_col_inline_comment)
     val secondaryRowBg = colorResource(R.color.disasm_secondary_row)
     
     // Color definitions
@@ -1141,12 +1146,13 @@ fun DisasmRow(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 80.dp),
+                            .background(if (isSelected) Color.Transparent else colFlagBg)
+                            .padding(start = 80.dp, top = 1.dp, bottom = 1.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = ";-- $flag:",
-                            color = flagColor,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else flagColor,
                             fontFamily = FontFamily.Monospace,
                             fontSize = 11.sp
                         )
@@ -1159,18 +1165,19 @@ fun DisasmRow(
                 val funcSize = if (instr.fcnLast > instr.fcnAddr) instr.fcnLast - instr.fcnAddr else 0
                 val funcName = instr.flags.firstOrNull { 
                     !it.startsWith("section.") && !it.startsWith("reloc.") 
-                } ?: "fcn.${"%08x".format(instr.addr)}"
+                } ?: "fcn.${"%%08x".format(instr.addr)}"
                 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .background(if (isSelected) Color.Transparent else colFuncHeaderBg)
                         .padding(start = 80.dp, top = 2.dp, bottom = 1.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Blue function icon
                     Text(
                         text = "▶",
-                        color = funcIconColor,
+                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else funcIconColor,
                         fontFamily = FontFamily.Monospace,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
@@ -1178,13 +1185,13 @@ fun DisasmRow(
                     )
                     Text(
                         text = "$funcSize: ",
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 11.sp
                     )
                     Text(
                         text = "$funcName ();",
-                        color = funcNameColor,
+                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else funcNameColor,
                         fontFamily = FontFamily.Monospace,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
@@ -1308,7 +1315,7 @@ fun DisasmRow(
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
-                            .background(if (isSelected) Color.Transparent else colCommentBg)
+                            .background(if (isSelected) Color.Transparent else colInlineCommentBg)
                             .padding(horizontal = 4.dp),
                         contentAlignment = Alignment.CenterStart
                     ) {
@@ -1327,7 +1334,7 @@ fun DisasmRow(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f) else secondaryRowBg)
+                        .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f) else colInlineCommentBg)
                         .padding(start = 80.dp, top = 1.dp, bottom = 1.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -1345,7 +1352,7 @@ fun DisasmRow(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f) else colCommentBg.copy(alpha = 0.3f))
+                        .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f) else colR2CommentBg)
                         .padding(start = 80.dp, top = 1.dp, bottom = 1.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -1365,7 +1372,7 @@ fun DisasmRow(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else colCommentBg.copy(alpha = 0.2f))
+                            .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else colXrefBg)
                             .padding(start = 80.dp, top = 1.dp, bottom = 1.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -1376,7 +1383,7 @@ fun DisasmRow(
                         }
                         Text(
                             text = xrefText,
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else commentColor.copy(alpha = 0.7f),
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else commentColor,
                             fontFamily = FontFamily.Monospace,
                             fontSize = 10.sp
                         )
@@ -1621,79 +1628,124 @@ fun DisasmContextMenu(
     instr: DisasmInstruction?,
     onDismiss: () -> Unit,
     onCopy: (String) -> Unit,
-    onModify: (String) -> Unit,
+    onModify: (String) -> Unit, // type: hex, string, asm
     onXrefs: () -> Unit,
     onCustomCommand: () -> Unit
 ) {
     if (expanded) {
-        // Need to hoist state of submenu? DropdownMenu handles content recomposition.
-        // But we need a persistent state for the submenu.
-        var showCopySubMenu by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+        // State to track which menu is currently visible: "main", "copy", "modify"
+        var currentMenu by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("main") }
         
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = onDismiss
         ) {
-            if (!showCopySubMenu) {
-                DropdownMenuItem(
-                    text = { Text("Copy...") },
-                    onClick = { showCopySubMenu = true },
-                    trailingIcon = { Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) }
-                )
-                
-                HorizontalDivider()
-                
-                DropdownMenuItem(
-                    text = { Text("Modify Hex") },
-                    onClick = { onModify("hex") }
-                )
-                DropdownMenuItem(
-                    text = { Text("Modify String") },
-                    onClick = { onModify("string") }
-                )
-                DropdownMenuItem(
-                    text = { Text("Modify Opcode") },
-                    onClick = { onModify("asm") }
-                )
-                
-                HorizontalDivider()
-                
-                DropdownMenuItem(
-                    text = { Text("Xrefs") },
-                    onClick = { onXrefs() }
-                )
-                
-                DropdownMenuItem(
-                    text = { Text("Custom Command...") },
-                    onClick = { onCustomCommand() }
-                )
-            } else {
-                DropdownMenuItem(
-                    text = { Text("Back") },
-                    onClick = { showCopySubMenu = false },
-                    leadingIcon = { Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, null) }
-                )
-                HorizontalDivider()
-                
-                DropdownMenuItem(
-                    text = { Text("Address") },
-                    onClick = { onCopy("0x%08x".format(address)) }
-                )
-                if (instr != null) {
+            when (currentMenu) {
+                "main" -> {
+                    // === Main Menu ===
+                    
+                    // Copy Submenu Trigger
                     DropdownMenuItem(
-                        text = { Text("Opcode") },
-                        onClick = { onCopy(instr.disasm) }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Bytes") },
-                        onClick = { onCopy(instr.bytes) }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Full Row") },
-                        onClick = { 
-                            val bytesStr = if (instr.bytes.length > 12) instr.bytes.take(12) + ".." else instr.bytes
-                            onCopy("0x%08x  %s  %s".format(address, bytesStr.padEnd(14), instr.disasm)) 
+                        text = { Text("Copy...") },
+                        onClick = { currentMenu = "copy" },
+                        trailingIcon = { 
+                            Icon(
+                                androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowRight, 
+                                contentDescription = "Submenu"
+                            ) 
                         }
+                    )
+                    
+                    // Modify Submenu Trigger
+                    DropdownMenuItem(
+                        text = { Text("Modify...") },
+                        onClick = { currentMenu = "modify" },
+                        trailingIcon = { 
+                            Icon(
+                                androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowRight, 
+                                contentDescription = "Submenu"
+                            ) 
+                        }
+                    )
+                    
+                    HorizontalDivider()
+                    
+                    // Xrefs
+                    DropdownMenuItem(
+                        text = { Text("Xrefs") },
+                        onClick = { onXrefs() }
+                    )
+                    
+                    // Custom Command
+                    DropdownMenuItem(
+                        text = { Text("Custom Command...") },
+                        onClick = { onCustomCommand() }
+                    )
+                }
+                
+                "copy" -> {
+                    // === Copy Submenu ===
+                    DropdownMenuItem(
+                        text = { Text("Back") },
+                        onClick = { currentMenu = "main" },
+                        leadingIcon = { 
+                            Icon(
+                                androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, 
+                                contentDescription = "Back"
+                            ) 
+                        }
+                    )
+                    HorizontalDivider()
+                    
+                    DropdownMenuItem(
+                        text = { Text("Address") },
+                        onClick = { onCopy("0x%08x".format(address)) }
+                    )
+                    
+                    if (instr != null) {
+                        DropdownMenuItem(
+                            text = { Text("Opcode") },
+                            onClick = { onCopy(instr.disasm) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Bytes") },
+                            onClick = { onCopy(instr.bytes) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Full Row") },
+                            onClick = { 
+                                val bytesStr = if (instr.bytes.length > 12) instr.bytes.take(12) + ".." else instr.bytes
+                                onCopy("0x%08x  %s  %s".format(address, bytesStr.padEnd(14), instr.disasm)) 
+                            }
+                        )
+                    }
+                }
+                
+                "modify" -> {
+                    // === Modify Submenu ===
+                    DropdownMenuItem(
+                        text = { Text("Back") },
+                        onClick = { currentMenu = "main" },
+                        leadingIcon = { 
+                            Icon(
+                                androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, 
+                                contentDescription = "Back"
+                            ) 
+                        }
+                    )
+                    HorizontalDivider()
+                    
+                    DropdownMenuItem(
+                        text = { Text("Modify Hex") },
+                        onClick = { onModify("hex") }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Modify String") },
+                        onClick = { onModify("string") }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Modify Opcode") },
+                        onClick = { onModify("asm") }
                     )
                 }
             }
