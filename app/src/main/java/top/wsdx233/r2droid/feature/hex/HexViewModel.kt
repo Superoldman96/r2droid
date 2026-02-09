@@ -16,9 +16,23 @@ import top.wsdx233.r2droid.util.R2PipeManager
  * ViewModel for Hex Viewer.
  * Manages HexDataManager and hex-related interactions.
  */
-class HexViewModel : ViewModel() {
-    private val r2DataSource = R2PipeDataSource()
-    private val hexRepository = HexRepository(r2DataSource)
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+
+sealed interface HexEvent {
+    data class LoadHex(val sections: List<Section>, val currentFilePath: String?, val currentOffset: Long) : HexEvent
+    data class LoadHexChunk(val address: Long) : HexEvent
+    data class PreloadHex(val address: Long) : HexEvent
+    data class WriteHex(val address: Long, val hex: String) : HexEvent
+    data class WriteString(val address: Long, val text: String) : HexEvent
+    data class WriteAsm(val address: Long, val asm: String) : HexEvent
+    object RefreshData : HexEvent
+}
+
+@HiltViewModel
+class HexViewModel @Inject constructor(
+    private val hexRepository: HexRepository
+) : ViewModel() {
 
     // HexDataManager for virtualized hex viewing
     var hexDataManager: HexDataManager? = null
@@ -31,6 +45,18 @@ class HexViewModel : ViewModel() {
     // Event to notify that data has been modified (so other views like Disasm can refresh)
     private val _dataModifiedEvent = MutableStateFlow(0L) // Timestamp/Sequence
     val dataModifiedEvent: StateFlow<Long> = _dataModifiedEvent.asStateFlow()
+
+    fun onEvent(event: HexEvent) {
+        when (event) {
+            is HexEvent.LoadHex -> loadHex(event.sections, event.currentFilePath, event.currentOffset)
+            is HexEvent.LoadHexChunk -> loadHexChunkForAddress(event.address)
+            is HexEvent.PreloadHex -> preloadHexAround(event.address)
+            is HexEvent.WriteHex -> writeHex(event.address, event.hex)
+            is HexEvent.WriteString -> writeString(event.address, event.text)
+            is HexEvent.WriteAsm -> writeAsm(event.address, event.asm)
+            is HexEvent.RefreshData -> refreshData()
+        }
+    }
 
     /**
      * Initialize hex viewer with virtualization.

@@ -1,4 +1,4 @@
-package top.wsdx233.r2droid.data.repository
+package top.wsdx233.r2droid.feature.project.data
 
 import android.content.Context
 import android.util.Log
@@ -17,7 +17,10 @@ import java.util.UUID
  *   - project.r2: R2 script file (analysis data)
  *   - project.json: Metadata file
  */
-class SavedProjectRepository(private val context: Context) {
+import javax.inject.Inject
+import dagger.hilt.android.qualifiers.ApplicationContext
+
+class SavedProjectRepository @Inject constructor(@ApplicationContext private val context: Context) {
     
     companion object {
         private const val TAG = "SavedProjectRepo"

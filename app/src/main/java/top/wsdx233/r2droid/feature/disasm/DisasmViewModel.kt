@@ -14,6 +14,11 @@ import top.wsdx233.r2droid.feature.disasm.data.DisasmDataManager
 import top.wsdx233.r2droid.feature.disasm.data.DisasmRepository
 import top.wsdx233.r2droid.util.R2PipeManager
 
+
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+
+
 data class XrefsState(
     val visible: Boolean = false,
     val data: XrefsData = XrefsData(),
@@ -25,9 +30,24 @@ data class XrefsState(
  * ViewModel for Disassembly Viewer.
  * Manages DisasmDataManager and disasm-related interactions.
  */
-class DisasmViewModel : ViewModel() {
-    private val r2DataSource = R2PipeDataSource()
-    private val disasmRepository = DisasmRepository(r2DataSource)
+
+sealed interface DisasmEvent {
+    data class LoadDisassembly(val sections: List<Section>, val currentFilePath: String?, val currentOffset: Long) : DisasmEvent
+    data class LoadChunk(val address: Long) : DisasmEvent
+    data class Preload(val address: Long) : DisasmEvent
+    data class LoadMore(val forward: Boolean) : DisasmEvent
+    data class WriteAsm(val address: Long, val asm: String) : DisasmEvent
+    data class WriteHex(val address: Long, val hex: String) : DisasmEvent
+    data class WriteString(val address: Long, val text: String) : DisasmEvent
+    object RefreshData : DisasmEvent
+    data class FetchXrefs(val address: Long) : DisasmEvent
+    object DismissXrefs : DisasmEvent
+}
+
+@HiltViewModel
+class DisasmViewModel @Inject constructor(
+    private val disasmRepository: DisasmRepository
+) : ViewModel() {
 
     // DisasmDataManager for virtualized disassembly viewing
     var disasmDataManager: DisasmDataManager? = null
@@ -44,6 +64,21 @@ class DisasmViewModel : ViewModel() {
     // Event to notify that data has been modified
     private val _dataModifiedEvent = MutableStateFlow(0L)
     val dataModifiedEvent: StateFlow<Long> = _dataModifiedEvent.asStateFlow()
+
+    fun onEvent(event: DisasmEvent) {
+        when (event) {
+            is DisasmEvent.LoadDisassembly -> loadDisassembly(event.sections, event.currentFilePath, event.currentOffset)
+            is DisasmEvent.LoadChunk -> loadDisasmChunkForAddress(event.address)
+            is DisasmEvent.Preload -> preloadDisasmAround(event.address)
+            is DisasmEvent.LoadMore -> loadDisasmMore(event.forward)
+            is DisasmEvent.WriteAsm -> writeAsm(event.address, event.asm)
+            is DisasmEvent.WriteHex -> writeHex(event.address, event.hex)
+            is DisasmEvent.WriteString -> writeString(event.address, event.text)
+            is DisasmEvent.RefreshData -> refreshData()
+            is DisasmEvent.FetchXrefs -> fetchXrefs(event.address)
+            is DisasmEvent.DismissXrefs -> dismissXrefs()
+        }
+    }
 
     /**
      * Initialize disassembly viewer with virtualization.

@@ -69,6 +69,8 @@ import top.wsdx233.r2droid.ui.theme.LocalAppFont
  * - Data is loaded on-demand from HexDataManager cache
  * - Placeholder shown for unloaded rows
  */
+import top.wsdx233.r2droid.feature.hex.HexEvent
+
 @Composable
 fun HexViewer(
     viewModel: top.wsdx233.r2droid.feature.hex.HexViewModel,
@@ -159,7 +161,7 @@ fun HexViewer(
     LaunchedEffect(listState.firstVisibleItemIndex, cacheVersion) {
         val firstVisible = listState.firstVisibleItemIndex
         val addr = hexDataManager.getRowAddress(firstVisible)
-        viewModel.preloadHexAround(addr)
+        viewModel.onEvent(HexEvent.PreloadHex(addr))
     }
 
     // Calculate which column is selected (0-7 for each 8-byte row)
@@ -198,9 +200,9 @@ fun HexViewer(
                 onDismiss = { showModifyDialog = false },
                 onConfirm = { value ->
                      when(modifyType) {
-                        "hex" -> viewModel.writeHex(menuTargetAddress!!, value)
-                        "string" -> viewModel.writeString(menuTargetAddress!!, value)
-                        "asm" -> viewModel.writeAsm(menuTargetAddress!!, value)
+                        "hex" -> viewModel.onEvent(HexEvent.WriteHex(menuTargetAddress!!, value))
+                        "string" -> viewModel.onEvent(HexEvent.WriteString(menuTargetAddress!!, value))
+                        "asm" -> viewModel.onEvent(HexEvent.WriteAsm(menuTargetAddress!!, value))
                      }
                 }
             )
@@ -330,7 +332,7 @@ fun HexViewer(
                         
                         // Trigger loading for this row's chunk
                         LaunchedEffect(rowIndex) {
-                            viewModel.loadHexChunkForAddress(addr)
+                            viewModel.onEvent(HexEvent.LoadHexChunk(addr))
                         }
                         
                         // Force re-read when cache version changes
@@ -525,7 +527,7 @@ fun HexViewer(
                     if (newBuffer.length >= 2) {
                         // Complete byte - write it
                         val byteValue = newBuffer.take(2)
-                        viewModel.writeHex(cursorAddress, byteValue)
+                        viewModel.onEvent(HexEvent.WriteHex(cursorAddress, byteValue))
                         editingBuffer = ""
                         // Move to next byte
                         onByteClick(cursorAddress + 1)

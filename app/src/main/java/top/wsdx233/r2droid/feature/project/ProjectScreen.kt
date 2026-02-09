@@ -70,12 +70,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import top.wsdx233.r2droid.R
 import top.wsdx233.r2droid.util.R2PipeManager
 import androidx.core.net.toUri
 import top.wsdx233.r2droid.feature.hex.ui.HexViewer
 import top.wsdx233.r2droid.feature.disasm.ui.DisassemblyViewer
+import top.wsdx233.r2droid.feature.hex.HexEvent
+import top.wsdx233.r2droid.feature.disasm.DisasmEvent
 import top.wsdx233.r2droid.feature.decompiler.ui.DecompilationViewer
 import top.wsdx233.r2droid.core.ui.dialogs.JumpDialog
 import top.wsdx233.r2droid.core.ui.dialogs.XrefsDialog
@@ -93,9 +95,9 @@ enum class MainCategory(@StringRes val titleRes: Int, val icon: ImageVector) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProjectScreen(
-    viewModel: ProjectViewModel = viewModel(),
-    hexViewModel: top.wsdx233.r2droid.feature.hex.HexViewModel = viewModel(),
-    disasmViewModel: top.wsdx233.r2droid.feature.disasm.DisasmViewModel = viewModel(),
+    viewModel: ProjectViewModel = hiltViewModel(),
+    hexViewModel: top.wsdx233.r2droid.feature.hex.HexViewModel = hiltViewModel(),
+    disasmViewModel: top.wsdx233.r2droid.feature.disasm.DisasmViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -107,8 +109,8 @@ fun ProjectScreen(
     val globalInvalidation by viewModel.globalDataInvalidated.collectAsState()
     androidx.compose.runtime.LaunchedEffect(globalInvalidation) {
         if (globalInvalidation > 0) {
-            hexViewModel.refreshData()
-            disasmViewModel.refreshData()
+            hexViewModel.onEvent(top.wsdx233.r2droid.feature.hex.HexEvent.RefreshData)
+            disasmViewModel.onEvent(top.wsdx233.r2droid.feature.disasm.DisasmEvent.RefreshData)
         }
     }
     
@@ -121,20 +123,16 @@ fun ProjectScreen(
     var showSaveBeforeExitDialog by remember { mutableStateOf(false) }
     var exitProjectName by remember { mutableStateOf("") }
     
-    // Initialize saved project repository
-    androidx.compose.runtime.LaunchedEffect(Unit) {
-        viewModel.initializeSavedProjectRepository(context)
-    }
-    
+    // Initialize saved project repository - No op now as Hilt handles it
     // Check intent on entry (handle new file selection)
     androidx.compose.runtime.LaunchedEffect(Unit) {
-        viewModel.initialize()
+        viewModel.onEvent(ProjectEvent.Initialize)
     }
     
-    // Handle project restoration - trigger when Analyzing state is set from a restore
+    // Handle project restoration
     androidx.compose.runtime.LaunchedEffect(uiState) {
         if (uiState is ProjectUiState.Analyzing && R2PipeManager.pendingRestoreFlags != null) {
-            viewModel.startRestoreSession(context)
+            viewModel.onEvent(ProjectEvent.StartRestoreSession)
         }
     }
     
@@ -204,7 +202,7 @@ fun ProjectScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.saveProject(exitProjectName)
+                        viewModel.onEvent(ProjectEvent.SaveProject(exitProjectName))
                         // Dialog will be closed by LaunchedEffect when save succeeds
                     },
                     enabled = saveState !is SaveProjectState.Saving
@@ -237,7 +235,7 @@ fun ProjectScreen(
         AnalysisConfigScreen(
             filePath = state.filePath,
             onStartAnalysis = { cmd, writable, flags ->
-                viewModel.startAnalysisSession(context, cmd, writable, flags)
+                viewModel.onEvent(ProjectEvent.StartAnalysisSession(cmd, writable, flags))
             }
         )
         return
@@ -275,15 +273,15 @@ fun ProjectScreen(
         onJumpToHex = { addr ->
             selectedCategory = MainCategory.Detail
             selectedDetailTabIndex = 0
-            viewModel.jumpToAddress(addr)
+            viewModel.onEvent(ProjectEvent.JumpToAddress(addr))
         },
         onJumpToDisasm = { addr ->
             selectedCategory = MainCategory.Detail
             selectedDetailTabIndex = 1
-            viewModel.jumpToAddress(addr)
+            viewModel.onEvent(ProjectEvent.JumpToAddress(addr))
         },
         onShowXrefs = { addr ->
-            disasmViewModel.fetchXrefs(addr)
+            disasmViewModel.onEvent(top.wsdx233.r2droid.feature.disasm.DisasmEvent.FetchXrefs(addr))
         }
     )
 
@@ -299,7 +297,7 @@ fun ProjectScreen(
                          // Show back navigation button (undo)
                          val canGoBack by viewModel.canGoBack.collectAsState()
                          androidx.compose.material3.IconButton(
-                             onClick = { viewModel.navigateBack() },
+                             onClick = { viewModel.onEvent(ProjectEvent.NavigateBack) },
                              enabled = canGoBack
                          ) {
                              Icon(
@@ -311,7 +309,7 @@ fun ProjectScreen(
                          }
                          // Show scroll-to-selection button for Hex and Disassembly tabs
                          if (selectedDetailTabIndex == 0 || selectedDetailTabIndex == 1 || selectedDetailTabIndex == 2) {
-                             androidx.compose.material3.IconButton(onClick = { viewModel.requestScrollToSelection() }) {
+                             androidx.compose.material3.IconButton(onClick = { viewModel.onEvent(ProjectEvent.RequestScrollToSelection) }) {
                                  Icon(Icons.Filled.MyLocation, contentDescription = stringResource(R.string.proj_nav_scroll_to_selection))
                              }
                          }
@@ -328,7 +326,7 @@ fun ProjectScreen(
                     initialAddress = "0x%X".format(currentAddress),
                     onDismiss = { showJumpDialog = false },
                     onJump = { addr ->
-                        viewModel.jumpToAddress(addr)
+                        viewModel.onEvent(ProjectEvent.JumpToAddress(addr))
                         showJumpDialog = false
                     }
                 )
@@ -340,12 +338,12 @@ fun ProjectScreen(
                 XrefsDialog(
                     xrefsData = xrefsState.data,
                     targetAddress = xrefsState.targetAddress,
-                    onDismiss = { disasmViewModel.dismissXrefs() },
+                    onDismiss = { disasmViewModel.onEvent(top.wsdx233.r2droid.feature.disasm.DisasmEvent.DismissXrefs) },
                     onJump = { addr ->
                         selectedCategory = MainCategory.Detail
                         selectedDetailTabIndex = 1 // Default to disasm for xref jumps
-                        viewModel.jumpToAddress(addr)
-                        disasmViewModel.dismissXrefs()
+                        viewModel.onEvent(ProjectEvent.JumpToAddress(addr))
+                        disasmViewModel.onEvent(top.wsdx233.r2droid.feature.disasm.DisasmEvent.DismissXrefs)
                     }
                 )
             }
@@ -468,6 +466,7 @@ fun ProjectScreen(
                             color = MaterialTheme.colorScheme.error
                         )
                         Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.height(16.dp))
                         Button(onClick = { viewModel.retryLoadAll() }) {
                             Text(stringResource(R.string.common_retry))
                         }
@@ -481,23 +480,23 @@ fun ProjectScreen(
                             // Tabs: Overview, Sections, Symbols, Imports, Relocs, Strings, Functions
                             androidx.compose.runtime.LaunchedEffect(selectedListTabIndex) {
                                 when (selectedListTabIndex) {
-                                    1 -> viewModel.loadSections()
-                                    2 -> viewModel.loadSymbols()
-                                    3 -> viewModel.loadImports()
-                                    4 -> viewModel.loadRelocations()
-                                    5 -> viewModel.loadStrings()
-                                    6 -> viewModel.loadFunctions()
+                                    1 -> viewModel.onEvent(ProjectEvent.LoadSections())
+                                    2 -> viewModel.onEvent(ProjectEvent.LoadSymbols())
+                                    3 -> viewModel.onEvent(ProjectEvent.LoadImports())
+                                    4 -> viewModel.onEvent(ProjectEvent.LoadRelocations())
+                                    5 -> viewModel.onEvent(ProjectEvent.LoadStrings())
+                                    6 -> viewModel.onEvent(ProjectEvent.LoadFunctions())
                                 }
                             }
 
                             when (selectedListTabIndex) {
                                 0 -> state.binInfo?.let { OverviewCard(it) } ?: Text(stringResource(R.string.hex_no_data), Modifier.align(Alignment.Center))
-                                1 -> if (state.sections == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else SectionList(state.sections, listItemActions, onRefresh = { viewModel.loadSections(forceRefresh = true) })
-                                2 -> if (state.symbols == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else SymbolList(state.symbols, listItemActions, onRefresh = { viewModel.loadSymbols(forceRefresh = true) })
-                                3 -> if (state.imports == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else ImportList(state.imports, listItemActions, onRefresh = { viewModel.loadImports(forceRefresh = true) })
-                                4 -> if (state.relocations == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else RelocationList(state.relocations, listItemActions, onRefresh = { viewModel.loadRelocations(forceRefresh = true) })
-                                5 -> if (state.strings == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else StringList(state.strings, listItemActions, onRefresh = { viewModel.loadStrings(forceRefresh = true) })
-                                6 -> if (state.functions == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else FunctionList(state.functions, listItemActions, onRefresh = { viewModel.loadFunctions(forceRefresh = true) })
+                                1 -> if (state.sections == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else SectionList(state.sections, listItemActions, onRefresh = { viewModel.onEvent(ProjectEvent.LoadSections(forceRefresh = true)) })
+                                2 -> if (state.symbols == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else SymbolList(state.symbols, listItemActions, onRefresh = { viewModel.onEvent(ProjectEvent.LoadSymbols(forceRefresh = true)) })
+                                3 -> if (state.imports == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else ImportList(state.imports, listItemActions, onRefresh = { viewModel.onEvent(ProjectEvent.LoadImports(forceRefresh = true)) })
+                                4 -> if (state.relocations == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else RelocationList(state.relocations, listItemActions, onRefresh = { viewModel.onEvent(ProjectEvent.LoadRelocations(forceRefresh = true)) })
+                                5 -> if (state.strings == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else StringList(state.strings, listItemActions, onRefresh = { viewModel.onEvent(ProjectEvent.LoadStrings(forceRefresh = true)) })
+                                6 -> if (state.functions == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else FunctionList(state.functions, listItemActions, onRefresh = { viewModel.onEvent(ProjectEvent.LoadFunctions(forceRefresh = true)) })
                             }
                         }
                         MainCategory.Detail -> {
@@ -509,23 +508,23 @@ fun ProjectScreen(
                                         val sections = (uiState as? ProjectUiState.Success)?.sections ?: emptyList()
                                         val path = (uiState as? ProjectUiState.Success)?.let { _ -> R2PipeManager.currentFilePath }
                                         val cursor = (uiState as? ProjectUiState.Success)?.cursorAddress ?: 0L
-                                        hexViewModel.loadHex(sections, path, cursor)
+                                        hexViewModel.onEvent(HexEvent.LoadHex(sections, path, cursor))
                                     }
                                     1 -> {
                                         val sections = (uiState as? ProjectUiState.Success)?.sections ?: emptyList()
                                         val path = (uiState as? ProjectUiState.Success)?.let { _ -> R2PipeManager.currentFilePath }
                                         val cursor = (uiState as? ProjectUiState.Success)?.cursorAddress ?: 0L
-                                        disasmViewModel.loadDisassembly(sections, path, cursor)
+                                        disasmViewModel.onEvent(DisasmEvent.LoadDisassembly(sections, path, cursor))
                                     }
-                                    2 -> viewModel.loadDecompilation()
+                                    2 -> viewModel.onEvent(ProjectEvent.LoadDecompilation)
                                 }
                             }
                             
                             // React to cursor changes to preload data
                             androidx.compose.runtime.LaunchedEffect((uiState as? ProjectUiState.Success)?.cursorAddress) {
                                 val cursor = (uiState as? ProjectUiState.Success)?.cursorAddress ?: return@LaunchedEffect
-                                if (selectedDetailTabIndex == 0) hexViewModel.preloadHexAround(cursor)
-                                if (selectedDetailTabIndex == 1) disasmViewModel.preloadDisasmAround(cursor)
+                                if (selectedDetailTabIndex == 0) hexViewModel.onEvent(top.wsdx233.r2droid.feature.hex.HexEvent.PreloadHex(cursor))
+                                if (selectedDetailTabIndex == 1) disasmViewModel.onEvent(top.wsdx233.r2droid.feature.disasm.DisasmEvent.Preload(cursor))
                             }
                             
                             when(selectedDetailTabIndex) {
@@ -535,7 +534,7 @@ fun ProjectScreen(
                                         val sections = (uiState as? ProjectUiState.Success)?.sections ?: emptyList()
                                         val path = (uiState as? ProjectUiState.Success)?.let { _ -> R2PipeManager.currentFilePath }
                                         val cursor = (uiState as? ProjectUiState.Success)?.cursorAddress ?: 0L
-                                        hexViewModel.loadHex(sections, path, cursor)
+                                        hexViewModel.onEvent(HexEvent.LoadHex(sections, path, cursor))
                                     }
                                     
                                     if (hexViewModel.hexDataManager == null) {
@@ -545,8 +544,8 @@ fun ProjectScreen(
                                             viewModel = hexViewModel,
                                             cursorAddress = state.cursorAddress,
                                             scrollToSelectionTrigger = viewModel.scrollToSelectionTrigger,
-                                            onByteClick = { addr -> viewModel.updateCursor(addr) },
-                                            onShowXrefs = { addr -> disasmViewModel.fetchXrefs(addr) }
+                                            onByteClick = { addr -> viewModel.onEvent(ProjectEvent.UpdateCursor(addr)) },
+                                            onShowXrefs = { addr -> disasmViewModel.onEvent(top.wsdx233.r2droid.feature.disasm.DisasmEvent.FetchXrefs(addr)) }
                                         )
                                     }
                                 }
@@ -555,7 +554,7 @@ fun ProjectScreen(
                                         val sections = (uiState as? ProjectUiState.Success)?.sections ?: emptyList()
                                         val path = (uiState as? ProjectUiState.Success)?.let { _ -> R2PipeManager.currentFilePath }
                                         val cursor = (uiState as? ProjectUiState.Success)?.cursorAddress ?: 0L
-                                        disasmViewModel.loadDisassembly(sections, path, cursor)
+                                        disasmViewModel.onEvent(DisasmEvent.LoadDisassembly(sections, path, cursor))
                                     }
                                     
                                     if (disasmViewModel.disasmDataManager == null) {
@@ -565,7 +564,7 @@ fun ProjectScreen(
                                             viewModel = disasmViewModel,
                                             cursorAddress = state.cursorAddress,
                                             scrollToSelectionTrigger = viewModel.scrollToSelectionTrigger,
-                                            onInstructionClick = { addr -> viewModel.updateCursor(addr) }
+                                            onInstructionClick = { addr -> viewModel.onEvent(ProjectEvent.UpdateCursor(addr)) }
                                         )
                                     }
                                 }
@@ -576,7 +575,7 @@ fun ProjectScreen(
                                         viewModel = viewModel,
                                         data = state.decompilation,
                                         cursorAddress = state.cursorAddress,
-                                        onAddressClick = { addr -> viewModel.updateCursor(addr) }
+                                        onAddressClick = { addr -> viewModel.onEvent(ProjectEvent.UpdateCursor(addr)) }
                                     )
                                 }
                             }
@@ -586,7 +585,7 @@ fun ProjectScreen(
                             when (selectedProjectTabIndex) {
                                 0 -> ProjectSettingsScreen(viewModel)
                                 1 -> CommandScreen()
-                                2 -> LogList(logs, onClearLogs = { viewModel.clearLogs() })
+                                2 -> LogList(logs, onClearLogs = { viewModel.onEvent(ProjectEvent.ClearLogs) })
                             }
                         }
                     }
@@ -617,7 +616,7 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
                     (saveState as SaveProjectState.Success).message, 
                     android.widget.Toast.LENGTH_SHORT
                 ).show()
-                viewModel.resetSaveState()
+                viewModel.onEvent(ProjectEvent.ResetSaveState)
             }
             is SaveProjectState.Error -> {
                 android.widget.Toast.makeText(
@@ -625,7 +624,7 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
                     (saveState as SaveProjectState.Error).message, 
                     android.widget.Toast.LENGTH_SHORT
                 ).show()
-                viewModel.resetSaveState()
+                viewModel.onEvent(ProjectEvent.ResetSaveState)
             }
             else -> {}
         }
@@ -637,11 +636,11 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
             existingProjectId = viewModel.getCurrentProjectId(),
             onDismiss = { showSaveDialog = false },
             onSaveNew = { name ->
-                viewModel.saveProject(name)
+                viewModel.onEvent(ProjectEvent.SaveProject(name))
                 showSaveDialog = false
             },
             onUpdate = { projectId ->
-                viewModel.updateProject(projectId)
+                viewModel.onEvent(ProjectEvent.UpdateProject(projectId))
                 showSaveDialog = false
             }
         )

@@ -8,7 +8,8 @@ import top.wsdx233.r2droid.core.data.model.XrefWithDisasm
 import top.wsdx233.r2droid.core.data.model.XrefsData
 import top.wsdx233.r2droid.core.data.source.R2DataSource
 
-class DisasmRepository(private val r2DataSource: R2DataSource) {
+import javax.inject.Inject
+class DisasmRepository @Inject constructor(private val r2DataSource: R2DataSource) {
 
     suspend fun getDisassembly(offset: Long, count: Int): Result<List<DisasmInstruction>> {
         // pdj: Print Disassembly

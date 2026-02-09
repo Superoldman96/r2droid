@@ -58,6 +58,8 @@ import top.wsdx233.r2droid.ui.theme.LocalAppFont
  * - Custom fast scrollbar for quick navigation
  * - Placeholder shown for unloaded regions
  */
+import top.wsdx233.r2droid.feature.disasm.DisasmEvent
+
 @Composable
 fun DisassemblyViewer(
     viewModel: top.wsdx233.r2droid.feature.disasm.DisasmViewModel,
@@ -167,17 +169,17 @@ fun DisassemblyViewer(
             // Preload around visible area
             val currentInstr = disasmDataManager.getInstructionAt(firstVisible)
             if (currentInstr != null) {
-                viewModel.preloadDisasmAround(currentInstr.addr)
+                viewModel.onEvent(DisasmEvent.Preload(currentInstr.addr))
             }
             
             // Load more at top
             if (firstVisible < 10 && firstVisible > 0) {
-                viewModel.loadDisasmMore(false)
+                viewModel.onEvent(DisasmEvent.LoadMore(false))
             }
             
             // Load more at bottom
             if (total > 0 && lastVisible > total - 10) {
-                viewModel.loadDisasmMore(true)
+                viewModel.onEvent(DisasmEvent.LoadMore(true))
             }
         }
     }
@@ -276,7 +278,7 @@ fun DisassemblyViewer(
                                     showMenu = false
                                 },
                                 onXrefs = {
-                                    viewModel.fetchXrefs(instr.addr)
+                                    viewModel.onEvent(DisasmEvent.FetchXrefs(instr.addr))
                                     showMenu = false
                                 },
                                 onCustomCommand = {
@@ -315,7 +317,7 @@ fun DisassemblyViewer(
                 val clampedIndex = targetIndex.coerceIn(0, maxOf(0, disasmDataManager.loadedInstructionCount - 1))
                 coroutineScope.launch {
                     listState.scrollToItem(clampedIndex)
-                    viewModel.loadDisasmChunkForAddress(targetAddr)
+                    viewModel.onEvent(DisasmEvent.LoadChunk(targetAddr))
                 }
             }
         )
@@ -359,9 +361,9 @@ fun DisassemblyViewer(
                 onDismiss = { showModifyDialog = false },
                 onConfirm = { value ->
                      when(modifyType) {
-                        "hex" -> viewModel.writeHex(menuTargetAddress!!, value)
-                        "string" -> viewModel.writeString(menuTargetAddress!!, value)
-                        "asm" -> viewModel.writeAsm(menuTargetAddress!!, value)
+                        "hex" -> viewModel.onEvent(DisasmEvent.WriteHex(menuTargetAddress!!, value))
+                        "string" -> viewModel.onEvent(DisasmEvent.WriteString(menuTargetAddress!!, value))
+                        "asm" -> viewModel.onEvent(DisasmEvent.WriteAsm(menuTargetAddress!!, value))
                      }
                 }
             )

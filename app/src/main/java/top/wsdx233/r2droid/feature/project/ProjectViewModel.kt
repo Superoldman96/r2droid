@@ -11,9 +11,34 @@ import kotlinx.coroutines.launch
 
 import top.wsdx233.r2droid.core.data.source.R2PipeDataSource
 import top.wsdx233.r2droid.core.data.model.*
-import top.wsdx233.r2droid.data.repository.ProjectRepository
-import top.wsdx233.r2droid.data.repository.SavedProjectRepository
+import top.wsdx233.r2droid.feature.project.data.ProjectRepository
+import top.wsdx233.r2droid.feature.project.data.SavedProjectRepository
 import top.wsdx233.r2droid.util.R2PipeManager
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+
+sealed interface ProjectEvent {
+    data class JumpToAddress(val address: Long) : ProjectEvent
+    data class UpdateCursor(val address: Long) : ProjectEvent
+    object NavigateBack : ProjectEvent
+    object RequestScrollToSelection : ProjectEvent
+    data class LoadSections(val forceRefresh: Boolean = false) : ProjectEvent
+    data class LoadSymbols(val forceRefresh: Boolean = false) : ProjectEvent
+    data class LoadImports(val forceRefresh: Boolean = false) : ProjectEvent
+    data class LoadRelocations(val forceRefresh: Boolean = false) : ProjectEvent
+    data class LoadStrings(val forceRefresh: Boolean = false) : ProjectEvent
+    data class LoadFunctions(val forceRefresh: Boolean = false) : ProjectEvent
+    object LoadDecompilation : ProjectEvent
+    object Initialize : ProjectEvent
+    object StartRestoreSession : ProjectEvent
+    data class StartAnalysisSession(val cmd: String, val writable: Boolean, val flags: String) : ProjectEvent
+    object ClearLogs : ProjectEvent
+    data class ExecuteCommand(val cmd: String, val callback: (String) -> Unit) : ProjectEvent
+    data class SaveProject(val name: String, val analysisLevel: String = "") : ProjectEvent
+    data class UpdateProject(val projectId: String) : ProjectEvent
+    object ResetSaveState : ProjectEvent
+}
 
 sealed class ProjectUiState {
     object Idle : ProjectUiState()
@@ -47,11 +72,12 @@ sealed class SaveProjectState {
     data class Error(val message: String) : SaveProjectState()
 }
 
-class ProjectViewModel : ViewModel() {
-    private val r2DataSource = R2PipeDataSource()
-    private val repository = ProjectRepository()
-
-    private var savedProjectRepository: SavedProjectRepository? = null
+@HiltViewModel
+class ProjectViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val repository: ProjectRepository,
+    private val savedProjectRepository: SavedProjectRepository
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ProjectUiState>(ProjectUiState.Idle)
     val uiState: StateFlow<ProjectUiState> = _uiState.asStateFlow()
@@ -76,6 +102,30 @@ class ProjectViewModel : ViewModel() {
     // Scroll to selection trigger - increment to trigger scroll to current cursor position
     private val _scrollToSelectionTrigger = MutableStateFlow(0)
     val scrollToSelectionTrigger: StateFlow<Int> = _scrollToSelectionTrigger.asStateFlow()
+    
+    fun onEvent(event: ProjectEvent) {
+        when (event) {
+            is ProjectEvent.Initialize -> initialize()
+            is ProjectEvent.StartRestoreSession -> startRestoreSession()
+            is ProjectEvent.StartAnalysisSession -> startAnalysisSession(event.cmd, event.writable, event.flags)
+            is ProjectEvent.JumpToAddress -> jumpToAddress(event.address)
+            is ProjectEvent.UpdateCursor -> updateCursor(event.address)
+            is ProjectEvent.NavigateBack -> navigateBack()
+            is ProjectEvent.RequestScrollToSelection -> requestScrollToSelection()
+            is ProjectEvent.LoadSections -> loadSections(event.forceRefresh)
+            is ProjectEvent.LoadSymbols -> loadSymbols(event.forceRefresh)
+            is ProjectEvent.LoadImports -> loadImports(event.forceRefresh)
+            is ProjectEvent.LoadRelocations -> loadRelocations(event.forceRefresh)
+            is ProjectEvent.LoadStrings -> loadStrings(event.forceRefresh)
+            is ProjectEvent.LoadFunctions -> loadFunctions(event.forceRefresh)
+            is ProjectEvent.LoadDecompilation -> loadDecompilation()
+            is ProjectEvent.ClearLogs -> clearLogs()
+            is ProjectEvent.ExecuteCommand -> executeCommand(event.cmd, event.callback)
+            is ProjectEvent.SaveProject -> saveProject(event.name, event.analysisLevel)
+            is ProjectEvent.UpdateProject -> updateProject(event.projectId)
+            is ProjectEvent.ResetSaveState -> resetSaveState()
+        }
+    }
     
     /**
      * Request the active viewer to scroll to the current cursor position (centered).
@@ -163,7 +213,7 @@ class ProjectViewModel : ViewModel() {
      * Called from LaunchedEffect when restoring.
      * Opens the binary file first, then loads the script using `. script_path` command.
      */
-    fun startRestoreSession(context: Context) {
+    fun startRestoreSession() {
         val path = R2PipeManager.pendingFilePath ?: return
         val scriptPath = R2PipeManager.pendingRestoreFlags ?: return  // This now stores the script path
         
@@ -212,7 +262,7 @@ class ProjectViewModel : ViewModel() {
         }
     }
 
-    fun startAnalysisSession(context: Context, analysisCmd: String, writable: Boolean, startupFlags: String) {
+    fun startAnalysisSession(analysisCmd: String, writable: Boolean, startupFlags: String) {
          val currentState = _uiState.value
          if (currentState is ProjectUiState.Configuring) {
              viewModelScope.launch {
@@ -482,12 +532,10 @@ class ProjectViewModel : ViewModel() {
     
     /**
      * Initialize the saved project repository with context.
-     * Should be called when entering the project screen.
+     * Deprecated: Repository is now injected.
      */
     fun initializeSavedProjectRepository(context: Context) {
-        if (savedProjectRepository == null) {
-            savedProjectRepository = SavedProjectRepository(context.applicationContext)
-        }
+        // No-op
     }
     
     /**
@@ -502,10 +550,7 @@ class ProjectViewModel : ViewModel() {
      * @param analysisLevel The analysis level used
      */
     fun saveProject(name: String, analysisLevel: String = "") {
-        val repo = savedProjectRepository ?: run {
-            _saveProjectState.value = SaveProjectState.Error("Repository not initialized")
-            return
-        }
+        val repo = savedProjectRepository
         
         viewModelScope.launch {
             _saveProjectState.value = SaveProjectState.Saving
@@ -533,10 +578,7 @@ class ProjectViewModel : ViewModel() {
      * @param projectId The ID of the project to update
      */
     fun updateProject(projectId: String) {
-        val repo = savedProjectRepository ?: run {
-            _saveProjectState.value = SaveProjectState.Error("Repository not initialized")
-            return
-        }
+        val repo = savedProjectRepository
         
         viewModelScope.launch {
             _saveProjectState.value = SaveProjectState.Saving

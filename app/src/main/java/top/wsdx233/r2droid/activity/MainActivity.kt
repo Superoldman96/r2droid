@@ -29,6 +29,9 @@ import top.wsdx233.r2droid.ui.theme.R2droidTheme
 import top.wsdx233.r2droid.util.PermissionManager
 import top.wsdx233.r2droid.util.R2Installer
 
+import dagger.hilt.android.AndroidEntryPoint
+
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     override fun attachBaseContext(newBase: Context) {

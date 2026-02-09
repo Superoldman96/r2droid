@@ -3,7 +3,8 @@ package top.wsdx233.r2droid.feature.hex.data
 import org.json.JSONArray
 import top.wsdx233.r2droid.core.data.source.R2DataSource
 
-class HexRepository(private val r2DataSource: R2DataSource) {
+import javax.inject.Inject
+class HexRepository @Inject constructor(private val r2DataSource: R2DataSource) {
 
     suspend fun getHexDump(offset: Long, length: Int): Result<ByteArray> {
         // pxj: Hex Dump

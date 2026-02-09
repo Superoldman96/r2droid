@@ -1,4 +1,4 @@
-package top.wsdx233.r2droid.data.repository
+package top.wsdx233.r2droid.feature.project.data
 
 import org.json.JSONArray
 import org.json.JSONObject
@@ -8,7 +8,9 @@ import top.wsdx233.r2droid.util.R2PipeManager
 /**
  * Repository to fetch analysis data from R2Pipe.
  */
-class ProjectRepository {
+import javax.inject.Inject
+
+class ProjectRepository @Inject constructor() {
 
     suspend fun getOverview(): Result<BinInfo> {
         // iIj: Binary Info

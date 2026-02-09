@@ -5,7 +5,9 @@ import org.json.JSONObject
 import top.wsdx233.r2droid.core.data.model.*
 import top.wsdx233.r2droid.core.data.source.R2DataSource
 
-class BinInfoRepository(private val r2DataSource: R2DataSource) {
+import javax.inject.Inject
+
+class BinInfoRepository @Inject constructor(private val r2DataSource: R2DataSource) {
 
     suspend fun getOverview(): Result<BinInfo> {
         return r2DataSource.executeJson("iIj").mapCatching { output ->
