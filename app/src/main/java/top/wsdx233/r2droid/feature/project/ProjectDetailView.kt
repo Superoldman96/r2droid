@@ -1,5 +1,9 @@
 package top.wsdx233.r2droid.feature.project
 
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -23,6 +27,9 @@ fun ProjectDetailView(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val state = uiState as? ProjectUiState.Success ?: return
+
+    val hexDataManager by hexViewModel.hexDataManagerState.collectAsState()
+    val disasmDataManager by disasmViewModel.disasmDataManagerState.collectAsState()
 
     androidx.compose.runtime.LaunchedEffect(tabIndex) {
         when (tabIndex) {
@@ -50,14 +57,16 @@ fun ProjectDetailView(
     
     when(tabIndex) {
         0 -> {
-            if (hexViewModel.hexDataManager == null) {
+            if (hexDataManager == null) {
                 androidx.compose.runtime.LaunchedEffect(Unit) {
                     val sections = state.sections ?: emptyList()
                     val path = R2PipeManager.currentFilePath
                     val cursor = state.cursorAddress
                     hexViewModel.onEvent(HexEvent.LoadHex(sections, path, cursor))
                 }
-                CircularProgressIndicator()
+                androidx.compose.foundation.layout.Box(modifier = androidx.compose.ui.Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                    CircularProgressIndicator()
+                }
             } else {
                 HexViewer(
                     viewModel = hexViewModel,
@@ -69,14 +78,16 @@ fun ProjectDetailView(
             }
         }
         1 -> {
-            if (disasmViewModel.disasmDataManager == null) {
+            if (disasmDataManager == null) {
                 androidx.compose.runtime.LaunchedEffect(Unit) {
                     val sections = state.sections ?: emptyList()
                     val path = R2PipeManager.currentFilePath
                     val cursor = state.cursorAddress
                     disasmViewModel.onEvent(DisasmEvent.LoadDisassembly(sections, path, cursor))
                 }
-                CircularProgressIndicator()
+                androidx.compose.foundation.layout.Box(modifier = androidx.compose.ui.Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                    CircularProgressIndicator()
+                }
             } else {
                 DisassemblyViewer(
                     viewModel = disasmViewModel,
@@ -88,7 +99,9 @@ fun ProjectDetailView(
         }
         2 -> {
             if (state.decompilation == null) {
-                CircularProgressIndicator()
+                androidx.compose.foundation.layout.Box(modifier = androidx.compose.ui.Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                    CircularProgressIndicator()
+                }
             } else {
                 DecompilationViewer(
                     viewModel = viewModel,

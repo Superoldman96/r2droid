@@ -38,6 +38,9 @@ class HexViewModel @Inject constructor(
     var hexDataManager: HexDataManager? = null
         private set
 
+    private val _hexDataManagerState = MutableStateFlow<HexDataManager?>(null)
+    val hexDataManagerState = _hexDataManagerState.asStateFlow()
+
     // Cache version counter - increment to trigger UI recomposition when chunks load
     private val _hexCacheVersion = MutableStateFlow(0)
     val hexCacheVersion: StateFlow<Int> = _hexCacheVersion.asStateFlow()
@@ -98,12 +101,14 @@ class HexViewModel @Inject constructor(
             }
 
             // Create HexDataManager with virtual address range
-            hexDataManager = HexDataManager(startAddress, endAddress, hexRepository).apply {
+            val manager = HexDataManager(startAddress, endAddress, hexRepository).apply {
                 onChunkLoaded = { _ ->
                     // Increment version to trigger recomposition
                     _hexCacheVersion.value++
                 }
             }
+            hexDataManager = manager
+            _hexDataManagerState.value = manager
 
             // Preload initial chunks around cursor
             hexDataManager?.loadChunkIfNeeded(currentOffset)

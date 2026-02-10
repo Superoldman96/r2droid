@@ -53,6 +53,9 @@ class DisasmViewModel @Inject constructor(
     var disasmDataManager: DisasmDataManager? = null
         private set
 
+    private val _disasmDataManagerState = MutableStateFlow<DisasmDataManager?>(null)
+    val disasmDataManagerState = _disasmDataManagerState.asStateFlow()
+
     // Cache version counter for disasm - increment to trigger UI recomposition when chunks load
     private val _disasmCacheVersion = MutableStateFlow(0)
     val disasmCacheVersion: StateFlow<Int> = _disasmCacheVersion.asStateFlow()
@@ -135,12 +138,14 @@ class DisasmViewModel @Inject constructor(
             }
 
             // Create DisasmDataManager with virtual address range
-            disasmDataManager = DisasmDataManager(startAddress, endAddress, disasmRepository).apply {
+            val manager = DisasmDataManager(startAddress, endAddress, disasmRepository).apply {
                 onChunkLoaded = { _ ->
                     // Increment version to trigger recomposition
                     _disasmCacheVersion.value++
                 }
             }
+            disasmDataManager = manager
+            _disasmDataManagerState.value = manager
 
             // Load initial data around cursor
             disasmDataManager?.resetAndLoadAround(currentOffset)
