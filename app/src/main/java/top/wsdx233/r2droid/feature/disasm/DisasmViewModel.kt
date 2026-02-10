@@ -365,7 +365,7 @@ class DisasmViewModel @Inject constructor(
             disasmRepository.renameFunction(addr, newName)
             // Refresh the function info dialog with updated data
             fetchFunctionInfo(addr)
-            disasmDataManager?.clearCache()
+            disasmDataManager?.resetAndLoadAround(addr)
             _disasmCacheVersion.value++
             _dataModifiedEvent.value = System.currentTimeMillis()
         }
@@ -404,7 +404,7 @@ class DisasmViewModel @Inject constructor(
             disasmRepository.renameFunctionVariable(addr, newName, oldName)
             // Refresh the variables dialog
             fetchFunctionVariables(addr)
-            disasmDataManager?.clearCache()
+            disasmDataManager?.resetAndLoadAround(addr)
             _disasmCacheVersion.value++
             _dataModifiedEvent.value = System.currentTimeMillis()
         }
