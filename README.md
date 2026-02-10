@@ -29,13 +29,13 @@
 
 ## 🚀 Roadmap / TODO
 
-*   [ ] **Optimize Hex Editor performance**: Improve virtualization logic for massive files.
+*   [x] **Optimize Hex Editor performance**: Improve virtualization logic for massive files.
 *   [ ] **Add Call Graph (VV)**: Visual graph view for function calls and basic blocks.
-*   [ ] **Manual Analysis Button**: Trigger specific analysis commands (`aa`, `aaa`, `aaaa`) on demand.
+*   [x] **Manual Analysis Button**: Trigger specific analysis commands (`af`) on demand.
 *   [ ] **Terminal Helper Keys**: Add a row of extra keys (ESC, Tab, Ctrl, Arrows) above the keyboard.
-*   [ ] **Enhanced Jump History**: Better back/forward navigation stack handling.
-*   [ ] **Search Interface**: Global search for bytes, strings, and instructions.
-*   [ ] **Function Cross-references (axf)**: Detailed view for function usage.
+*   [x] **Enhanced Jump History**: Better back/forward navigation stack handling.
+*   [x] **Search Interface**: Global search for bytes, strings, and instructions.
+*   [x] **Function Cross-references (axf)**: Detailed view for function usage.
 *   [ ] **ESIL Emulation**: UI for stepping through code using ESIL.
 *   [ ] **Debounce Mechanism**: Improve UI responsiveness on heavy operations.
 
