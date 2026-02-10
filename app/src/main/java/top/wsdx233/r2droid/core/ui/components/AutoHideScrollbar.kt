@@ -239,17 +239,21 @@ fun AutoHideAddressScrollbar(
     hideDelayMs: Long = 3000L,
     animationDurationMs: Int = 300,
     alwaysShow: Boolean = false,
-    onScrollToAddress: (Long) -> Unit = {}
+    onScrollToAddress: (Long) -> Unit = {},
+    onDragComplete: (Long) -> Unit = {}
 ) {
     if (totalItems <= 0) return
-    
+
     val totalAddressRange = viewEndAddress - viewStartAddress
     if (totalAddressRange <= 0) return
-    
+
     val coroutineScope = rememberCoroutineScope()
     var isVisible by remember { mutableStateOf(alwaysShow) }
     var isDragging by remember { mutableStateOf(false) }
     var isPressing by remember { mutableStateOf(false) }
+    var lastDragAddress by remember { mutableStateOf(0L) }
+    // Track drag position directly so thumb follows finger without waiting for data load
+    var dragThumbRatio by remember { mutableStateOf<Float?>(null) }
     
     // Animate alpha for smooth fade in/out
     val alpha by animateFloatAsState(
@@ -281,7 +285,8 @@ fun AutoHideAddressScrollbar(
     }
     
     // Calculate thumb position based on current address in virtual range
-    val thumbY = if (currentAddress >= viewStartAddress) {
+    // During drag, use the finger position directly for immediate feedback
+    val thumbY = dragThumbRatio ?: if (currentAddress >= viewStartAddress) {
         ((currentAddress - viewStartAddress).toFloat() / totalAddressRange.toFloat()).coerceIn(0f, 1f)
     } else {
         0f
@@ -303,7 +308,8 @@ fun AutoHideAddressScrollbar(
                     onDragEnd = {
                         isDragging = false
                         isPressing = false
-                        // Start hide timer (only if not alwaysShow)
+                        dragThumbRatio = null
+                        onDragComplete(lastDragAddress)
                         if (!alwaysShow) {
                             coroutineScope.launch {
                                 delay(hideDelayMs)
@@ -316,6 +322,7 @@ fun AutoHideAddressScrollbar(
                     onDragCancel = {
                         isDragging = false
                         isPressing = false
+                        dragThumbRatio = null
                         if (!alwaysShow) {
                             coroutineScope.launch {
                                 delay(hideDelayMs)
@@ -328,7 +335,10 @@ fun AutoHideAddressScrollbar(
                     onVerticalDrag = { change, _ ->
                         val height = size.height
                         val newY = (change.position.y / height).coerceIn(0f, 1f)
+                        // Update thumb position immediately to follow finger
+                        dragThumbRatio = newY
                         val targetAddr = viewStartAddress + (newY * totalAddressRange).toLong()
+                        lastDragAddress = targetAddr
                         onScrollToAddress(targetAddr)
                     }
                 )
@@ -342,12 +352,11 @@ fun AutoHideAddressScrollbar(
                         val newY = (offset.y / height).coerceIn(0f, 1f)
                         val targetAddr = viewStartAddress + (newY * totalAddressRange).toLong()
                         onScrollToAddress(targetAddr)
-                        // Reset pressing state after a short delay
+                        onDragComplete(targetAddr)
                         coroutineScope.launch {
                             kotlinx.coroutines.delay(100)
                             isPressing = false
                         }
-                        // Start hide timer (only if not alwaysShow)
                         if (!alwaysShow) {
                             coroutineScope.launch {
                                 delay(hideDelayMs)

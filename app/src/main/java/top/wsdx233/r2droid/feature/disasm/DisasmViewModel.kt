@@ -15,6 +15,8 @@ import top.wsdx233.r2droid.feature.disasm.data.DisasmRepository
 import top.wsdx233.r2droid.util.R2PipeManager
 
 
+import kotlinx.coroutines.Job
+
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
@@ -64,6 +66,11 @@ class DisasmViewModel @Inject constructor(
     private val _xrefsState = MutableStateFlow(XrefsState())
     val xrefsState: StateFlow<XrefsState> = _xrefsState.asStateFlow()
 
+    // Scroll target: emitted after data is loaded at target address
+    // Pair of (targetAddress, index) - UI observes this to scroll after data is ready
+    private val _scrollTarget = MutableStateFlow<Pair<Long, Int>?>(null)
+    val scrollTarget: StateFlow<Pair<Long, Int>?> = _scrollTarget.asStateFlow()
+
     // Event to notify that data has been modified
     private val _dataModifiedEvent = MutableStateFlow(0L)
     val dataModifiedEvent: StateFlow<Long> = _dataModifiedEvent.asStateFlow()
@@ -81,6 +88,27 @@ class DisasmViewModel @Inject constructor(
             is DisasmEvent.FetchXrefs -> fetchXrefs(event.address)
             is DisasmEvent.DismissXrefs -> dismissXrefs()
         }
+    }
+
+    // Job for scroll-related loading - cancelled on each new scroll request
+    private var scrollJob: Job? = null
+
+    /**
+     * Load data at target address, then emit scroll target with correct index.
+     * Cancels any previous scroll job to handle rapid scrollbar dragging.
+     */
+    fun loadAndScrollTo(addr: Long) {
+        val manager = disasmDataManager ?: return
+        scrollJob?.cancel()
+        scrollJob = viewModelScope.launch {
+            val index = manager.loadAndFindIndex(addr)
+            _disasmCacheVersion.value++
+            _scrollTarget.value = Pair(addr, index)
+        }
+    }
+
+    fun clearScrollTarget() {
+        _scrollTarget.value = null
     }
 
     /**

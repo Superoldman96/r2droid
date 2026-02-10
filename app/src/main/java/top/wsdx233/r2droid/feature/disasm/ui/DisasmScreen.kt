@@ -126,37 +126,39 @@ fun DisassemblyViewer(
         if (hasInitiallyScrolled && cursorAddress == previousCursorAddress) {
             return@LaunchedEffect
         }
-        
+
         previousCursorAddress = cursorAddress
         hasInitiallyScrolled = true
-        
-        val targetIndex = disasmDataManager.findClosestIndex(cursorAddress)
-        if (targetIndex >= 0 && targetIndex < disasmDataManager.loadedInstructionCount) {
-            // Calculate centering
-            val layoutInfo = listState.layoutInfo
-            val visibleItems = layoutInfo.visibleItemsInfo.size
-            val centerOffset = if (visibleItems > 0) visibleItems / 2 else 5
-            val scrollIndex = (targetIndex - centerOffset).coerceIn(0, disasmDataManager.loadedInstructionCount - 1)
-            listState.animateScrollToItem(scrollIndex)
-        }
+
+        // Load data at target address first, then scroll
+        viewModel.loadAndScrollTo(cursorAddress)
     }
     
     // Observe scroll to selection trigger from TopAppBar button
     val scrollToSelectionTrigger by scrollToSelectionTrigger.collectAsState()
     LaunchedEffect(scrollToSelectionTrigger) {
         if (scrollToSelectionTrigger > 0) {
-            val targetIndex = disasmDataManager.findClosestIndex(cursorAddress)
-            if (targetIndex >= 0 && targetIndex < disasmDataManager.loadedInstructionCount) {
-                // Calculate centering
-                val layoutInfo = listState.layoutInfo
-                val visibleItems = layoutInfo.visibleItemsInfo.size
-                val centerOffset = if (visibleItems > 0) visibleItems / 2 else 5
-                val scrollIndex = (targetIndex - centerOffset).coerceIn(0, disasmDataManager.loadedInstructionCount - 1)
-                listState.animateScrollToItem(scrollIndex)
-            }
+            viewModel.loadAndScrollTo(cursorAddress)
         }
     }
     
+    // Observe scroll target from ViewModel - scrolls after data is loaded
+    val scrollTarget by viewModel.scrollTarget.collectAsState()
+    LaunchedEffect(scrollTarget) {
+        val target = scrollTarget ?: return@LaunchedEffect
+        val (targetAddr, targetIndex) = target
+        val count = disasmDataManager.loadedInstructionCount
+        if (targetIndex >= 0 && count > 0) {
+            // Center the target in the visible area
+            val layoutInfo = listState.layoutInfo
+            val visibleItems = layoutInfo.visibleItemsInfo.size
+            val centerOffset = if (visibleItems > 0) visibleItems / 2 else 5
+            val scrollIndex = (targetIndex - centerOffset).coerceIn(0, count - 1)
+            listState.animateScrollToItem(scrollIndex)
+        }
+        viewModel.clearScrollTarget()
+    }
+
     // Load more when near edges - use snapshotFlow for better control
     LaunchedEffect(listState) {
         snapshotFlow {
@@ -228,8 +230,8 @@ fun DisassemblyViewer(
         ) {
             items(
                 count = loadedCount,
-                key = { index -> 
-                    disasmDataManager.getInstructionAt(index)?.addr ?: index.toLong()
+                key = { index ->
+                    disasmDataManager.getInstructionAt(index)?.addr ?: -(index.toLong() + 1)
                 }
             ) { index ->
                 // Force re-read when cache version changes
@@ -313,12 +315,16 @@ fun DisassemblyViewer(
             modifier = Modifier.align(Alignment.CenterEnd),
             alwaysShow = true,
             onScrollToAddress = { targetAddr ->
-                val targetIndex = disasmDataManager.estimateIndexForAddress(targetAddr)
-                val clampedIndex = targetIndex.coerceIn(0, maxOf(0, disasmDataManager.loadedInstructionCount - 1))
+                // During drag: only do immediate scroll within loaded data, no loading
+                val immediateIndex = disasmDataManager.estimateIndexForAddress(targetAddr)
+                val clampedIndex = immediateIndex.coerceIn(0, maxOf(0, disasmDataManager.loadedInstructionCount - 1))
                 coroutineScope.launch {
                     listState.scrollToItem(clampedIndex)
-                    viewModel.onEvent(DisasmEvent.LoadChunk(targetAddr))
                 }
+            },
+            onDragComplete = { targetAddr ->
+                // On drag end / tap: only preload data around destination, no scroll jump
+                viewModel.onEvent(DisasmEvent.Preload(targetAddr))
             }
         )
         
