@@ -167,6 +167,19 @@ class DisasmViewModel @Inject constructor(
     }
 
     /**
+     * Reset disasm data around the given address and emit scroll target to return to it.
+     * Used after data-modifying operations (analyze, rename, write) to keep the view
+     * at the affected address after refresh.
+     */
+    private suspend fun resetAndScrollTo(addr: Long) {
+        val manager = disasmDataManager ?: return
+        manager.resetAndLoadAround(addr)
+        val index = manager.findClosestIndex(addr)
+        _disasmCacheVersion.value++
+        _scrollTarget.value = Pair(addr, index)
+    }
+
+    /**
      * Initialize disassembly viewer with virtualization.
      * Uses Section info to calculate virtual address range.
      */
@@ -272,8 +285,7 @@ class DisasmViewModel @Inject constructor(
             // "wa [asm] @ [addr]"
             disasmRepository.writeAsm(addr, asm)
 
-            disasmDataManager?.resetAndLoadAround(addr)
-            _disasmCacheVersion.value++
+            resetAndScrollTo(addr)
 
             // Notify others
             _dataModifiedEvent.value = System.currentTimeMillis()
@@ -285,8 +297,7 @@ class DisasmViewModel @Inject constructor(
             // "wx [hex] @ [addr]"
             top.wsdx233.r2droid.util.R2PipeManager.execute("wx $hex @ $addr")
 
-            disasmDataManager?.resetAndLoadAround(addr)
-            _disasmCacheVersion.value++
+            resetAndScrollTo(addr)
 
             _dataModifiedEvent.value = System.currentTimeMillis()
         }
@@ -298,8 +309,7 @@ class DisasmViewModel @Inject constructor(
             val escaped = text.replace("\"", "\\\"")
             top.wsdx233.r2droid.util.R2PipeManager.execute("w \"$escaped\" @ $addr")
 
-            disasmDataManager?.resetAndLoadAround(addr)
-            _disasmCacheVersion.value++
+            resetAndScrollTo(addr)
 
             _dataModifiedEvent.value = System.currentTimeMillis()
         }
@@ -315,8 +325,7 @@ class DisasmViewModel @Inject constructor(
             else manager.viewStartAddress
         }
         viewModelScope.launch {
-            manager.resetAndLoadAround(currentAddr)
-            _disasmCacheVersion.value++
+            resetAndScrollTo(currentAddr)
         }
     }
     
@@ -347,8 +356,7 @@ class DisasmViewModel @Inject constructor(
     private fun analyzeFunction(addr: Long) {
         viewModelScope.launch {
             disasmRepository.analyzeFunction(addr)
-            disasmDataManager?.resetAndLoadAround(addr)
-            _disasmCacheVersion.value++
+            resetAndScrollTo(addr)
             _dataModifiedEvent.value = System.currentTimeMillis()
         }
     }
@@ -372,8 +380,7 @@ class DisasmViewModel @Inject constructor(
             disasmRepository.renameFunction(addr, newName)
             // Refresh the function info dialog with updated data
             fetchFunctionInfo(addr)
-            disasmDataManager?.resetAndLoadAround(addr)
-            _disasmCacheVersion.value++
+            resetAndScrollTo(addr)
             _dataModifiedEvent.value = System.currentTimeMillis()
         }
     }
@@ -411,8 +418,7 @@ class DisasmViewModel @Inject constructor(
             disasmRepository.renameFunctionVariable(addr, newName, oldName)
             // Refresh the variables dialog
             fetchFunctionVariables(addr)
-            disasmDataManager?.resetAndLoadAround(addr)
-            _disasmCacheVersion.value++
+            resetAndScrollTo(addr)
             _dataModifiedEvent.value = System.currentTimeMillis()
         }
     }

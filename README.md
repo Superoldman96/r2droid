@@ -52,3 +52,7 @@
 
 This project is open-source. See the [LICENSE](LICENSE) file for details.
 Acknowledgments to the **Radare2** team and the **Termux** project for their underlying technologies.
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=wsdx233/r2droid&type=date&legend=top-left)](https://www.star-history.com/#wsdx233/r2droid&type=date&legend=top-left)
