@@ -172,16 +172,21 @@ fun DisassemblyViewer(
                     listState.animateScrollBy(delta.toFloat())
                 }
             } else {
-                // Not visible: jump first, then center
+                // Not visible: jump first, then center after layout updates
                 listState.scrollToItem(clampedIndex)
-                val layoutInfo = listState.layoutInfo
-                val viewportHeight = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
-                val targetItemInfo = layoutInfo.visibleItemsInfo
-                    .firstOrNull { it.index == clampedIndex }
-                if (targetItemInfo != null && viewportHeight > 0) {
-                    val centerOffset = (viewportHeight - targetItemInfo.size) / 2
-                    if (centerOffset > 0) {
-                        listState.animateScrollBy(-centerOffset.toFloat())
+                // Wait for the next frame to ensure layout is updated
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    kotlinx.coroutines.delay(50) // Give time for layout to settle
+                    val layoutInfo = listState.layoutInfo
+                    val viewportHeight = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
+                    val targetItemInfo = layoutInfo.visibleItemsInfo
+                        .firstOrNull { it.index == clampedIndex }
+                    if (targetItemInfo != null && viewportHeight > 0) {
+                        val centerOffset = (viewportHeight - targetItemInfo.size) / 2
+                        val currentOffset = targetItemInfo.offset
+                        if (centerOffset > 0 && kotlin.math.abs(currentOffset - centerOffset) > 1) {
+                            listState.animateScrollBy((currentOffset - centerOffset).toFloat())
+                        }
                     }
                 }
             }
