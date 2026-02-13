@@ -95,7 +95,7 @@ private fun TintedItemSurface(
     content: @Composable () -> Unit
 ) {
     Surface(
-        color = accentColor.copy(alpha = 0.08f),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 0.dp,
         shape = shape
     ) {
@@ -137,10 +137,10 @@ fun SectionItem(section: Section, actions: ListItemActions) {
         address = section.vAddr,
         fullText = "Section: ${section.name}, Size: ${section.size}, Perm: ${section.perm}, VAddr: 0x${section.vAddr.toString(16)}",
         actions = actions,
-        shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp),
+        shape = RoundedCornerShape(12.dp),
         elevation = 1.dp
     ) {
-        TintedItemSurface(accent, shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp)) {
+        TintedItemSurface(accent, shape = RoundedCornerShape(12.dp)) {
             Row(
                 modifier = Modifier.padding(12.dp).fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -198,10 +198,10 @@ fun SymbolItem(symbol: Symbol, actions: ListItemActions) {
         address = symbol.vAddr,
         fullText = "Symbol: ${symbol.name}, Type: ${symbol.type}, VAddr: 0x${symbol.vAddr.toString(16)}",
         actions = actions,
-        shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp),
+        shape = RoundedCornerShape(12.dp),
         elevation = 1.dp
     ) {
-        TintedItemSurface(accent, shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp)) {
+        TintedItemSurface(accent, shape = RoundedCornerShape(12.dp)) {
             Row(
                 modifier = Modifier.padding(12.dp).fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -256,10 +256,10 @@ fun ImportItem(importInfo: ImportInfo, actions: ListItemActions) {
         address = if(importInfo.plt != 0L) importInfo.plt else null,
         fullText = "Import: ${importInfo.name}, Type: ${importInfo.type}, PLT: 0x${importInfo.plt.toString(16)}",
         actions = actions,
-        shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp),
+        shape = RoundedCornerShape(12.dp),
         elevation = 1.dp
     ) {
-        TintedItemSurface(accent, shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp)) {
+        TintedItemSurface(accent, shape = RoundedCornerShape(12.dp)) {
             Row(
                 modifier = Modifier.padding(12.dp).fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -316,10 +316,10 @@ fun RelocationItem(relocation: Relocation, actions: ListItemActions) {
         address = relocation.vAddr,
         fullText = "Relocation: ${relocation.name}, Type: ${relocation.type}, VAddr: 0x${relocation.vAddr.toString(16)}",
         actions = actions,
-        shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp),
+        shape = RoundedCornerShape(12.dp),
         elevation = 1.dp
     ) {
-        TintedItemSurface(accent, shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp)) {
+        TintedItemSurface(accent, shape = RoundedCornerShape(12.dp)) {
             Row(
                 modifier = Modifier.padding(12.dp).fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -374,10 +374,10 @@ fun StringItem(stringInfo: StringInfo, actions: ListItemActions) {
         address = stringInfo.vAddr,
         fullText = "String: ${stringInfo.string}, Section: ${stringInfo.section}, VAddr: 0x${stringInfo.vAddr.toString(16)}",
         actions = actions,
-        shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp),
+        shape = RoundedCornerShape(12.dp),
         elevation = 1.dp
     ) {
-        TintedItemSurface(accent, shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp)) {
+        TintedItemSurface(accent, shape = RoundedCornerShape(12.dp)) {
             Row(
                 modifier = Modifier.padding(12.dp).fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -435,10 +435,10 @@ fun FunctionItem(func: FunctionInfo, actions: ListItemActions) {
         address = func.addr,
         fullText = "Function: ${func.name}, Addr: 0x${func.addr.toString(16)}, Size: ${func.size}, BBs: ${func.nbbs}, Signature: ${func.signature}",
         actions = actions,
-        shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp),
+        shape = RoundedCornerShape(12.dp),
         elevation = 1.dp
     ) {
-        TintedItemSurface(accent, shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp)) {
+        TintedItemSurface(accent, shape = RoundedCornerShape(12.dp)) {
             Row(
                 modifier = Modifier.padding(12.dp).fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -452,7 +452,7 @@ fun FunctionItem(func: FunctionInfo, actions: ListItemActions) {
                         text = func.name,
                         style = MaterialTheme.typography.titleMedium,
                         color = accent,
-                        maxLines = 1,
+                        maxLines = 5,
                         overflow = TextOverflow.Ellipsis
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
