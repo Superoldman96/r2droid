@@ -2,6 +2,8 @@ package top.wsdx233.r2droid.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 object SettingsManager {
     private const val PREFS_NAME = "r2droid_settings"
@@ -9,11 +11,16 @@ object SettingsManager {
     private const val KEY_FONT_PATH = "font_path"
     private const val KEY_LANGUAGE = "language"
     private const val KEY_PROJECT_HOME = "project_home"
+    private const val KEY_DARK_MODE = "dark_mode"
 
     private lateinit var prefs: SharedPreferences
 
+    private val _darkModeFlow = MutableStateFlow("system")
+    val darkModeFlow = _darkModeFlow.asStateFlow()
+
     fun initialize(context: Context) {
         prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        _darkModeFlow.value = prefs.getString(KEY_DARK_MODE, "system") ?: "system"
     }
 
     var r2rcPath: String?
@@ -67,4 +74,12 @@ object SettingsManager {
     var projectHome: String?
         get() = prefs.getString(KEY_PROJECT_HOME, null)
         set(value) { prefs.edit().putString(KEY_PROJECT_HOME, value).apply() }
+
+    // "system", "light", "dark"
+    var darkMode: String
+        get() = prefs.getString(KEY_DARK_MODE, "system") ?: "system"
+        set(value) {
+            prefs.edit().putString(KEY_DARK_MODE, value).apply()
+            _darkModeFlow.value = value
+        }
 }

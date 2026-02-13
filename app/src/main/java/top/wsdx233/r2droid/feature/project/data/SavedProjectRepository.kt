@@ -31,8 +31,17 @@ class SavedProjectRepository @Inject constructor(@ApplicationContext private val
     }
 
     private val projectsDir: File
-        get() = File(context.filesDir, PROJECTS_DIR).also { 
-            if (!it.exists()) it.mkdirs() 
+        get() {
+            val customHome = top.wsdx233.r2droid.data.SettingsManager.projectHome
+            val base = if (customHome != null) {
+                val dir = File(customHome, PROJECTS_DIR)
+                if (dir.exists() || dir.mkdirs()) dir
+                else File(context.filesDir, PROJECTS_DIR)
+            } else {
+                File(context.filesDir, PROJECTS_DIR)
+            }
+            if (!base.exists()) base.mkdirs()
+            return base
         }
 
     private val indexFile: File

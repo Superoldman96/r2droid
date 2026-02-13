@@ -62,6 +62,21 @@
     <string name="settings_cancel">取消</string>
     <string name="settings_save">保存</string>
     <string name="settings_content_label">内容</string>
+    <string name="settings_dark_mode">深色模式</string>
+    <string name="settings_dark_mode_system">跟随系统</string>
+    <string name="settings_dark_mode_light">浅色</string>
+    <string name="settings_dark_mode_dark">深色</string>
+    <string name="settings_restart_title">需要重启</string>
+    <string name="settings_restart_message">语言更改将在重启应用后生效，是否立即重启？</string>
+    <string name="settings_restart_now">立即重启</string>
+    <string name="settings_restart_later">稍后</string>
+    <string name="settings_migrate_title">迁移项目</string>
+    <string name="settings_migrate_message">是否将现有项目迁移到新文件夹？</string>
+    <string name="settings_migrate_yes">迁移</string>
+    <string name="settings_migrate_no">不迁移</string>
+    <string name="settings_reset_all">恢复默认设置</string>
+    <string name="settings_reset_all_desc">将所有设置恢复为默认值</string>
+    <string name="settings_reset_all_confirm">所有设置将恢复为默认值，是否继续？</string>
 
     <!-- Install Screen -->
     <string name="install_title">正在安装资源</string>

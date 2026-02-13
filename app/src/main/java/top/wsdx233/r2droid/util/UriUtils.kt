@@ -11,6 +11,21 @@ import java.io.File
 
 object UriUtils {
 
+    fun getTreePath(context: Context, uri: Uri): String? {
+        try {
+            val treeDocId = DocumentsContract.getTreeDocumentId(uri)
+            if (isExternalStorageDocument(uri)) {
+                val split = treeDocId.split(":")
+                val type = split[0]
+                val path = if (split.size > 1) split[1] else ""
+                if ("primary".equals(type, ignoreCase = true)) {
+                    return Environment.getExternalStorageDirectory().toString() + "/" + path
+                }
+            }
+        } catch (_: Exception) {}
+        return null
+    }
+
     fun getPath(context: Context, uri: Uri): String? {
         val isKitKat = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT
 

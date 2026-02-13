@@ -71,7 +71,13 @@ class MainActivity : ComponentActivity() {
             androidx.compose.runtime.CompositionLocalProvider(
                 top.wsdx233.r2droid.ui.theme.LocalAppFont provides customFont
             ) {
-                R2droidTheme {
+                val darkModeSetting by top.wsdx233.r2droid.data.SettingsManager.darkModeFlow.collectAsState()
+                val darkTheme = when (darkModeSetting) {
+                    "light" -> false
+                    "dark" -> true
+                    else -> androidx.compose.foundation.isSystemInDarkTheme()
+                }
+                R2droidTheme(darkTheme = darkTheme) {
                     // 监听全局安装状态
                     val installState by R2Installer.installState.collectAsState()
                     

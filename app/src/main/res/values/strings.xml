@@ -90,6 +90,21 @@
     <string name="settings_cancel">Cancel</string>
     <string name="settings_save">Save</string>
     <string name="settings_content_label">Content</string>
+    <string name="settings_dark_mode">Dark Mode</string>
+    <string name="settings_dark_mode_system">Follow System</string>
+    <string name="settings_dark_mode_light">Light</string>
+    <string name="settings_dark_mode_dark">Dark</string>
+    <string name="settings_restart_title">Restart Required</string>
+    <string name="settings_restart_message">Language change will take effect after restarting the app. Restart now?</string>
+    <string name="settings_restart_now">Restart</string>
+    <string name="settings_restart_later">Later</string>
+    <string name="settings_migrate_title">Migrate Projects</string>
+    <string name="settings_migrate_message">Do you want to migrate existing projects to the new folder?</string>
+    <string name="settings_migrate_yes">Migrate</string>
+    <string name="settings_migrate_no">No</string>
+    <string name="settings_reset_all">Reset All Settings</string>
+    <string name="settings_reset_all_desc">Restore all settings to defaults</string>
+    <string name="settings_reset_all_confirm">All settings will be restored to their default values. Continue?</string>
 
     <!-- Install Screen -->
     <string name="install_title">Installing resources</string>

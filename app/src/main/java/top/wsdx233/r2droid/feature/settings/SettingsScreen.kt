@@ -1,5 +1,6 @@
 package top.wsdx233.r2droid.screen.settings
 
+import android.app.Activity
 import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -12,7 +13,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FontDownload
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -42,6 +45,9 @@ class SettingsViewModel : androidx.lifecycle.ViewModel() {
 
     private val _projectHome = MutableStateFlow(SettingsManager.projectHome)
     val projectHome = _projectHome.asStateFlow()
+
+    private val _darkMode = MutableStateFlow(SettingsManager.darkMode)
+    val darkMode = _darkMode.asStateFlow()
     
     // Initialize r2rc content
     fun loadR2rcContent(context: Context) {
@@ -67,6 +73,33 @@ class SettingsViewModel : androidx.lifecycle.ViewModel() {
         SettingsManager.projectHome = path
         _projectHome.value = path
     }
+
+    fun migrateProjects(context: Context, oldPath: String?, newPath: String) {
+        val oldDir = java.io.File(oldPath ?: context.filesDir.absolutePath, "projects")
+        val newDir = java.io.File(newPath, "projects")
+        if (oldDir.exists() && oldDir.isDirectory) {
+            oldDir.copyRecursively(newDir, overwrite = true)
+            oldDir.deleteRecursively()
+        }
+    }
+
+    fun setDarkMode(mode: String) {
+        SettingsManager.darkMode = mode
+        _darkMode.value = mode
+    }
+
+    fun resetAll(context: Context) {
+        SettingsManager.fontPath = null
+        SettingsManager.language = "system"
+        SettingsManager.projectHome = null
+        SettingsManager.darkMode = "system"
+        SettingsManager.setR2rcContent(context, "")
+        _fontPath.value = null
+        _language.value = "system"
+        _projectHome.value = null
+        _darkMode.value = "system"
+        _r2rcContent.value = ""
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -79,7 +112,8 @@ fun SettingsScreen(
     val fontPath by viewModel.fontPath.collectAsState()
     val language by viewModel.language.collectAsState()
     val projectHome by viewModel.projectHome.collectAsState()
-    
+    val darkMode by viewModel.darkMode.collectAsState()
+
     val context = LocalContext.current
     
     LaunchedEffect(Unit) {
@@ -88,6 +122,12 @@ fun SettingsScreen(
     
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showR2rcDialog by remember { mutableStateOf(false) }
+    var showDarkModeDialog by remember { mutableStateOf(false) }
+    var showRestartDialog by remember { mutableStateOf(false) }
+    var showMigrateDialog by remember { mutableStateOf(false) }
+    var showResetDialog by remember { mutableStateOf(false) }
+    var pendingNewProjectHome by remember { mutableStateOf<String?>(null) }
+    var oldProjectHome by remember { mutableStateOf<String?>(null) }
     
     // R2RC Dialog state
     var tempR2rcContent by remember { mutableStateOf("") }
@@ -100,7 +140,12 @@ fun SettingsScreen(
     
     val dirPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.let {
-            viewModel.setProjectHome(UriUtils.getPath(context, it))
+            val newPath = UriUtils.getTreePath(context, it)
+            if (newPath != null) {
+                oldProjectHome = projectHome
+                pendingNewProjectHome = newPath
+                showMigrateDialog = true
+            }
         }
     }
 
@@ -173,6 +218,31 @@ fun SettingsScreen(
                     onClick = { showLanguageDialog = true }
                 )
             }
+
+            item {
+                val darkModeLabel = when(darkMode) {
+                    "light" -> stringResource(R.string.settings_dark_mode_light)
+                    "dark" -> stringResource(R.string.settings_dark_mode_dark)
+                    else -> stringResource(R.string.settings_dark_mode_system)
+                }
+                SettingsItem(
+                    title = stringResource(R.string.settings_dark_mode),
+                    subtitle = darkModeLabel,
+                    icon = Icons.Default.DarkMode,
+                    onClick = { showDarkModeDialog = true }
+                )
+            }
+
+            item {
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(8.dp))
+                SettingsItem(
+                    title = stringResource(R.string.settings_reset_all),
+                    subtitle = stringResource(R.string.settings_reset_all_desc),
+                    icon = Icons.Default.Restore,
+                    onClick = { showResetDialog = true }
+                )
+            }
         }
     }
     
@@ -211,13 +281,107 @@ fun SettingsScreen(
             title = { Text(stringResource(R.string.settings_language)) },
             text = {
                 Column {
-                    LanguageOption(stringResource(R.string.settings_language_system), "system", language) { viewModel.setLanguage(it); showLanguageDialog = false }
-                    LanguageOption(stringResource(R.string.settings_language_english), "en", language) { viewModel.setLanguage(it); showLanguageDialog = false }
-                    LanguageOption(stringResource(R.string.settings_language_chinese), "zh", language) { viewModel.setLanguage(it); showLanguageDialog = false }
+                    LanguageOption(stringResource(R.string.settings_language_system), "system", language) { viewModel.setLanguage(it); showLanguageDialog = false; showRestartDialog = true }
+                    LanguageOption(stringResource(R.string.settings_language_english), "en", language) { viewModel.setLanguage(it); showLanguageDialog = false; showRestartDialog = true }
+                    LanguageOption(stringResource(R.string.settings_language_chinese), "zh", language) { viewModel.setLanguage(it); showLanguageDialog = false; showRestartDialog = true }
                 }
             },
             confirmButton = {
                 TextButton(onClick = { showLanguageDialog = false }) {
+                    Text(stringResource(R.string.settings_cancel))
+                }
+            }
+        )
+    }
+
+    if (showRestartDialog) {
+        AlertDialog(
+            onDismissRequest = { showRestartDialog = false },
+            title = { Text(stringResource(R.string.settings_restart_title)) },
+            text = { Text(stringResource(R.string.settings_restart_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showRestartDialog = false
+                    (context as? Activity)?.recreate()
+                }) {
+                    Text(stringResource(R.string.settings_restart_now))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRestartDialog = false }) {
+                    Text(stringResource(R.string.settings_restart_later))
+                }
+            }
+        )
+    }
+
+    if (showMigrateDialog && pendingNewProjectHome != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showMigrateDialog = false
+                viewModel.setProjectHome(pendingNewProjectHome)
+                pendingNewProjectHome = null
+            },
+            title = { Text(stringResource(R.string.settings_migrate_title)) },
+            text = { Text(stringResource(R.string.settings_migrate_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showMigrateDialog = false
+                    val newPath = pendingNewProjectHome!!
+                    viewModel.migrateProjects(context, oldProjectHome, newPath)
+                    viewModel.setProjectHome(newPath)
+                    pendingNewProjectHome = null
+                }) {
+                    Text(stringResource(R.string.settings_migrate_yes))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showMigrateDialog = false
+                    viewModel.setProjectHome(pendingNewProjectHome)
+                    pendingNewProjectHome = null
+                }) {
+                    Text(stringResource(R.string.settings_migrate_no))
+                }
+            }
+        )
+    }
+
+    if (showDarkModeDialog) {
+        AlertDialog(
+            onDismissRequest = { showDarkModeDialog = false },
+            title = { Text(stringResource(R.string.settings_dark_mode)) },
+            text = {
+                Column {
+                    LanguageOption(stringResource(R.string.settings_dark_mode_system), "system", darkMode) { viewModel.setDarkMode(it); showDarkModeDialog = false }
+                    LanguageOption(stringResource(R.string.settings_dark_mode_light), "light", darkMode) { viewModel.setDarkMode(it); showDarkModeDialog = false }
+                    LanguageOption(stringResource(R.string.settings_dark_mode_dark), "dark", darkMode) { viewModel.setDarkMode(it); showDarkModeDialog = false }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDarkModeDialog = false }) {
+                    Text(stringResource(R.string.settings_cancel))
+                }
+            }
+        )
+    }
+
+    if (showResetDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetDialog = false },
+            title = { Text(stringResource(R.string.settings_reset_all)) },
+            text = { Text(stringResource(R.string.settings_reset_all_confirm)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showResetDialog = false
+                    viewModel.resetAll(context)
+                    showRestartDialog = true
+                }) {
+                    Text(stringResource(R.string.settings_reset))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetDialog = false }) {
                     Text(stringResource(R.string.settings_cancel))
                 }
             }
