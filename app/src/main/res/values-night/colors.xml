@@ -45,4 +45,25 @@
     <color name="disasm_col_inline_comment">#FF301A40</color>
 
     <color name="thumb_color">#444444</color>
+
+    <!-- Disasm Text Colors (Dark Mode) -->
+    <color name="disasm_text_comment">#FF6A9955</color>
+    <color name="disasm_text_flag">#FF4EC9B0</color>
+    <color name="disasm_text_func_name">#FFDCDCAA</color>
+    <color name="disasm_text_func_icon">#FF569CD6</color>
+    <color name="disasm_text_jump_out">#FF66BB6A</color>
+    <color name="disasm_text_jump_in">#FFFFCA28</color>
+    <color name="disasm_text_jump_internal">#FF64B5F6</color>
+    <color name="disasm_text_address">#FF888888</color>
+    <color name="disasm_text_bytes">#FF999999</color>
+
+    <!-- Disasm Opcode Colors (Dark Mode) -->
+    <color name="disasm_op_call">#FF42A5F5</color>
+    <color name="disasm_op_jmp">#FF66BB6A</color>
+    <color name="disasm_op_ret">#FFEF5350</color>
+    <color name="disasm_op_push">#FFAB47BC</color>
+    <color name="disasm_op_cmp">#FFFFCA28</color>
+    <color name="disasm_op_nop">#FF9E9E9E</color>
+    <color name="disasm_op_lea">#FF4FC3F7</color>
+    <color name="disasm_op_mov">#FFA25410</color>
 </resources>

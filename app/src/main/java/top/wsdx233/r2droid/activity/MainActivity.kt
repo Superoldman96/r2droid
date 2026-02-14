@@ -72,6 +72,7 @@ class MainActivity : ComponentActivity() {
                 top.wsdx233.r2droid.ui.theme.LocalAppFont provides customFont
             ) {
                 val darkModeSetting by top.wsdx233.r2droid.data.SettingsManager.darkModeFlow.collectAsState()
+
                 val darkTheme = when (darkModeSetting) {
                     "light" -> false
                     "dark" -> true

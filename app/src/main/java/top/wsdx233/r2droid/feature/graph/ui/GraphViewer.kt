@@ -39,8 +39,10 @@ import top.wsdx233.r2droid.R
 import top.wsdx233.r2droid.core.data.model.GraphBlockInstruction
 import top.wsdx233.r2droid.core.data.model.GraphData
 import top.wsdx233.r2droid.core.data.model.GraphNode
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sqrt
 import androidx.core.graphics.toColorInt
 
 // Layout constants — sized for mobile readability
@@ -90,6 +92,23 @@ data class LayoutNode(
     }
 }
 
+/**
+ * A routed edge: a polyline of waypoints for orthogonal drawing.
+ */
+data class RoutedEdge(
+    val points: List<Offset>,
+    val color: Color,
+    val isBackEdge: Boolean
+)
+
+/**
+ * Complete layout result including node positions and routed edges.
+ */
+data class GraphLayoutResult(
+    val nodes: List<LayoutNode>,
+    val edges: List<RoutedEdge>
+)
+
 // ── Sugiyama-style layered graph layout ──────────────────────────────────
 
 /** Calculate display instruction count (capped). */
@@ -119,11 +138,11 @@ private fun nodeHeight(node: GraphNode): Float {
 }
 
 /**
- * Compute a Sugiyama-style layered layout for the graph nodes.
- * Steps: cycle removal → longest-path layering → barycenter ordering → coordinate assignment.
+ * Compute a Sugiyama-style layered layout for the graph nodes,
+ * then route all edges orthogonally so they don't overlap or cross nodes.
  */
-fun layoutGraph(data: GraphData): List<LayoutNode> {
-    if (data.nodes.isEmpty()) return emptyList()
+fun layoutGraph(data: GraphData): GraphLayoutResult {
+    if (data.nodes.isEmpty()) return GraphLayoutResult(emptyList(), emptyList())
 
     val nodeById = data.nodes.associateBy { it.id }
     val allIds = data.nodes.map { it.id }.toSet()
@@ -265,9 +284,222 @@ fun layoutGraph(data: GraphData): List<LayoutNode> {
         }
     }
 
-    return allIds.map { id ->
+    val layoutNodesList = allIds.map { id ->
         LayoutNode(nodeById[id]!!, nodeX[id]!!, nodeY[id]!!, nodeW[id]!!, nodeH[id]!!)
     }
+    val layoutNodeMap = layoutNodesList.associateBy { it.node.id }
+
+    // ── Edge routing ────────────────────────────────────────────────────────
+    val routedEdges = routeAllEdges(
+        data, layoutNodesList, layoutNodeMap, layer, backEdges
+    )
+
+    return GraphLayoutResult(layoutNodesList, routedEdges)
+}
+
+// ── Edge routing helpers ────────────────────────────────────────────────────
+
+/** Spacing between parallel edge channels in the gap between layers. */
+private const val EDGE_CHANNEL_GAP = 14f
+/** Minimum margin from node edge for back-edge side routing. */
+private const val BACK_EDGE_MARGIN = 30f
+
+/**
+ * Route all edges orthogonally, assigning channels to avoid overlap.
+ */
+private fun routeAllEdges(
+    data: GraphData,
+    layoutNodes: List<LayoutNode>,
+    nodeMap: Map<Int, LayoutNode>,
+    layerAssignment: Map<Int, Int>,
+    backEdgeSet: Set<Pair<Int, Int>>
+): List<RoutedEdge> {
+    if (layoutNodes.isEmpty()) return emptyList()
+
+    val result = mutableListOf<RoutedEdge>()
+
+    // Global bounds for back-edge side routing
+    val globalLeft = layoutNodes.minOf { it.x } - BACK_EDGE_MARGIN
+    val globalRight = layoutNodes.maxOf { it.x + it.width } + BACK_EDGE_MARGIN
+
+    // Track used back-edge channels on left and right sides
+    var nextLeftChannel = 0
+    var nextRightChannel = 0
+
+    // Collect all edges with metadata
+    data class EdgeMeta(
+        val sourceNode: LayoutNode,
+        val targetNode: LayoutNode,
+        val color: Color,
+        val isBackEdge: Boolean,
+        val portIndex: Int,   // index among siblings from same source
+        val portCount: Int    // total outgoing edges from source
+    )
+
+    val allEdges = mutableListOf<EdgeMeta>()
+
+    for (node in data.nodes) {
+        val srcLayout = nodeMap[node.id] ?: continue
+        val lastInstr = node.instructions.lastOrNull()
+        val hasJump = lastInstr?.jump != null
+        val hasFail = lastInstr?.fail != null
+        val validTargets = node.outNodes.mapNotNull { tid -> nodeMap[tid]?.let { tid to it } }
+
+        // Sort targets: true (jump) branch first, then false (fail)
+        val sortedTargets = if (hasJump && hasFail) {
+            validTargets.sortedBy { (tid, tln) ->
+                when (tln.node.address) {
+                    lastInstr?.jump -> 0  // true branch first
+                    lastInstr?.fail -> 1  // false branch second
+                    else -> 2
+                }
+            }
+        } else {
+            validTargets
+        }
+
+        for ((idx, pair) in sortedTargets.withIndex()) {
+            val (targetId, targetLayout) = pair
+            val color = if (hasJump && hasFail) {
+                when (targetLayout.node.address) {
+                    lastInstr?.jump -> edgeTrueColor
+                    lastInstr?.fail -> edgeFalseColor
+                    else -> edgeColor
+                }
+            } else {
+                edgeColor
+            }
+            val isBack = (node.id to targetId) in backEdgeSet
+                    || (node.id == targetId) // self-loop
+            allEdges.add(EdgeMeta(srcLayout, targetLayout, color, isBack, idx, sortedTargets.size))
+        }
+    }
+
+    // ── Route forward edges ──
+    // Group forward edges by the layer gap they pass through for channel assignment.
+    // For each gap (between layer i and i+1), track horizontal segments to offset them.
+    data class GapSegment(val y: Float, val x1: Float, val x2: Float)
+    val gapChannelCounters = mutableMapOf<Int, Int>() // layer -> next channel index
+
+    for (edge in allEdges) {
+        if (edge.isBackEdge) continue
+
+        val src = edge.sourceNode
+        val tgt = edge.targetNode
+
+        // Exit port: distribute across bottom of source node
+        val exitX = if (edge.portCount <= 1) {
+            src.x + src.width / 2f
+        } else {
+            val spread = src.width * 0.4f
+            val startX = src.x + src.width / 2f - spread / 2f
+            startX + spread * edge.portIndex / (edge.portCount - 1).coerceAtLeast(1)
+        }
+        val exitY = src.y + src.height
+
+        // Entry port: center-top of target
+        val entryX = tgt.x + tgt.width / 2f
+        val entryY = tgt.y
+
+        // Determine the layer gap for the horizontal segment
+        val srcLayer = layerAssignment[src.node.id] ?: 0
+        val channelIdx = gapChannelCounters.getOrDefault(srcLayer, 0)
+        gapChannelCounters[srcLayer] = channelIdx + 1
+
+        // Midpoint Y: in the gap between source bottom and target top
+        val gapTop = exitY
+        val gapBottom = entryY
+        val gapMid = (gapTop + gapBottom) / 2f
+        // Offset channels so parallel edges don't overlap
+        val midY = gapMid + (channelIdx - channelIdx / 2f) * EDGE_CHANNEL_GAP *
+                (if (channelIdx % 2 == 0) 1f else -1f)
+
+        val points = if (abs(exitX - entryX) < 2f) {
+            // Straight vertical — no horizontal jog needed
+            listOf(Offset(exitX, exitY), Offset(entryX, entryY))
+        } else {
+            listOf(
+                Offset(exitX, exitY),
+                Offset(exitX, midY),
+                Offset(entryX, midY),
+                Offset(entryX, entryY)
+            )
+        }
+
+        result.add(RoutedEdge(points, edge.color, isBackEdge = false))
+    }
+
+    // ── Route back edges (loops) ──
+    for (edge in allEdges) {
+        if (!edge.isBackEdge) continue
+
+        val src = edge.sourceNode
+        val tgt = edge.targetNode
+
+        if (src.node.id == tgt.node.id) {
+            // Self-loop: route on the right side of the node
+            val channel = nextRightChannel++
+            val sideX = src.x + src.width + BACK_EDGE_MARGIN + channel * EDGE_CHANNEL_GAP
+            val exitY = src.y + src.height * 0.6f
+            val entryY = src.y + src.height * 0.3f
+            result.add(RoutedEdge(
+                listOf(
+                    Offset(src.x + src.width, exitY),
+                    Offset(sideX, exitY),
+                    Offset(sideX, entryY),
+                    Offset(src.x + src.width, entryY)
+                ),
+                edge.color,
+                isBackEdge = true
+            ))
+        } else {
+            // Back edge going upward: route along the side of the graph
+            // Choose left or right side based on which is closer to both endpoints
+            val srcCenterX = src.x + src.width / 2f
+            val tgtCenterX = tgt.x + tgt.width / 2f
+            val avgX = (srcCenterX + tgtCenterX) / 2f
+            val graphCenterX = (globalLeft + globalRight) / 2f
+
+            val useRight = avgX >= graphCenterX
+            if (useRight) {
+                val channel = nextRightChannel++
+                val sideX = globalRight + channel * EDGE_CHANNEL_GAP
+                val exitX = src.x + src.width
+                val exitY = src.y + src.height / 2f
+                val entryX = tgt.x + tgt.width
+                val entryY = tgt.y + NODE_TITLE_HEIGHT / 2f
+                result.add(RoutedEdge(
+                    listOf(
+                        Offset(exitX, exitY),
+                        Offset(sideX, exitY),
+                        Offset(sideX, entryY),
+                        Offset(entryX, entryY)
+                    ),
+                    edge.color,
+                    isBackEdge = true
+                ))
+            } else {
+                val channel = nextLeftChannel++
+                val sideX = globalLeft - channel * EDGE_CHANNEL_GAP
+                val exitX = src.x
+                val exitY = src.y + src.height / 2f
+                val entryX = tgt.x
+                val entryY = tgt.y + NODE_TITLE_HEIGHT / 2f
+                result.add(RoutedEdge(
+                    listOf(
+                        Offset(exitX, exitY),
+                        Offset(sideX, exitY),
+                        Offset(sideX, entryY),
+                        Offset(entryX, entryY)
+                    ),
+                    edge.color,
+                    isBackEdge = true
+                ))
+            }
+        }
+    }
+
+    return result
 }
 
 /** Push overlapping nodes apart within a layer while preserving order. */
@@ -303,7 +535,8 @@ fun GraphViewer(
     onScaleChanged: (Float) -> Unit = {}
 ) {
     val density = LocalDensity.current
-    val layoutNodes = remember(graphData) { layoutGraph(graphData) }
+    val layoutResult = remember(graphData) { layoutGraph(graphData) }
+    val layoutNodes = layoutResult.nodes
     val nodeById = remember(layoutNodes) { layoutNodes.associateBy { it.node.id } }
 
     // Find the node containing the cursor address (for highlight)
@@ -314,15 +547,24 @@ fun GraphViewer(
         }?.node?.id
     }
 
-    // Compute graph bounding box
-    val graphBounds = remember(layoutNodes) {
-        if (layoutNodes.isEmpty()) Rect.Zero
+    // Compute graph bounding box (include edge waypoints for back-edge channels)
+    val graphBounds = remember(layoutResult) {
+        if (layoutResult.nodes.isEmpty()) Rect.Zero
         else {
-            val minX = layoutNodes.minOf { it.x }
-            val minY = layoutNodes.minOf { it.y }
-            val maxX = layoutNodes.maxOf { it.x + it.width }
-            val maxY = layoutNodes.maxOf { it.y + it.height }
-            Rect(minX - 100f, minY - 100f, maxX + 100f, maxY + 100f)
+            var minX = layoutResult.nodes.minOf { it.x }
+            var minY = layoutResult.nodes.minOf { it.y }
+            var maxX = layoutResult.nodes.maxOf { it.x + it.width }
+            var maxY = layoutResult.nodes.maxOf { it.y + it.height }
+            // Expand bounds to include routed edge waypoints
+            for (edge in layoutResult.edges) {
+                for (pt in edge.points) {
+                    if (pt.x < minX) minX = pt.x
+                    if (pt.y < minY) minY = pt.y
+                    if (pt.x > maxX) maxX = pt.x
+                    if (pt.y > maxY) maxY = pt.y
+                }
+            }
+            Rect(minX - 50f, minY - 50f, maxX + 50f, maxY + 50f)
         }
     }
 
@@ -472,7 +714,7 @@ fun GraphViewer(
                 translate(cx + offset.x, cy + offset.y)
                 scale(scale, scale, Offset.Zero)
             }) {
-                drawEdges(layoutNodes, nodeById)
+                drawRoutedEdges(layoutResult.edges)
 
                 for (ln in layoutNodes) {
                     val isHighlighted = ln.node.id == highlightNodeId
@@ -569,60 +811,37 @@ fun GraphViewer(
 }
 
 /**
- * Draw edges between nodes with arrowheads.
- * For agj blocks: last instruction's jump = green edge, fail = red edge.
+ * Draw all pre-routed edges as orthogonal polylines with arrowheads.
  */
-private fun DrawScope.drawEdges(
-    layoutNodes: List<LayoutNode>,
-    nodeById: Map<Int, LayoutNode>
-) {
-    for (ln in layoutNodes) {
-        val lastInstr = ln.node.instructions.lastOrNull()
-        val hasJump = lastInstr?.jump != null
-        val hasFail = lastInstr?.fail != null
+private fun DrawScope.drawRoutedEdges(edges: List<RoutedEdge>) {
+    for (edge in edges) {
+        val pts = edge.points
+        if (pts.size < 2) continue
 
-        for (targetId in ln.node.outNodes) {
-            val target = nodeById[targetId] ?: continue
-
-            // Determine edge color
-            val color = if (hasJump && hasFail) {
-                // Conditional: find which branch this edge represents
-                val targetAddr = target.node.address
-                when (targetAddr) {
-                    lastInstr?.jump -> edgeTrueColor
-                    lastInstr?.fail -> edgeFalseColor
-                    else -> edgeColor
-                }
-            } else {
-                edgeColor
-            }
-
-            val startX = ln.x + ln.width / 2f
-            val startY = ln.y + ln.height
-            val endX = target.x + target.width / 2f
-            val endY = target.y
-
-            // Draw line
+        // Draw polyline segments
+        for (i in 0 until pts.size - 1) {
             drawLine(
-                color = color,
-                start = Offset(startX, startY),
-                end = Offset(endX, endY),
+                color = edge.color,
+                start = pts[i],
+                end = pts[i + 1],
                 strokeWidth = 2f
             )
-
-            // Draw arrowhead
-            drawArrowHead(Offset(endX, endY), Offset(startX, startY), color)
         }
+
+        // Draw arrowhead at the last segment's tip
+        val tip = pts.last()
+        val from = pts[pts.size - 2]
+        drawArrowHead(tip, from, edge.color)
     }
 }
 
 /**
- * Draw an arrowhead pointing from `from` toward `to`.
+ * Draw an arrowhead pointing from `from` toward `tip`.
  */
 private fun DrawScope.drawArrowHead(tip: Offset, from: Offset, color: Color) {
     val dx = tip.x - from.x
     val dy = tip.y - from.y
-    val len = kotlin.math.sqrt(dx * dx + dy * dy)
+    val len = sqrt(dx * dx + dy * dy)
     if (len < 1f) return
 
     val ux = dx / len

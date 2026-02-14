@@ -18,20 +18,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import top.wsdx233.r2droid.R
 import top.wsdx233.r2droid.core.data.model.DisasmInstruction
 import top.wsdx233.r2droid.ui.theme.LocalAppFont
+import top.wsdx233.r2droid.ui.theme.LocalDarkTheme
+
+/** Pick color based on current theme */
+@Composable
+private fun dc(light: Long, dark: Long): Color =
+    if (LocalDarkTheme.current) Color(dark) else Color(light)
 
 /**
  * Placeholder row shown when instruction data is not yet loaded.
  */
 @Composable
 fun DisasmPlaceholderRow() {
-    val disasmPlaceholderBg = colorResource(R.color.disasm_placeholder_background)
+    val disasmPlaceholderBg = dc(0xFFE0E0E0, 0xFF3A3A3A)
     
     Row(
         modifier = Modifier
@@ -92,39 +96,39 @@ fun DisasmRow(
     jumpIndex: Int? = null,           // Index for this jump (if it's a jump instruction)
     jumpTargetIndex: Int? = null      // Index if this is a jump target
 ) {
-    // Column background colors (themed)
-    val colJumpBg = colorResource(R.color.disasm_col_jump)
-    val colAddressBg = colorResource(R.color.disasm_col_address)
-    val colBytesBg = colorResource(R.color.disasm_col_bytes)
-    val colOpcodeBg = colorResource(R.color.disasm_col_opcode)
-    val colCommentBg = colorResource(R.color.disasm_col_comment)
-    val colFlagBg = colorResource(R.color.disasm_col_flag)
-    val colFuncHeaderBg = colorResource(R.color.disasm_col_func_header)
-    val colR2CommentBg = colorResource(R.color.disasm_col_r2_comment)
-    val colXrefBg = colorResource(R.color.disasm_col_xref)
-    val colInlineCommentBg = colorResource(R.color.disasm_col_inline_comment)
-    
-    // Color definitions
-    val commentColor = Color(0xFF6A9955)  // Green for comments
-    val flagColor = Color(0xFF4EC9B0)     // Teal for flags
-    val funcNameColor = Color(0xFFDCDCAA) // Yellow for function names
-    val funcIconColor = Color(0xFF569CD6) // Blue for function icon
-    val jumpOutColor = Color(0xFF66BB6A)  // Green arrow for jump out (external)
-    val jumpInColor = Color(0xFFFFCA28)   // Yellow arrow for jump in (external)
-    val jumpInternalColor = Color(0xFF64B5F6) // Blue for internal jumps
-    val addressColor = Color(0xFF888888)  // Gray for address
-    val bytesColor = Color(0xFF999999)    // Lighter gray for bytes
-    
-    // Cutter style coloring logic
+    // Column background colors
+    val colJumpBg = dc(0xFFF3F8FF, 0xFF1E2A3A)
+    val colAddressBg = dc(0xFFEFF8EE, 0xFF1E2E28)
+    val colBytesBg = dc(0xFFFFF8E1, 0xFF2E2818)
+    val colOpcodeBg = dc(0xFFFFFFFF, 0xFF1E1E1E)
+    val colCommentBg = dc(0xFFF8F0FF, 0xFF281E30)
+    val colFlagBg = dc(0xFFE0F7FA, 0xFF1A3040)
+    val colFuncHeaderBg = dc(0xFFE3F2FD, 0xFF1A2840)
+    val colR2CommentBg = dc(0xFFF4F4F4, 0xFF401A28)
+    val colXrefBg = dc(0xFFE0FFF1, 0xFF40301A)
+    val colInlineCommentBg = dc(0xFFE5EAF5, 0xFF301A40)
+
+    // Text colors
+    val commentColor = dc(0xFF2E7D32, 0xFF6A9955)
+    val flagColor = dc(0xFF00897B, 0xFF4EC9B0)
+    val funcNameColor = dc(0xFF795548, 0xFFDCDCAA)
+    val funcIconColor = dc(0xFF1565C0, 0xFF569CD6)
+    val jumpOutColor = dc(0xFF2E7D32, 0xFF66BB6A)
+    val jumpInColor = dc(0xFFF57F17, 0xFFFFCA28)
+    val jumpInternalColor = dc(0xFF1976D2, 0xFF64B5F6)
+    val addressColor = dc(0xFF616161, 0xFF888888)
+    val bytesColor = dc(0xFF757575, 0xFF999999)
+
+    // Opcode colors
     val opcodeColor = when (instr.type) {
-        "call", "ucall", "ircall" -> Color(0xFF42A5F5) // Blue
-        "jmp", "cjmp", "ujmp" -> Color(0xFF66BB6A) // Green
-        "ret" -> Color(0xFFEF5350) // Red
-        "push", "pop", "rpush" -> Color(0xFFAB47BC) // Purple
-        "cmp", "test", "acmp" -> Color(0xFFFFCA28) // Orange/Yellow
+        "call", "ucall", "ircall" -> dc(0xFF1565C0, 0xFF42A5F5)
+        "jmp", "cjmp", "ujmp" -> dc(0xFF2E7D32, 0xFF66BB6A)
+        "ret" -> dc(0xFFC62828, 0xFFEF5350)
+        "push", "pop", "rpush" -> dc(0xFF7B1FA2, 0xFFAB47BC)
+        "cmp", "test", "acmp" -> dc(0xFFF57F17, 0xFFFFCA28)
         "nop" -> Color.Gray
-        "lea" -> Color(0xFF4FC3F7) // Light Blue
-        "mov" -> Color(0xFFA25410) // White/Light Gray
+        "lea" -> dc(0xFF0277BD, 0xFF4FC3F7)
+        "mov" -> dc(0xFF8D3B0A, 0xFFA25410)
         else -> MaterialTheme.colorScheme.onSurface
     }
     
