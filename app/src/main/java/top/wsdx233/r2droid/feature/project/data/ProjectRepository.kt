@@ -90,8 +90,8 @@ class ProjectRepository @Inject constructor() {
     }
 
     suspend fun getStrings(): Result<List<StringInfo>> {
-        // izzj: Strings
-        return R2PipeManager.executeJson("izzj").mapCatching { output ->
+        // izj: Strings
+        return R2PipeManager.executeJson("izj").mapCatching { output ->
             if (output.isBlank()) return@mapCatching emptyList()
             val jsonArray = JSONArray(output)
             val list = mutableListOf<StringInfo>()

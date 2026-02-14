@@ -66,7 +66,7 @@ class BinInfoRepository @Inject constructor(private val r2DataSource: R2DataSour
     }
 
     suspend fun getStrings(): Result<List<StringInfo>> {
-        return r2DataSource.executeJson("izzj").mapCatching { output ->
+        return r2DataSource.executeJson("izj").mapCatching { output ->
             if (output.isBlank()) return@mapCatching emptyList()
             val jsonArray = JSONArray(output)
             val list = mutableListOf<StringInfo>()
