@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -88,14 +89,6 @@ fun MessageBubble(
 ) {
     val isUser = message.role == ChatRole.User
     var showMenu by remember { mutableStateOf(false) }
-    val maxDisplayLength = 2000
-    val isLongMessage = message.content.length > maxDisplayLength
-    var isExpanded by remember { mutableStateOf(false) }
-    val displayContent = if (isLongMessage && !isExpanded) {
-        message.content.take(maxDisplayLength) + "\n..."
-    } else {
-        message.content
-    }
 
     val maxWidth = LocalConfiguration.current.screenWidthDp.dp * 0.85f
 
@@ -133,13 +126,13 @@ fun MessageBubble(
                 modifier = Modifier
                     .widthIn(max = maxWidth)
                     .combinedClickable(
-                        onClick = { if (isLongMessage) isExpanded = !isExpanded },
+                        onClick = { },
                         onLongClick = { showMenu = true }
                     )
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     MarkdownText(
-                        markdown = displayContent,
+                        markdown = message.content,
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer
                             else MaterialTheme.colorScheme.onSurface
@@ -147,17 +140,6 @@ fun MessageBubble(
                         syntaxHighlightColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         syntaxHighlightTextColor = MaterialTheme.colorScheme.onSurface
                     )
-
-                    // Expand/collapse for long messages
-                    if (isLongMessage) {
-                        Text(
-                            text = if (isExpanded) stringResource(R.string.ai_show_less)
-                            else stringResource(R.string.ai_show_more, message.content.length),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
 
                     // Action results (collapsible)
                     if (message.actionResults.isNotEmpty()) {
@@ -330,6 +312,14 @@ fun SelectCopyDialog(
 @Composable
 fun ActionResultBlock(result: ActionResult) {
     var expanded by remember { mutableStateOf(false) }
+    val maxOutputLength = 2000
+    val isLongOutput = result.output.length > maxOutputLength
+    var outputExpanded by remember { mutableStateOf(false) }
+    val displayOutput = if (isLongOutput && !outputExpanded) {
+        result.output.take(maxOutputLength) + "\n..."
+    } else {
+        result.output
+    }
     val typeLabel = when (result.type) {
         ActionType.R2Command -> "R2"
         ActionType.JavaScript -> "JS"
@@ -392,16 +382,28 @@ fun ActionResultBlock(result: ActionResult) {
                         .fillMaxWidth()
                         .padding(top = 4.dp)
                 ) {
-                    SelectionContainer {
-                        Text(
-                            text = result.output,
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 11.sp,
-                                color = Color(0xFFE0E0E0)
-                            ),
-                            modifier = Modifier.padding(8.dp)
-                        )
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        SelectionContainer {
+                            Text(
+                                text = displayOutput,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 11.sp,
+                                    color = Color(0xFFE0E0E0)
+                                )
+                            )
+                        }
+                        if (isLongOutput) {
+                            Text(
+                                text = if (outputExpanded) stringResource(R.string.ai_show_less)
+                                else stringResource(R.string.ai_show_more, result.output.length),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Color(0xFF64B5F6),
+                                modifier = Modifier
+                                    .padding(top = 4.dp)
+                                    .clickable { outputExpanded = !outputExpanded }
+                            )
+                        }
                     }
                 }
             }
@@ -535,7 +537,3 @@ fun CommandApprovalDialog(
         }
     )
 }
-
-// endregion
-
-// endregion
