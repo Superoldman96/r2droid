@@ -339,6 +339,10 @@ fun DisassemblyViewer(
                                 onInstructionDetail = {
                                     viewModel.onEvent(DisasmEvent.FetchInstructionDetail(instr.addr))
                                     showMenu = false
+                                },
+                                onJumpToTarget = { addr ->
+                                    onInstructionClick(addr)
+                                    showMenu = false
                                 }
                             )
                         },

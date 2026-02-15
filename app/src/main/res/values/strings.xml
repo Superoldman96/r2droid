@@ -371,6 +371,7 @@
     <string name="instr_detail_sign">Sign</string>
     <string name="instr_detail_no_data">No instruction detail available.</string>
     <string name="menu_instruction_detail">Instruction Detail</string>
+    <string name="menu_jump_to">Jump to %s</string>
 
     <!-- Update -->
     <string name="settings_about">About</string>

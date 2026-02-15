@@ -373,6 +373,7 @@
     <string name="instr_detail_sign">符号</string>
     <string name="instr_detail_no_data">无指令详情。</string>
     <string name="menu_instruction_detail">指令详情</string>
+    <string name="menu_jump_to">跳转到 %s</string>
 
     <!-- Update -->
     <string name="settings_about">关于</string>

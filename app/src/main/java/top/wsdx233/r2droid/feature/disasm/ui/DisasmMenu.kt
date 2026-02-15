@@ -31,7 +31,8 @@ fun DisasmContextMenu(
     onFunctionInfo: () -> Unit = {},
     onFunctionXrefs: () -> Unit = {},
     onFunctionVariables: () -> Unit = {},
-    onInstructionDetail: () -> Unit = {}
+    onInstructionDetail: () -> Unit = {},
+    onJumpToTarget: ((Long) -> Unit)? = null
 ) {
     if (expanded) {
         // State to track which menu is currently visible: "main", "copy", "modify"
@@ -80,6 +81,15 @@ fun DisasmContextMenu(
                             )
                         }
                     )
+
+                    // Jump to target (only for jump instructions)
+                    if (instr?.jump != null && onJumpToTarget != null) {
+                        val jumpAddr = "0x${instr.jump.toString(16).uppercase()}"
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.menu_jump_to, jumpAddr)) },
+                            onClick = { onJumpToTarget(instr.jump) }
+                        )
+                    }
 
                     HorizontalDivider()
 
