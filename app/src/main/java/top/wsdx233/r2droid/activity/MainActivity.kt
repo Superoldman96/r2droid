@@ -1,6 +1,8 @@
 package top.wsdx233.r2droid.activity
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -8,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,19 +29,23 @@ import top.wsdx233.r2droid.screen.install.InstallScreen
 import top.wsdx233.r2droid.screen.permission.PermissionScreen
 import top.wsdx233.r2droid.feature.project.ProjectScreen
 import top.wsdx233.r2droid.ui.theme.R2droidTheme
+import top.wsdx233.r2droid.util.IntentFileResolver
 import top.wsdx233.r2droid.util.PermissionManager
 import top.wsdx233.r2droid.util.R2Installer
+import top.wsdx233.r2droid.util.R2PipeManager
 
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    private val pendingFileUri = mutableStateOf<Uri?>(null)
+
     override fun attachBaseContext(newBase: Context) {
         // Apply language from settings
         val prefs = newBase.getSharedPreferences("r2droid_settings", Context.MODE_PRIVATE)
         val language = prefs.getString("language", "system")
-        
+
         val context = if (language != null && language != "system") {
             val locale = java.util.Locale(language)
             val config = android.content.res.Configuration(newBase.resources.configuration)
@@ -52,11 +59,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         // Initialize SettingsManager
         top.wsdx233.r2droid.data.SettingsManager.initialize(applicationContext)
         top.wsdx233.r2droid.feature.ai.data.AiSettingsManager.initialize(applicationContext)
-        
+
         // 启动应用时检查并安装
         lifecycleScope.launch {
             R2Installer.checkAndInstall(applicationContext)
@@ -66,14 +73,17 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             top.wsdx233.r2droid.util.UpdateManager.checkForUpdateSilently(applicationContext)
         }
-        
+
+        // 处理外部 Intent 传入的文件 URI
+        pendingFileUri.value = extractFileUri(intent)
+
         enableEdgeToEdge()
         setContent {
             // Load custom font if available
-            val customFont = remember { 
-                top.wsdx233.r2droid.data.SettingsManager.getCustomFont() ?: androidx.compose.ui.text.font.FontFamily.Monospace 
+            val customFont = remember {
+                top.wsdx233.r2droid.data.SettingsManager.getCustomFont() ?: androidx.compose.ui.text.font.FontFamily.Monospace
             }
-            
+
             androidx.compose.runtime.CompositionLocalProvider(
                 top.wsdx233.r2droid.ui.theme.LocalAppFont provides customFont
             ) {
@@ -87,14 +97,30 @@ class MainActivity : ComponentActivity() {
                 R2droidTheme(darkTheme = darkTheme) {
                     // 监听全局安装状态
                     val installState by R2Installer.installState.collectAsState()
-                    
+
                     if (installState.isInstalling) {
                         InstallScreen(installState = installState)
                     } else {
-                        MainAppContent()
+                        MainAppContent(
+                            pendingFileUri = pendingFileUri.value,
+                            onPendingFileUriConsumed = { pendingFileUri.value = null }
+                        )
                     }
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        pendingFileUri.value = extractFileUri(intent)
+    }
+
+    private fun extractFileUri(intent: Intent): Uri? {
+        return when (intent.action) {
+            Intent.ACTION_VIEW -> intent.data
+            Intent.ACTION_SEND -> intent.getParcelableExtra(Intent.EXTRA_STREAM)
+            else -> null
         }
     }
 }
@@ -107,7 +133,10 @@ enum class AppScreen {
 }
 
 @Composable
-fun MainAppContent() {
+fun MainAppContent(
+    pendingFileUri: Uri? = null,
+    onPendingFileUriConsumed: () -> Unit = {}
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -143,13 +172,36 @@ fun MainAppContent() {
             onPermissionGranted = { hasPermission = true }
         )
     } else {
-        MainAppNavigation()
+        MainAppNavigation(
+            pendingFileUri = pendingFileUri,
+            onPendingFileUriConsumed = onPendingFileUriConsumed
+        )
     }
 }
 
 @Composable
-fun MainAppNavigation() {
+fun MainAppNavigation(
+    pendingFileUri: Uri? = null,
+    onPendingFileUriConsumed: () -> Unit = {}
+) {
     var currentScreen by remember { mutableStateOf(AppScreen.Home) }
+    val context = LocalContext.current
+
+    // 处理从外部 Intent 传入的文件 URI
+    LaunchedEffect(pendingFileUri) {
+        if (pendingFileUri != null) {
+            val filePath = IntentFileResolver.resolve(context, pendingFileUri)
+            if (filePath != null) {
+                if (R2PipeManager.isConnected) {
+                    R2PipeManager.forceClose()
+                }
+                R2PipeManager.pendingFilePath = filePath
+                R2PipeManager.pendingRestoreFlags = null
+                currentScreen = AppScreen.Project
+            }
+            onPendingFileUriConsumed()
+        }
+    }
 
     when (currentScreen) {
         AppScreen.Home -> {
