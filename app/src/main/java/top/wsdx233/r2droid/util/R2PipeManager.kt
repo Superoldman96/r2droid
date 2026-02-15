@@ -188,6 +188,14 @@ object R2PipeManager {
     }
 
     /**
+     * 向 R2 进程发送中断信号 (SIGINT)，取消当前正在执行的操作。
+     * 不需要获取 mutex，因为只是发送信号，不涉及管道读写。
+     */
+    fun interrupt() {
+        r2Pipe?.interrupt()
+    }
+
+    /**
      * 关闭当前会话并释放资源
      */
     suspend fun quit() {

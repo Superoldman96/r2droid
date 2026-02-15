@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -246,7 +247,7 @@ fun ProjectScaffold(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                        .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
@@ -261,6 +262,21 @@ fun ProjectScaffold(
                     LinearProgressIndicator(
                         modifier = Modifier.weight(1f)
                     )
+                    Spacer(Modifier.width(8.dp))
+                    androidx.compose.material3.FilledTonalIconButton(
+                        onClick = { R2PipeManager.interrupt() },
+                        modifier = Modifier.size(32.dp),
+                        colors = androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    ) {
+                        Icon(
+                            Icons.Filled.Cancel,
+                            contentDescription = stringResource(R.string.proj_interrupt_stop),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
             } // end Column

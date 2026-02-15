@@ -223,6 +223,7 @@
 
     <string name="proj_nav_go_back">Go Back</string>
     <string name="proj_nav_scroll_to_selection">Scroll to Selection</string>
+    <string name="proj_interrupt_stop">Stop current operation</string>
     
     <string name="proj_info_current_file">Current File</string>
     <string name="proj_info_no_file">No file loaded</string>

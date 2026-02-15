@@ -229,6 +229,37 @@ class R2pipe(context: Context, private val filePath: String? = null, private val
      * 强制终止 R2 进程，不发送 quit 命令，不等待。
      * 用于在长时间命令执行期间需要立即终止的场景。
      */
+    /**
+     * 通过 kill 命令向 R2 进程及其子进程发送 SIGINT，中断当前操作。
+     * 因为 r2 是通过 sh -c 启动的，直接 sendSignal 可能只发给了 sh 而非 r2 本身，
+     * 所以这里用 kill 命令同时覆盖进程组、父进程和子进程。
+     */
+    fun interrupt() {
+        try {
+            val proc = process ?: return
+            val pid = getProcessId(proc)
+            if (pid > 0) {
+                // 1. kill -2 -$pid : 向整个进程组发 SIGINT
+                // 2. kill -2 $(pgrep -P $pid) : 向所有子进程发 SIGINT（兜底）
+                val cmd = "kill -2 -$pid 2>/dev/null; kill -2 \$(pgrep -P $pid) 2>/dev/null"
+                Runtime.getRuntime().exec(arrayOf("/system/bin/sh", "-c", cmd))
+                LogManager.log(LogType.INFO, "Sent SIGINT via kill to R2 process group (pid=$pid)")
+            }
+        } catch (e: Exception) {
+            LogManager.log(LogType.WARNING, "Failed to send interrupt: ${e.message}")
+        }
+    }
+
+    private fun getProcessId(process: Process): Int {
+        return try {
+            val field = process.javaClass.getDeclaredField("pid")
+            field.isAccessible = true
+            field.getInt(process)
+        } catch (e: Exception) {
+            -1
+        }
+    }
+
     fun forceQuit() {
         isRunning = false
         try { writer?.close() } catch (_: Exception) {}
