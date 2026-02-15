@@ -28,16 +28,9 @@
 *   **Customization**: Dark/Light themes, custom fonts, language switching (English/Chinese), and custom `.radare2rc` configuration.
 
 ## 🚀 Roadmap / TODO
-
-*   [x] **Optimize Hex Editor performance**: Improve virtualization logic for massive files.
-*   [ ] **Add Call Graph (VV)**: Visual graph view for function calls and basic blocks.
-*   [x] **Manual Analysis Button**: Trigger specific analysis commands (`af`) on demand.
 *   [ ] **Terminal Helper Keys**: Add a row of extra keys (ESC, Tab, Ctrl, Arrows) above the keyboard.
-*   [x] **Enhanced Jump History**: Better back/forward navigation stack handling.
-*   [x] **Search Interface**: Global search for bytes, strings, and instructions.
-*   [x] **Function Cross-references (axf)**: Detailed view for function usage.
 *   [ ] **ESIL Emulation**: UI for stepping through code using ESIL.
-*   [ ] **Debounce Mechanism**: Improve UI responsiveness on heavy operations.
+*   [ ] **R2Frida**: debug program with r2frida.
 
 ## 🛠️ Build
 

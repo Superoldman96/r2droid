@@ -530,7 +530,7 @@ class ProjectViewModel @Inject constructor(
     private fun jumpToAddressInternal(addr: Long) {
         val current = _uiState.value as? ProjectUiState.Success ?: return
         currentOffset = addr
-        
+
         viewModelScope.launch {
             // Update r2 seek
             R2PipeManager.execute("s $addr")
@@ -538,6 +538,14 @@ class ProjectViewModel @Inject constructor(
                 decompilation = null,
                 cursorAddress = addr
             )
+
+            // Reload decompilation for the new address
+            val funcStart = repository.getFunctionStart(addr).getOrDefault(addr)
+            val result = repository.getDecompilation(funcStart, _currentDecompiler.value)
+            val currentState = _uiState.value
+            if (currentState is ProjectUiState.Success) {
+                _uiState.value = currentState.copy(decompilation = result.getOrNull())
+            }
         }
     }
 

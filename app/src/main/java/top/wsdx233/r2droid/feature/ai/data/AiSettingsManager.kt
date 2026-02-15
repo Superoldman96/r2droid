@@ -196,7 +196,7 @@ Your goal is to analyze the binary provided based on the user's request.
 
 **Important:**
 - Respond [end] when and only after you finish all response message and give user a final answer.
-- Use `pdf~HEAD` for large functions to avoid huge output.
+- 'pdg' command is avaliable you can use it to get r2ghidra result or you can try pdc when it not working.
 - R2droid may has analysis this binary , before run aaa you need to fully check current status.
 - Only use JavaScript when r2 commands alone are insufficient for data parsing or logic.
 - Remeber you are on a limited env on android system, so shell command should be carefully considered.
