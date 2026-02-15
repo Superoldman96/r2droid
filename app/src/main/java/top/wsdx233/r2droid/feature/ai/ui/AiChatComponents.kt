@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -60,8 +61,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -89,6 +92,14 @@ fun MessageBubble(
 ) {
     val isUser = message.role == ChatRole.User
     var showMenu by remember { mutableStateOf(false) }
+    val maxDisplayLength = 2000
+    val isLongMessage = message.content.length > maxDisplayLength
+    var isExpanded by remember { mutableStateOf(false) }
+    val displayContent = if (isLongMessage && !isExpanded) {
+        message.content.take(maxDisplayLength) + "\n..."
+    } else {
+        message.content
+    }
 
     val maxWidth = LocalConfiguration.current.screenWidthDp.dp * 0.85f
 
@@ -126,16 +137,27 @@ fun MessageBubble(
                 modifier = Modifier
                     .widthIn(max = maxWidth)
                     .combinedClickable(
-                        onClick = {},
+                        onClick = { if (isLongMessage) isExpanded = !isExpanded },
                         onLongClick = { showMenu = true }
                     )
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     SimpleMarkdownText(
-                        text = message.content,
+                        text = displayContent,
                         color = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer
                         else MaterialTheme.colorScheme.onSurface
                     )
+
+                    // Expand/collapse for long messages
+                    if (isLongMessage) {
+                        Text(
+                            text = if (isExpanded) stringResource(R.string.ai_show_less)
+                            else stringResource(R.string.ai_show_more, message.content.length),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
 
                     // Action results (collapsible)
                     if (message.actionResults.isNotEmpty()) {
@@ -207,6 +229,14 @@ fun StreamingMessageBubble(content: String) {
         animationSpec = infiniteRepeatable(tween(500), RepeatMode.Reverse),
         label = "cursorBlink"
     )
+    // Truncate display during streaming to keep UI responsive
+    val maxStreamingDisplay = 1200
+    val displayContent = if (content.length > maxStreamingDisplay) {
+        "...\n" + content.takeLast(maxStreamingDisplay)
+    } else {
+        content
+    }
+    val density = LocalDensity.current
 
     Column(
         modifier = Modifier
@@ -226,18 +256,35 @@ fun StreamingMessageBubble(content: String) {
             color = MaterialTheme.colorScheme.surfaceContainerLow,
             modifier = Modifier.widthIn(max = maxWidth)
         ) {
-            Row(modifier = Modifier.padding(12.dp)) {
+            Box(modifier = Modifier.padding(12.dp)) {
+                var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
                 SimpleMarkdownText(
-                    text = content,
-                    color = MaterialTheme.colorScheme.onSurface
+                    text = displayContent,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    onTextLayout = { textLayoutResult = it }
                 )
-                // Blinking cursor
-                Box(
-                    modifier = Modifier
-                        .size(width = 2.dp, height = 16.dp)
-                        .alpha(cursorAlpha)
-                        .background(MaterialTheme.colorScheme.primary)
-                )
+                // Blinking cursor positioned at end of last line
+                textLayoutResult?.let { layout ->
+                    if (layout.lineCount > 0) {
+                        val lastLine = layout.lineCount - 1
+                        val lineRight = layout.getLineRight(lastLine)
+                        val lineTop = layout.getLineTop(lastLine)
+                        val lineBottom = layout.getLineBottom(lastLine)
+                        Box(
+                            modifier = Modifier
+                                .offset(
+                                    x = with(density) { lineRight.toDp() },
+                                    y = with(density) { lineTop.toDp() }
+                                )
+                                .size(
+                                    width = 2.dp,
+                                    height = with(density) { (lineBottom - lineTop).toDp() }
+                                )
+                                .alpha(cursorAlpha)
+                                .background(MaterialTheme.colorScheme.primary)
+                        )
+                    }
+                }
             }
         }
     }
@@ -453,7 +500,11 @@ fun ThinkingIndicator() {
 // region Simple Markdown Renderer
 
 @Composable
-fun SimpleMarkdownText(text: String, color: Color) {
+fun SimpleMarkdownText(
+    text: String,
+    color: Color,
+    onTextLayout: ((TextLayoutResult) -> Unit)? = null
+) {
     val annotated = buildAnnotatedString {
         var i = 0
         val lines = text.split("\n")
@@ -545,7 +596,8 @@ fun SimpleMarkdownText(text: String, color: Color) {
     Text(
         text = annotated,
         style = MaterialTheme.typography.bodyMedium,
-        color = color
+        color = color,
+        onTextLayout = { onTextLayout?.invoke(it) }
     )
 }
 

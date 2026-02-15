@@ -1,6 +1,7 @@
 package top.wsdx233.r2droid.feature.project
 
 import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -10,7 +11,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuOpen
@@ -23,6 +28,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -47,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import top.wsdx233.r2droid.R
@@ -64,6 +71,8 @@ import top.wsdx233.r2droid.feature.ai.AiViewModel
 import top.wsdx233.r2droid.feature.ai.ui.AiChatScreen
 import top.wsdx233.r2droid.feature.ai.ui.AiProviderSettingsScreen
 import top.wsdx233.r2droid.feature.terminal.ui.CommandScreen
+import kotlinx.coroutines.delay
+import top.wsdx233.r2droid.util.R2PipeManager
 
 enum class MainCategory(@StringRes val titleRes: Int, val icon: ImageVector) {
     List(R.string.proj_category_list, Icons.Filled.List),
@@ -116,6 +125,24 @@ fun ProjectScaffold(
     var cmdInput by remember { mutableStateOf("") }
     var cmdHistory by remember { mutableStateOf(listOf<Pair<String, String>>()) }
 
+    // R2Pipe busy state for progress indicator
+    val r2State by R2PipeManager.state.collectAsState()
+    var showBusy by remember { mutableStateOf(false) }
+    var busyCommand by remember { mutableStateOf("") }
+
+    androidx.compose.runtime.LaunchedEffect(r2State) {
+        when (val s = r2State) {
+            is R2PipeManager.State.Executing -> {
+                busyCommand = s.command
+                delay(300)
+                showBusy = true
+            }
+            else -> {
+                showBusy = false
+            }
+        }
+    }
+
     val listTabs = listOf(
         R.string.proj_tab_overview, R.string.proj_tab_search, R.string.proj_tab_sections, R.string.proj_tab_symbols,
         R.string.proj_tab_imports, R.string.proj_tab_relocs, R.string.proj_tab_strings, R.string.proj_tab_functions
@@ -126,6 +153,7 @@ fun ProjectScaffold(
 
     Scaffold(
         topBar = {
+            Column {
             TopAppBar(
                 title = { Text(stringResource(top.wsdx233.r2droid.R.string.app_name)) },
                 actions = {
@@ -164,7 +192,30 @@ fun ProjectScaffold(
                     }
                 }
             )
-            
+
+            AnimatedVisibility(visible = showBusy) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = busyCommand,
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.widthIn(max = 120.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    LinearProgressIndicator(
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+            } // end Column
+
             if (showJumpDialog) {
                 val currentAddress = (uiState as? ProjectUiState.Success)?.cursorAddress ?: 0L
                 JumpDialog(
