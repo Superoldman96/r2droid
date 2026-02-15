@@ -164,16 +164,13 @@ class HexViewModel @Inject constructor(
         viewModelScope.launch {
             // "wx [hex] @ [addr]"
             hexRepository.writeHex(addr, hex)
-            // Reload chunks to reflect changes
-            hexDataManager?.clearCache()
+            // Only invalidate the affected chunk and reload it immediately,
+            // so data is ready before recomposition — no placeholder flash
+            hexDataManager?.invalidateAndReload(addr)
             _hexCacheVersion.value++
-            
+
             // Notify others
             _dataModifiedEvent.value = System.currentTimeMillis()
-            
-            // Reload displayed data (around current view, but we mostly just cleared cache so next render will fetch)
-             // We don't have currentOffset here easily unless we pass it or store it. 
-             // Ideally UI observes version change -> recomposition -> view requests chunk for visible area.
         }
     }
 

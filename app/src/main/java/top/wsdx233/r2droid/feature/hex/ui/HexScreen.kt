@@ -128,16 +128,19 @@ fun HexViewer(
     // Coroutine scope for scrollbar interactions
     val coroutineScope = rememberCoroutineScope()
     
-    // Auto-scroll to cursor when it changes
+    // Auto-scroll to cursor when it changes, but only if cursor is off-screen
     LaunchedEffect(cursorAddress) {
         val targetRowIndex = hexDataManager.getRowIndexForAddress(cursorAddress)
         if (targetRowIndex in 0 until totalRows) {
-            // Calculate centering
             val layoutInfo = listState.layoutInfo
-            val visibleItems = layoutInfo.visibleItemsInfo.size
-            val centerOffset = if (visibleItems > 0) visibleItems / 2 else 5
-            val scrollIndex = (targetRowIndex - centerOffset).coerceIn(0, totalRows - 1)
-            listState.animateScrollToItem(scrollIndex)
+            val visibleIndices = layoutInfo.visibleItemsInfo.map { it.index }
+            // Only scroll if the target row is not currently visible
+            if (targetRowIndex !in visibleIndices) {
+                val visibleItems = visibleIndices.size
+                val centerOffset = if (visibleItems > 0) visibleItems / 2 else 5
+                val scrollIndex = (targetRowIndex - centerOffset).coerceIn(0, totalRows - 1)
+                listState.animateScrollToItem(scrollIndex)
+            }
         }
     }
     

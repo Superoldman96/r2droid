@@ -164,6 +164,16 @@ class HexDataManager(
     }
     
     /**
+     * Invalidate only the chunk containing the given address, then reload it.
+     * Much cheaper than clearCache() for single-byte writes.
+     */
+    suspend fun invalidateAndReload(addr: Long) {
+        val chunkStart = getChunkStart(addr)
+        cache.remove(chunkStart)
+        loadChunkIfNeeded(chunkStart)
+    }
+
+    /**
      * Clear all cached data.
      */
     fun clearCache() {
