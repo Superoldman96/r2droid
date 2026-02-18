@@ -202,6 +202,9 @@
 
     <string name="proj_nav_go_back">后退</string>
     <string name="proj_nav_scroll_to_selection">滚动到选中位置</string>
+    <string name="proj_nav_refresh_all">刷新所有视图</string>
+    <string name="proj_nav_refreshed_toast">已刷新视图</string>
+    <string name="proj_command_panel_title">执行 r2 命令</string>
     <string name="proj_interrupt_stop">停止当前操作</string>
     
     <string name="proj_info_current_file">当前文件</string>

@@ -35,6 +35,7 @@ sealed interface ProjectEvent {
     data class UpdateCursor(val address: Long) : ProjectEvent
     object NavigateBack : ProjectEvent
     object RequestScrollToSelection : ProjectEvent
+    object RefreshAllViews : ProjectEvent
     data class LoadSections(val forceRefresh: Boolean = false) : ProjectEvent
     data class LoadSymbols(val forceRefresh: Boolean = false) : ProjectEvent
     data class LoadImports(val forceRefresh: Boolean = false) : ProjectEvent
@@ -134,6 +135,7 @@ class ProjectViewModel @Inject constructor(
             is ProjectEvent.UpdateCursor -> updateCursor(event.address)
             is ProjectEvent.NavigateBack -> navigateBack()
             is ProjectEvent.RequestScrollToSelection -> requestScrollToSelection()
+            is ProjectEvent.RefreshAllViews -> refreshAllViews()
             is ProjectEvent.LoadSections -> loadSections(event.forceRefresh)
             is ProjectEvent.LoadSymbols -> loadSymbols(event.forceRefresh)
             is ProjectEvent.LoadImports -> loadImports(event.forceRefresh)
@@ -158,6 +160,19 @@ class ProjectViewModel @Inject constructor(
      */
     fun requestScrollToSelection() {
         _scrollToSelectionTrigger.value++
+    }
+
+    /**
+     * Clear all caches and refresh hex/disasm/decompile views.
+     * Called from long-press on the locate button.
+     */
+    fun refreshAllViews() {
+        // Trigger hex + disasm refresh via globalDataInvalidated
+        _globalDataInvalidated.value = System.currentTimeMillis()
+        // Clear decompilation and reload
+        val current = _uiState.value as? ProjectUiState.Success ?: return
+        _uiState.value = current.copy(decompilation = null)
+        loadDecompilation()
     }
     
     // === Address History Navigation ===

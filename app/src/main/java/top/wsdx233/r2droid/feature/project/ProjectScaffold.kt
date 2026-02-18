@@ -3,7 +3,9 @@ package top.wsdx233.r2droid.feature.project
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,9 +27,16 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -53,9 +62,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import top.wsdx233.r2droid.R
 import top.wsdx233.r2droid.core.ui.dialogs.HistoryDialog
@@ -126,6 +141,13 @@ fun ProjectScaffold(
     var cmdInput by remember { mutableStateOf("") }
     var cmdHistory by remember { mutableStateOf(listOf<Pair<String, String>>()) }
 
+    // Command bottom sheet state (swipe-up panel)
+    var showCommandSheet by remember { mutableStateOf(false) }
+    var sheetCommand by remember { mutableStateOf("") }
+    var sheetOutput by remember { mutableStateOf("") }
+    var sheetExecuting by remember { mutableStateOf(false) }
+    val sheetScope = rememberCoroutineScope()
+
     // R2Pipe busy state for progress indicator
     val r2State by R2PipeManager.state.collectAsState()
     var showBusy by remember { mutableStateOf(false) }
@@ -183,7 +205,20 @@ fun ProjectScaffold(
                             )
                         }
                         if (selectedDetailTabIndex in 0..3) {
-                            androidx.compose.material3.IconButton(onClick = { viewModel.onEvent(ProjectEvent.RequestScrollToSelection) }) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .combinedClickable(
+                                        onClick = { viewModel.onEvent(ProjectEvent.RequestScrollToSelection) },
+                                        onLongClick = { viewModel.onEvent(ProjectEvent.RefreshAllViews) },
+                                        indication = androidx.compose.material3.ripple(
+                                            bounded = false,
+                                            radius = 24.dp
+                                        ),
+                                        interactionSource = remember { MutableInteractionSource() }
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Icon(Icons.Filled.MyLocation, contentDescription = stringResource(R.string.proj_nav_scroll_to_selection))
                             }
                         }
@@ -477,8 +512,13 @@ fun ProjectScaffold(
                         }
                     }
 
-                    // Level 1: Category
+                    // Level 1: Category (swipe up to open command panel)
                     NavigationBar(
+                        modifier = Modifier.pointerInput(Unit) {
+                            detectVerticalDragGestures { _, dragAmount ->
+                                if (dragAmount < -40) showCommandSheet = true
+                            }
+                        },
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
                     ) {
                         MainCategory.values().forEach { category ->
@@ -566,6 +606,98 @@ fun ProjectScaffold(
                     }
                 }
                 else -> {}
+            }
+        }
+    }
+
+    // Command bottom sheet (swipe up from bottom bar)
+    if (showCommandSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showCommandSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ) {
+            CommandBottomSheetContent(
+                command = sheetCommand,
+                onCommandChange = { sheetCommand = it },
+                output = sheetOutput,
+                isExecuting = sheetExecuting,
+                onRun = {
+                    if (sheetCommand.isNotBlank()) {
+                        sheetExecuting = true
+                        sheetScope.launch {
+                            val result = R2PipeManager.execute(sheetCommand)
+                            sheetOutput = result.getOrDefault("Error: ${result.exceptionOrNull()?.message}")
+                            sheetExecuting = false
+                        }
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun CommandBottomSheetContent(
+    command: String,
+    onCommandChange: (String) -> Unit,
+    output: String,
+    isExecuting: Boolean,
+    onRun: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 32.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.proj_command_panel_title),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = command,
+                onValueChange = onCommandChange,
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                placeholder = { Text("e.g. iI") },
+                label = { Text("Command") }
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(onClick = onRun, enabled = !isExecuting) {
+                if (isExecuting) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                } else {
+                    Text("Run")
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        val bg = colorResource(R.color.command_output_background)
+        val fg = colorResource(R.color.command_output_text)
+        val placeholder = colorResource(R.color.command_output_placeholder)
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .background(bg, RoundedCornerShape(4.dp))
+                .padding(8.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            SelectionContainer {
+                Text(
+                    text = output.ifEmpty { "No output" },
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 12.sp,
+                    color = if (output.isEmpty()) placeholder else fg
+                )
             }
         }
     }

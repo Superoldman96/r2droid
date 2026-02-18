@@ -25,7 +25,36 @@ class DisasmRepository @Inject constructor(private val r2DataSource: R2DataSourc
             for (i in 0 until jsonArray.length()) {
                 list.add(DisasmInstruction.fromJson(jsonArray.getJSONObject(i)))
             }
-            list
+            resolveStringRefs(list)
+        }
+    }
+
+    /**
+     * Resolve STRN refs: fetch string content at ref addresses and append to instruction comments.
+     */
+    private suspend fun resolveStringRefs(instructions: List<DisasmInstruction>): List<DisasmInstruction> {
+        val strnAddrs = instructions.flatMap { instr ->
+            instr.refs.filter { it.type == "STRN" }.map { it.addr }
+        }.distinct()
+        if (strnAddrs.isEmpty()) return instructions
+
+        // Fetch string for each unique STRN address
+        val stringMap = mutableMapOf<Long, String>()
+        for (addr in strnAddrs) {
+            try {
+                val result = r2DataSource.execute("ps @ $addr")
+                val str = result.getOrNull()?.trim()
+                if (!str.isNullOrEmpty()) stringMap[addr] = str
+            } catch (_: Exception) {}
+        }
+        if (stringMap.isEmpty()) return instructions
+
+        return instructions.map { instr ->
+            val strnRefs = instr.refs.filter { it.type == "STRN" && stringMap.containsKey(it.addr) }
+            if (strnRefs.isEmpty()) return@map instr
+            val refStr = strnRefs.joinToString(" ; ") { "\"${stringMap[it.addr]}\"" }
+            val newComment = if (instr.comment.isNullOrEmpty()) refStr else "${instr.comment} ; $refStr"
+            instr.copy(comment = newComment)
         }
     }
 

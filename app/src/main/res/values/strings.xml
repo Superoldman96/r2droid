@@ -230,6 +230,9 @@
 
     <string name="proj_nav_go_back">Go Back</string>
     <string name="proj_nav_scroll_to_selection">Scroll to Selection</string>
+    <string name="proj_nav_refresh_all">Refresh All Views</string>
+    <string name="proj_nav_refreshed_toast">Views refreshed</string>
+    <string name="proj_command_panel_title">Execute r2 Command</string>
     <string name="proj_interrupt_stop">Stop current operation</string>
     
     <string name="proj_info_current_file">Current File</string>
