@@ -255,6 +255,23 @@ fun ProjectScaffold(
                                         text = {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
                                                 androidx.compose.material3.RadioButton(
+                                                    selected = currentDecompiler == "jsdec",
+                                                    onClick = null
+                                                )
+                                                Text(stringResource(R.string.decompiler_jsdec), modifier = Modifier.padding(start = 8.dp))
+                                            }
+                                        },
+                                        onClick = {
+                                            showDecompilerMenu = false
+                                            if (currentDecompiler != "jsdec") {
+                                                viewModel.onEvent(ProjectEvent.SwitchDecompiler("jsdec"))
+                                            }
+                                        }
+                                    )
+                                    androidx.compose.material3.DropdownMenuItem(
+                                        text = {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                androidx.compose.material3.RadioButton(
                                                     selected = currentDecompiler == "native",
                                                     onClick = null
                                                 )

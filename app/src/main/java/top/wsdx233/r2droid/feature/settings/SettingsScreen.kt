@@ -61,6 +61,9 @@ class SettingsViewModel : androidx.lifecycle.ViewModel() {
     private val _decompilerDefault = MutableStateFlow(SettingsManager.decompilerDefault)
     val decompilerDefault = _decompilerDefault.asStateFlow()
 
+    private val _maxLogEntries = MutableStateFlow(SettingsManager.maxLogEntries)
+    val maxLogEntries = _maxLogEntries.asStateFlow()
+
     // Initialize r2rc content
     fun loadR2rcContent(context: Context) {
         _r2rcContent.value = SettingsManager.getR2rcContent(context)
@@ -115,6 +118,11 @@ class SettingsViewModel : androidx.lifecycle.ViewModel() {
         _decompilerDefault.value = value
     }
 
+    fun setMaxLogEntries(value: Int) {
+        SettingsManager.maxLogEntries = value
+        _maxLogEntries.value = value
+    }
+
     fun resetAll(context: Context) {
         SettingsManager.fontPath = null
         SettingsManager.language = "system"
@@ -124,6 +132,7 @@ class SettingsViewModel : androidx.lifecycle.ViewModel() {
         SettingsManager.decompilerShowLineNumbers = true
         SettingsManager.decompilerWordWrap = false
         SettingsManager.decompilerDefault = "r2ghidra"
+        SettingsManager.maxLogEntries = 100
         _fontPath.value = null
         _language.value = "system"
         _projectHome.value = null
@@ -132,6 +141,7 @@ class SettingsViewModel : androidx.lifecycle.ViewModel() {
         _decompilerShowLineNumbers.value = true
         _decompilerWordWrap.value = false
         _decompilerDefault.value = "r2ghidra"
+        _maxLogEntries.value = 100
     }
 }
 
@@ -149,6 +159,7 @@ fun SettingsScreen(
     val decompilerShowLineNumbers by viewModel.decompilerShowLineNumbers.collectAsState()
     val decompilerWordWrap by viewModel.decompilerWordWrap.collectAsState()
     val decompilerDefault by viewModel.decompilerDefault.collectAsState()
+    val maxLogEntries by viewModel.maxLogEntries.collectAsState()
 
     val context = LocalContext.current
     
@@ -163,6 +174,8 @@ fun SettingsScreen(
     var showMigrateDialog by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
     var showDecompilerDialog by remember { mutableStateOf(false) }
+    var showMaxLogDialog by remember { mutableStateOf(false) }
+    var tempMaxLog by remember { mutableStateOf("") }
     var pendingNewProjectHome by remember { mutableStateOf<String?>(null) }
     var oldProjectHome by remember { mutableStateOf<String?>(null) }
     
@@ -228,6 +241,18 @@ fun SettingsScreen(
                 )
             }
             
+            item {
+                SettingsItem(
+                    title = stringResource(R.string.settings_max_log_entries),
+                    subtitle = maxLogEntries.toString(),
+                    icon = Icons.Default.Settings,
+                    onClick = {
+                        tempMaxLog = maxLogEntries.toString()
+                        showMaxLogDialog = true
+                    }
+                )
+            }
+
             item {
                 HorizontalDivider()
                 SettingsSectionHeader(stringResource(R.string.settings_appearance))
@@ -296,6 +321,7 @@ fun SettingsScreen(
             item {
                 val decompilerLabel = when(decompilerDefault) {
                     "native" -> stringResource(R.string.decompiler_native)
+                    "jsdec" -> stringResource(R.string.decompiler_jsdec)
                     else -> stringResource(R.string.decompiler_r2ghidra)
                 }
                 SettingsItem(
@@ -487,11 +513,43 @@ fun SettingsScreen(
             text = {
                 Column {
                     LanguageOption(stringResource(R.string.decompiler_r2ghidra), "r2ghidra", decompilerDefault) { viewModel.setDecompilerDefault(it); showDecompilerDialog = false }
+                    LanguageOption(stringResource(R.string.decompiler_jsdec), "jsdec", decompilerDefault) { viewModel.setDecompilerDefault(it); showDecompilerDialog = false }
                     LanguageOption(stringResource(R.string.decompiler_native), "native", decompilerDefault) { viewModel.setDecompilerDefault(it); showDecompilerDialog = false }
                 }
             },
             confirmButton = {
                 TextButton(onClick = { showDecompilerDialog = false }) {
+                    Text(stringResource(R.string.settings_cancel))
+                }
+            }
+        )
+    }
+
+    if (showMaxLogDialog) {
+        AlertDialog(
+            onDismissRequest = { showMaxLogDialog = false },
+            title = { Text(stringResource(R.string.settings_max_log_entries)) },
+            text = {
+                OutlinedTextField(
+                    value = tempMaxLog,
+                    onValueChange = { tempMaxLog = it.filter { c -> c.isDigit() } },
+                    label = { Text(stringResource(R.string.settings_max_log_entries_desc)) },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val value = tempMaxLog.toIntOrNull()
+                    if (value != null && value > 0) {
+                        viewModel.setMaxLogEntries(value)
+                    }
+                    showMaxLogDialog = false
+                }) {
+                    Text(stringResource(R.string.settings_save))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMaxLogDialog = false }) {
                     Text(stringResource(R.string.settings_cancel))
                 }
             }

@@ -91,6 +91,7 @@
     <string name="settings_decompiler_default_desc">使用的反编译引擎</string>
     <string name="decompiler_r2ghidra">r2ghidra</string>
     <string name="decompiler_native">native</string>
+    <string name="decompiler_jsdec">jsdec</string>
     <string name="decompiler_switch">切换反编译器</string>
 
     <!-- Install Screen -->
@@ -279,6 +280,8 @@
     <string name="settings_r2rc_desc">选择自定义 r2 配置文件</string>
     <string name="settings_project_dir">项目文件夹</string>
     <string name="settings_project_dir_desc">项目保存位置</string>
+    <string name="settings_max_log_entries">最大日志条数</string>
+    <string name="settings_max_log_entries_desc">保留的最大日志记录数量</string>
     <string name="settings_dir_picker_title">选择目录</string>
     <string name="settings_file_picker_title">选择文件</string>
     <string name="settings_reset">重置</string>

@@ -163,6 +163,22 @@ data class DecompilationData(
             }
             return DecompilationData(code, annotations)
         }
+
+        fun fromPddj(json: JSONObject): DecompilationData {
+            val lines = json.optJSONArray("lines") ?: return DecompilationData("", emptyList())
+            val sb = StringBuilder()
+            val annotations = mutableListOf<DecompilationAnnotation>()
+            for (i in 0 until lines.length()) {
+                val line = lines.getJSONObject(i)
+                val start = sb.length
+                sb.append(line.optString("str", ""))
+                if (line.has("offset")) {
+                    annotations.add(DecompilationAnnotation(start, sb.length, "syntax_highlight", offset = line.optLong("offset", 0)))
+                }
+                if (i < lines.length() - 1) sb.append("\n")
+            }
+            return DecompilationData(sb.toString(), annotations)
+        }
     }
 }
 

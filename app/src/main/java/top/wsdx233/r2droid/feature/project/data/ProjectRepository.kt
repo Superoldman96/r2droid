@@ -161,14 +161,19 @@ class ProjectRepository @Inject constructor() {
     }
 
     suspend fun getDecompilation(offset: Long, decompilerType: String = "r2ghidra"): Result<DecompilationData> {
+        if (decompilerType == "jsdec") {
+            return R2PipeManager.executeJson("pddj @ $offset").mapCatching { output ->
+                if (output.isBlank()) throw RuntimeException("Empty decompilation output")
+                DecompilationData.fromPddj(JSONObject(output))
+            }
+        }
         val cmd = when (decompilerType) {
             "native" -> "pdcj @ $offset"
             else -> "pdgj @ $offset"
         }
         return R2PipeManager.executeJson(cmd).mapCatching { output ->
             if (output.isBlank()) throw RuntimeException("Empty decompilation output")
-            val json = JSONObject(output)
-            DecompilationData.fromJson(json)
+            DecompilationData.fromJson(JSONObject(output))
         }
     }
     suspend fun getFunctionStart(addr: Long): Result<Long> {

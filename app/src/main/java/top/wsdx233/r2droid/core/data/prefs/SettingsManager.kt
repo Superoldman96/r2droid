@@ -15,6 +15,7 @@ object SettingsManager {
     private const val KEY_DECOMPILER_SHOW_LINE_NUMBERS = "decompiler_show_line_numbers"
     private const val KEY_DECOMPILER_WORD_WRAP = "decompiler_word_wrap"
     private const val KEY_DECOMPILER_DEFAULT = "decompiler_default"
+    private const val KEY_MAX_LOG_ENTRIES = "max_log_entries"
 
     private lateinit var prefs: SharedPreferences
 
@@ -99,4 +100,8 @@ object SettingsManager {
     var decompilerDefault: String
         get() = prefs.getString(KEY_DECOMPILER_DEFAULT, "r2ghidra") ?: "r2ghidra"
         set(value) { prefs.edit().putString(KEY_DECOMPILER_DEFAULT, value).apply() }
+
+    var maxLogEntries: Int
+        get() = prefs.getInt(KEY_MAX_LOG_ENTRIES, 100)
+        set(value) { prefs.edit().putInt(KEY_MAX_LOG_ENTRIES, value).apply() }
 }

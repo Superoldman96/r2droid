@@ -45,6 +45,7 @@ object R2Installer {
         if (targetDir.exists()) {
             Log.d(TAG, "Radare2 directory exists. Skipping installation.")
             _installState.value = InstallState(isInstalling = false)
+            ensureJsdecPlugin(context)
             initialized = true
             return@withContext
         }
@@ -91,7 +92,25 @@ object R2Installer {
             // 注意：实际项目中可能需要处理错误状态，这里简单处理为留在失败界面或重试
         }
 
+        ensureJsdecPlugin(context)
         initialized = true
+    }
+
+    private fun ensureJsdecPlugin(context: Context) {
+        try {
+            val pluginsDir = File(context.filesDir, "r2work/radare2/plugins")
+            val target = File(pluginsDir, "libcore_pdd.so")
+            if (!target.exists()) {
+                pluginsDir.mkdirs()
+                context.assets.open("libcore_pdd.so").use { input ->
+                    FileOutputStream(target).use { output -> input.copyTo(output) }
+                }
+                Os.chmod(target.absolutePath, 493) // 0755
+                Log.d(TAG, "jsdec plugin installed")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to install jsdec plugin", e)
+        }
     }
 
     private fun installFromAssets(

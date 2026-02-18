@@ -30,10 +30,10 @@ object LogManager {
             message
         }
         val entry = LogEntry(type = type, message = truncatedMessage)
-        // Keep only last 1000 logs to prevent memory issues
+        val maxEntries = top.wsdx233.r2droid.data.SettingsManager.maxLogEntries
         val currentLogs = _logs.value
-        val newLogs = if (currentLogs.size > 1000) {
-            currentLogs.drop(1) + entry
+        val newLogs = if (currentLogs.size >= maxEntries) {
+            currentLogs.drop(currentLogs.size - maxEntries + 1) + entry
         } else {
             currentLogs + entry
         }
