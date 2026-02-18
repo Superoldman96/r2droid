@@ -95,6 +95,37 @@ class SettingsViewModel : androidx.lifecycle.ViewModel() {
         if (oldDir.exists() && oldDir.isDirectory) {
             oldDir.copyRecursively(newDir, overwrite = true)
             oldDir.deleteRecursively()
+            // Update scriptPath in JSON files to reflect new directory
+            val oldPrefix = oldDir.absolutePath
+            val newPrefix = newDir.absolutePath
+            fun rewriteJson(file: java.io.File, isIndex: Boolean) {
+                if (!file.exists()) return
+                try {
+                    val text = file.readText()
+                    if (isIndex) {
+                        val arr = org.json.JSONArray(text)
+                        for (i in 0 until arr.length()) {
+                            val obj = arr.getJSONObject(i)
+                            val sp = obj.optString("scriptPath", "")
+                            if (sp.startsWith(oldPrefix)) {
+                                obj.put("scriptPath", sp.replace(oldPrefix, newPrefix))
+                            }
+                        }
+                        file.writeText(arr.toString(2))
+                    } else {
+                        val obj = org.json.JSONObject(text)
+                        val sp = obj.optString("scriptPath", "")
+                        if (sp.startsWith(oldPrefix)) {
+                            obj.put("scriptPath", sp.replace(oldPrefix, newPrefix))
+                        }
+                        file.writeText(obj.toString(2))
+                    }
+                } catch (_: Exception) {}
+            }
+            rewriteJson(java.io.File(newDir, "index.json"), true)
+            newDir.listFiles()?.filter { it.isDirectory }?.forEach { dir ->
+                rewriteJson(java.io.File(dir, "project.json"), false)
+            }
         }
     }
 

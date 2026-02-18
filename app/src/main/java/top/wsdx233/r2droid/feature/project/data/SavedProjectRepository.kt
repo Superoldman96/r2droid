@@ -57,16 +57,28 @@ class SavedProjectRepository @Inject constructor(@ApplicationContext private val
             val jsonArray = JSONArray(indexFile.readText())
             val projects = mutableListOf<SavedProject>()
             
+            var indexDirty = false
             for (i in 0 until jsonArray.length()) {
                 try {
-                    val project = SavedProject.fromJson(jsonArray.getJSONObject(i))
-                    // Only include projects that have valid script files
+                    var project = SavedProject.fromJson(jsonArray.getJSONObject(i))
+                    if (!project.isScriptAccessible()) {
+                        // Try to fix by using current projectsDir
+                        val fixedPath = File(projectsDir, "${project.id}/$SCRIPT_FILENAME").absolutePath
+                        if (File(fixedPath).exists()) {
+                            project = project.copy(scriptPath = fixedPath)
+                            jsonArray.put(i, project.toJson())
+                            indexDirty = true
+                        }
+                    }
                     if (project.isScriptAccessible()) {
                         projects.add(project)
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to parse project at index $i", e)
                 }
+            }
+            if (indexDirty) {
+                try { indexFile.writeText(jsonArray.toString(2)) } catch (_: Exception) {}
             }
             
             // Sort by last modified, newest first
