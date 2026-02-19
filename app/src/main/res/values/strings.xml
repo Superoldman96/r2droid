@@ -462,4 +462,11 @@
     <string name="ai_approval_message">The AI assistant wants to execute the following command, which may be time-consuming or potentially dangerous:</string>
     <string name="ai_approval_allow">Allow</string>
     <string name="ai_approval_deny">Deny</string>
+
+    <!-- Manual -->
+    <string name="manual_title">R2 Command Manual</string>
+    <string name="manual_search_hint">Search commands...</string>
+    <string name="manual_subcommands">Subcommands</string>
+    <string name="manual_open">Command Manual</string>
+    <string name="manual_open_desc">Browse radare2 command reference</string>
 </resources>

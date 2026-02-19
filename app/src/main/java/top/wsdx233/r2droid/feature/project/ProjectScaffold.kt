@@ -89,6 +89,8 @@ import top.wsdx233.r2droid.feature.ai.AiViewModel
 import top.wsdx233.r2droid.feature.ai.ui.AiChatScreen
 import top.wsdx233.r2droid.feature.ai.ui.AiProviderSettingsScreen
 import top.wsdx233.r2droid.feature.terminal.ui.CommandScreen
+import top.wsdx233.r2droid.core.ui.components.CommandSuggestButton
+import top.wsdx233.r2droid.core.ui.components.CommandSuggestionPanel
 import kotlinx.coroutines.delay
 import top.wsdx233.r2droid.util.R2PipeManager
 
@@ -673,6 +675,7 @@ private fun CommandBottomSheetContent(
     isExecuting: Boolean,
     onRun: () -> Unit
 ) {
+    var showSuggestions by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -684,10 +687,22 @@ private fun CommandBottomSheetContent(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(bottom = 12.dp)
         )
+        if (showSuggestions) {
+            CommandSuggestionPanel(
+                currentInput = command,
+                onSelect = { onCommandChange(it); showSuggestions = false },
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            CommandSuggestButton(
+                expanded = showSuggestions,
+                onToggle = { showSuggestions = !showSuggestions }
+            )
+            Spacer(modifier = Modifier.width(8.dp))
             OutlinedTextField(
                 value = command,
                 onValueChange = onCommandChange,

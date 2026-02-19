@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Card
@@ -32,7 +33,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import top.wsdx233.r2droid.R
+import top.wsdx233.r2droid.feature.manual.R2ManualScreen
 import top.wsdx233.r2droid.util.R2PipeManager
 
 @Composable
@@ -40,7 +44,18 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
     val context = LocalContext.current
     val saveState by viewModel.saveProjectState.collectAsState()
     var showSaveDialog by remember { mutableStateOf(false) }
-    
+    var showManual by remember { mutableStateOf(false) }
+
+    // Manual dialog
+    if (showManual) {
+        Dialog(
+            onDismissRequest = { showManual = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            R2ManualScreen(onBack = { showManual = false })
+        }
+    }
+
     // Initialize repository
     androidx.compose.runtime.LaunchedEffect(Unit) {
         viewModel.initializeSavedProjectRepository(context)
@@ -253,6 +268,42 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
             }
         }
         
+        // Manual Section
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { showManual = true },
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.manual_open),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = stringResource(R.string.manual_open_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        }
+
         // Session Info
         Spacer(modifier = Modifier.height(16.dp))
         Text(

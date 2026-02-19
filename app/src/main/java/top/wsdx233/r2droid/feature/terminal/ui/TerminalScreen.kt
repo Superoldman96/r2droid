@@ -55,6 +55,8 @@ import com.termux.view.TerminalView
 import com.termux.view.TerminalViewClient
 import kotlinx.coroutines.launch
 import top.wsdx233.r2droid.R
+import top.wsdx233.r2droid.core.ui.components.CommandSuggestButton
+import top.wsdx233.r2droid.core.ui.components.CommandSuggestionPanel
 import java.io.File
 
 /**
@@ -228,6 +230,7 @@ fun CommandScreen(
 ) {
     var output by remember { mutableStateOf("") }
     var isExecuting by remember { mutableStateOf(false) }
+    var showSuggestions by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
     val scrollState = androidx.compose.foundation.rememberScrollState()
@@ -306,7 +309,15 @@ fun CommandScreen(
         
         // Divider
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        
+
+        // Suggestion panel (above input)
+        if (showSuggestions) {
+            CommandSuggestionPanel(
+                currentInput = command,
+                onSelect = { onCommandChange(it); showSuggestions = false }
+            )
+        }
+
         // Command input area
         Row(
             modifier = Modifier
@@ -315,14 +326,13 @@ fun CommandScreen(
                 .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Command prompt
-            Text(
-                text = "$ ",
-                color = MaterialTheme.colorScheme.primary,
-                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                style = MaterialTheme.typography.bodyLarge
+            CommandSuggestButton(
+                expanded = showSuggestions,
+                onToggle = { showSuggestions = !showSuggestions }
             )
-            
+
+            Spacer(modifier = Modifier.width(4.dp))
+
             // Input field
             OutlinedTextField(
                 value = command,

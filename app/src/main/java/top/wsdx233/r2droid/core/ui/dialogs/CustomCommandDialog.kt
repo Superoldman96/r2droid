@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import top.wsdx233.r2droid.R
+import top.wsdx233.r2droid.core.ui.components.CommandSuggestButton
+import top.wsdx233.r2droid.core.ui.components.CommandSuggestionPanel
 
 @Composable
 fun CustomCommandDialog(
@@ -44,6 +46,7 @@ fun CustomCommandDialog(
     var command by remember { mutableStateOf(initialCommand) }
     var output by remember { mutableStateOf("") }
     var isExecuting by remember { mutableStateOf(false) }
+    var showSuggestions by remember { mutableStateOf(false) }
     
     // We need a coroutine scope to execute commands and update UI
     val scope = rememberCoroutineScope()
@@ -53,10 +56,22 @@ fun CustomCommandDialog(
         title = { Text("Execute r2 Command") },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
+                if (showSuggestions) {
+                    CommandSuggestionPanel(
+                        currentInput = command,
+                        onSelect = { command = it; showSuggestions = false },
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    CommandSuggestButton(
+                        expanded = showSuggestions,
+                        onToggle = { showSuggestions = !showSuggestions }
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     OutlinedTextField(
                         value = command,
                         onValueChange = { command = it },

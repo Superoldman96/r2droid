@@ -465,4 +465,11 @@
     <string name="ai_approval_allow">允许</string>
     <string name="ai_approval_deny">拒绝</string>
 
+    <!-- Manual -->
+    <string name="manual_title">R2 命令手册</string>
+    <string name="manual_search_hint">搜索命令...</string>
+    <string name="manual_subcommands">子命令</string>
+    <string name="manual_open">命令手册</string>
+    <string name="manual_open_desc">浏览 radare2 命令参考</string>
+
 </resources>
