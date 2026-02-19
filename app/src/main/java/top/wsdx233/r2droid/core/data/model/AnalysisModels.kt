@@ -1,5 +1,6 @@
 package top.wsdx233.r2droid.core.data.model
 
+import android.util.Base64
 import org.json.JSONObject
 
 data class BinInfo(
@@ -275,7 +276,7 @@ data class DisasmInstruction(
                 disasm = json.optString("disasm", ""),
                 family = json.optString("family", ""),
                 flags = flagsList,
-                comment = json.optString("comment").takeIf { it.isNotEmpty() },
+                comment = json.optString("comment").takeIf { it.isNotEmpty() }?.let { tryDecodeBase64(it) },
                 fcnAddr = json.optLong("fcn_addr", 0),
                 fcnLast = json.optLong("fcn_last", 0),
                 jump = if (json.has("jump")) json.optLong("jump") else null,
@@ -307,6 +308,16 @@ data class DisasmInstruction(
         return xrefs.any { xref ->
             xref.type == "CODE" && (xref.addr < fcnAddr || xref.addr > fcnLast)
         }
+    }
+}
+
+private fun tryDecodeBase64(text: String): String {
+    return try {
+        val decoded = Base64.decode(text, Base64.DEFAULT)
+        val str = String(decoded, Charsets.UTF_8)
+        if (str.all { it.code in 0x20..0x7E || it == '\n' || it == '\r' || it == '\t' }) str else text
+    } catch (_: Exception) {
+        text
     }
 }
 
