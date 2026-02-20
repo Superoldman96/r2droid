@@ -1,9 +1,8 @@
 package top.wsdx233.r2droid.feature.decompiler.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,7 +27,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -59,16 +60,13 @@ fun DecompilationViewer(
         return
     }
 
-    // Pinch-to-zoom scale
+    // Pinch-to-zoom scale (persisted in app settings)
     val baseFontSize = 13f
     val baseLineHeight = 18f
-    var scale by remember { mutableFloatStateOf(1f) }
+    var scale by remember { mutableFloatStateOf(viewModel.decompilerZoomScale.value) }
     val resetZoomTrigger by viewModel.resetZoomTrigger.collectAsState()
     LaunchedEffect(resetZoomTrigger) {
         if (resetZoomTrigger > 0) scale = 1f
-    }
-    val transformState = rememberTransformableState { zoomChange, _, _ ->
-        scale = (scale * zoomChange).coerceIn(0.5f, 3f)
     }
     val scaledFontSize = (baseFontSize * scale).sp
     val scaledLineHeight = (baseLineHeight * scale).sp
@@ -208,7 +206,44 @@ fun DecompilationViewer(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color(0xFF1E1E1E))
-                .transformable(state = transformState)
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        var prevSpan = 0f
+                        var zooming = false
+                        do {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            val pressed = event.changes.filter { it.pressed }
+                            if (pressed.size >= 2) {
+                                val p1 = pressed[0].position
+                                val p2 = pressed[1].position
+                                val span = (p1 - p2).getDistance()
+                                if (zooming && prevSpan > 1f) {
+                                    val centroid = Offset(
+                                        (p1.x + p2.x) / 2f,
+                                        (p1.y + p2.y) / 2f
+                                    )
+                                    val oldScale = scale
+                                    val newScale = (oldScale * span / prevSpan)
+                                        .coerceIn(0.5f, 3f)
+                                    if (newScale != oldScale) {
+                                        scrollState.dispatchRawDelta(
+                                            (scrollState.value + centroid.y) *
+                                                (newScale / oldScale - 1f)
+                                        )
+                                        scale = newScale
+                                    }
+                                }
+                                prevSpan = span
+                                zooming = true
+                                event.changes.forEach { it.consume() }
+                            } else if (zooming) {
+                                event.changes.forEach { it.consume() }
+                                prevSpan = 0f
+                            }
+                        } while (event.changes.any { it.pressed })
+                        if (zooming) viewModel.updateDecompilerZoomScale(scale)
+                    }
+                }
         ) {
             // Line numbers column (conditional)
             if (showLineNumbers) {

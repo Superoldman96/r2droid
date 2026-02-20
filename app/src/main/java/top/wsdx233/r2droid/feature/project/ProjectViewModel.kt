@@ -133,6 +133,9 @@ class ProjectViewModel @Inject constructor(
     private val _decompilerWordWrap = MutableStateFlow(SettingsManager.decompilerWordWrap)
     val decompilerWordWrap: StateFlow<Boolean> = _decompilerWordWrap.asStateFlow()
 
+    private val _decompilerZoomScale = MutableStateFlow(SettingsManager.decompilerZoomScale)
+    val decompilerZoomScale: StateFlow<Float> = _decompilerZoomScale.asStateFlow()
+
     private val _resetZoomTrigger = MutableStateFlow(0)
     val resetZoomTrigger: StateFlow<Int> = _resetZoomTrigger.asStateFlow()
 
@@ -148,7 +151,14 @@ class ProjectViewModel @Inject constructor(
         SettingsManager.decompilerWordWrap = new
     }
 
+    fun updateDecompilerZoomScale(scale: Float) {
+        _decompilerZoomScale.value = scale
+        SettingsManager.decompilerZoomScale = scale
+    }
+
     fun resetDecompilerZoom() {
+        _decompilerZoomScale.value = 1f
+        SettingsManager.decompilerZoomScale = 1f
         _resetZoomTrigger.value++
     }
     

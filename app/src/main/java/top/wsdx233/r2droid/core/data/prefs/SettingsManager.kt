@@ -16,6 +16,7 @@ object SettingsManager {
     private const val KEY_DECOMPILER_WORD_WRAP = "decompiler_word_wrap"
     private const val KEY_DECOMPILER_DEFAULT = "decompiler_default"
     private const val KEY_MAX_LOG_ENTRIES = "max_log_entries"
+    private const val KEY_DECOMPILER_ZOOM_SCALE = "decompiler_zoom_scale"
 
     private lateinit var prefs: SharedPreferences
 
@@ -100,6 +101,10 @@ object SettingsManager {
     var decompilerDefault: String
         get() = prefs.getString(KEY_DECOMPILER_DEFAULT, "r2ghidra") ?: "r2ghidra"
         set(value) { prefs.edit().putString(KEY_DECOMPILER_DEFAULT, value).apply() }
+
+    var decompilerZoomScale: Float
+        get() = prefs.getFloat(KEY_DECOMPILER_ZOOM_SCALE, 1f)
+        set(value) { prefs.edit().putFloat(KEY_DECOMPILER_ZOOM_SCALE, value).apply() }
 
     var maxLogEntries: Int
         get() = prefs.getInt(KEY_MAX_LOG_ENTRIES, 100)
