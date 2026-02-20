@@ -541,6 +541,19 @@
     <string name="r2frida_install_switch_hint">可尝试切换下方的下载源后重试</string>
     <string name="r2frida_source_github">下载源：GitHub（国际）</string>
     <string name="r2frida_source_gitee">下载源：Gitee（国内）</string>
+    <!-- Keep Alive / Background -->
+    <string name="settings_background">后台保活</string>
+    <string name="settings_keep_alive">常驻通知</string>
+    <string name="settings_keep_alive_desc">分析期间保持应用在后台运行</string>
+    <string name="settings_ignore_battery">忽略电池优化</string>
+    <string name="settings_ignore_battery_desc">请求系统不限制本应用</string>
+    <string name="settings_ignore_battery_already">已设为不受限</string>
+    <string name="settings_dontkillmyapp">Don\'t Kill My App</string>
+    <string name="settings_dontkillmyapp_desc">查看针对您设备的防杀后台技巧</string>
+    <string name="keep_alive_channel_name">后台分析</string>
+    <string name="keep_alive_notification_title">R2Droid 运行中</string>
+    <string name="keep_alive_notification_text">分析会话进行中</string>
+
     <string name="r2frida_feature_wip">即将推出</string>
     <string name="r2frida_feature_wip_desc">r2frida 功能正在开发中，插件已安装成功。</string>
 

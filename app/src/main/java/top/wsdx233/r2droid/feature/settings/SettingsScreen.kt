@@ -2,7 +2,10 @@ package top.wsdx233.r2droid.screen.settings
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import android.os.PowerManager
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -15,6 +18,9 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FontDownload
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.BatteryAlert
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SystemUpdate
@@ -63,6 +69,9 @@ class SettingsViewModel : androidx.lifecycle.ViewModel() {
 
     private val _maxLogEntries = MutableStateFlow(SettingsManager.maxLogEntries)
     val maxLogEntries = _maxLogEntries.asStateFlow()
+
+    private val _keepAlive = MutableStateFlow(SettingsManager.keepAliveNotification)
+    val keepAlive = _keepAlive.asStateFlow()
 
     // Initialize r2rc content
     fun loadR2rcContent(context: Context) {
@@ -154,6 +163,16 @@ class SettingsViewModel : androidx.lifecycle.ViewModel() {
         _maxLogEntries.value = value
     }
 
+    fun setKeepAlive(context: Context, value: Boolean) {
+        SettingsManager.keepAliveNotification = value
+        _keepAlive.value = value
+        if (value) {
+            top.wsdx233.r2droid.service.KeepAliveService.start(context)
+        } else {
+            top.wsdx233.r2droid.service.KeepAliveService.stop(context)
+        }
+    }
+
     fun resetAll(context: Context) {
         SettingsManager.fontPath = null
         SettingsManager.language = "system"
@@ -164,6 +183,7 @@ class SettingsViewModel : androidx.lifecycle.ViewModel() {
         SettingsManager.decompilerWordWrap = false
         SettingsManager.decompilerDefault = "r2ghidra"
         SettingsManager.maxLogEntries = 100
+        SettingsManager.keepAliveNotification = true
         _fontPath.value = null
         _language.value = "system"
         _projectHome.value = null
@@ -173,6 +193,7 @@ class SettingsViewModel : androidx.lifecycle.ViewModel() {
         _decompilerWordWrap.value = false
         _decompilerDefault.value = "r2ghidra"
         _maxLogEntries.value = 100
+        _keepAlive.value = true
     }
 }
 
@@ -191,6 +212,7 @@ fun SettingsScreen(
     val decompilerWordWrap by viewModel.decompilerWordWrap.collectAsState()
     val decompilerDefault by viewModel.decompilerDefault.collectAsState()
     val maxLogEntries by viewModel.maxLogEntries.collectAsState()
+    val keepAlive by viewModel.keepAlive.collectAsState()
 
     val context = LocalContext.current
     
@@ -280,6 +302,48 @@ fun SettingsScreen(
                     onClick = {
                         tempMaxLog = maxLogEntries.toString()
                         showMaxLogDialog = true
+                    }
+                )
+            }
+
+            item {
+                HorizontalDivider()
+                SettingsSectionHeader(stringResource(R.string.settings_background))
+            }
+
+            item {
+                SettingsToggleItem(
+                    title = stringResource(R.string.settings_keep_alive),
+                    subtitle = stringResource(R.string.settings_keep_alive_desc),
+                    checked = keepAlive,
+                    onCheckedChange = { viewModel.setKeepAlive(context, it) }
+                )
+            }
+
+            item {
+                val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+                val isIgnoring = pm.isIgnoringBatteryOptimizations(context.packageName)
+                SettingsItem(
+                    title = stringResource(R.string.settings_ignore_battery),
+                    subtitle = if (isIgnoring) stringResource(R.string.settings_ignore_battery_already)
+                        else stringResource(R.string.settings_ignore_battery_desc),
+                    icon = Icons.Default.BatteryAlert,
+                    onClick = {
+                        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                            data = Uri.parse("package:${context.packageName}")
+                        }
+                        context.startActivity(intent)
+                    }
+                )
+            }
+
+            item {
+                SettingsItem(
+                    title = stringResource(R.string.settings_dontkillmyapp),
+                    subtitle = stringResource(R.string.settings_dontkillmyapp_desc),
+                    icon = Icons.Default.OpenInNew,
+                    onClick = {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://dontkillmyapp.com/")))
                     }
                 )
             }

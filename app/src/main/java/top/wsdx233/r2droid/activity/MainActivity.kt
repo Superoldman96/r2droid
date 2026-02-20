@@ -64,6 +64,11 @@ class MainActivity : ComponentActivity() {
         top.wsdx233.r2droid.data.SettingsManager.initialize(applicationContext)
         top.wsdx233.r2droid.feature.ai.data.AiSettingsManager.initialize(applicationContext)
 
+        // 启动常驻通知保活服务
+        if (top.wsdx233.r2droid.data.SettingsManager.keepAliveNotification) {
+            top.wsdx233.r2droid.service.KeepAliveService.start(applicationContext)
+        }
+
         // 启动应用时检查并安装
         lifecycleScope.launch {
             R2Installer.checkAndInstall(applicationContext)

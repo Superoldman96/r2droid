@@ -539,6 +539,19 @@
     <string name="r2frida_install_switch_hint">Try switching the download source below and retry</string>
     <string name="r2frida_source_github">Source: GitHub (International)</string>
     <string name="r2frida_source_gitee">Source: Gitee (China)</string>
+    <!-- Keep Alive / Background -->
+    <string name="settings_background">Background</string>
+    <string name="settings_keep_alive">Persistent Notification</string>
+    <string name="settings_keep_alive_desc">Keep app alive in background during analysis</string>
+    <string name="settings_ignore_battery">Ignore Battery Optimization</string>
+    <string name="settings_ignore_battery_desc">Request system to not restrict this app</string>
+    <string name="settings_ignore_battery_already">Already unrestricted</string>
+    <string name="settings_dontkillmyapp">Don\'t Kill My App</string>
+    <string name="settings_dontkillmyapp_desc">View device-specific tips to prevent app killing</string>
+    <string name="keep_alive_channel_name">Background Analysis</string>
+    <string name="keep_alive_notification_title">R2Droid is running</string>
+    <string name="keep_alive_notification_text">Analysis session active</string>
+
     <string name="r2frida_feature_wip">Coming Soon</string>
     <string name="r2frida_feature_wip_desc">r2frida features are under development. The plugin has been installed successfully.</string>
 

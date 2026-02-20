@@ -17,6 +17,7 @@ object SettingsManager {
     private const val KEY_DECOMPILER_DEFAULT = "decompiler_default"
     private const val KEY_MAX_LOG_ENTRIES = "max_log_entries"
     private const val KEY_DECOMPILER_ZOOM_SCALE = "decompiler_zoom_scale"
+    private const val KEY_KEEP_ALIVE = "keep_alive_notification"
 
     private lateinit var prefs: SharedPreferences
 
@@ -109,4 +110,8 @@ object SettingsManager {
     var maxLogEntries: Int
         get() = prefs.getInt(KEY_MAX_LOG_ENTRIES, 100)
         set(value) { prefs.edit().putInt(KEY_MAX_LOG_ENTRIES, value).apply() }
+
+    var keepAliveNotification: Boolean
+        get() = prefs.getBoolean(KEY_KEEP_ALIVE, true)
+        set(value) { prefs.edit().putBoolean(KEY_KEEP_ALIVE, value).apply() }
 }
