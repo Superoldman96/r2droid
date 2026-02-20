@@ -10,7 +10,7 @@ import java.io.File
 import java.io.OutputStreamWriter
 import java.util.concurrent.TimeUnit
 
-class R2pipe(context: Context, private val filePath: String? = null, private val flags: String = "") {
+class R2pipe(context: Context, private val filePath: String? = null, private val flags: String = "", private val rawArgs: String? = null) {
 
     private val filesDir: File = context.filesDir
     private var process: Process? = null
@@ -31,7 +31,9 @@ class R2pipe(context: Context, private val filePath: String? = null, private val
             val r2Binary = File(workDir, "r2").absolutePath
 
             // 使用 sh 启动
-            val cmdArgs = if (filePath != null) {
+            val cmdArgs = if (rawArgs != null) {
+                "$r2Binary -q0 $rawArgs"
+            } else if (filePath != null) {
                 "$r2Binary -q0 $flags \"$filePath\""
             } else {
                 "$r2Binary -q0 -"

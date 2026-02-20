@@ -6,6 +6,8 @@
     <string name="home_subtitle">Mobile Reverse Engineering</string>
     <string name="home_open_file_title">Open File</string>
     <string name="home_open_file_desc">Select a binary to analyze</string>
+    <string name="home_features_title">Features</string>
+    <string name="home_features_desc">Explore more tools</string>
     <string name="home_recent_projects">Recent Projects</string>
     <string name="home_saved_projects">Saved Projects</string>
     <string name="home_no_recent_projects">No recent projects</string>
@@ -489,4 +491,21 @@
     <string name="manual_subcommands">Subcommands</string>
     <string name="manual_open">Command Manual</string>
     <string name="manual_open_desc">Browse radare2 command reference</string>
+
+    <!-- Features -->
+    <string name="features_title">Features</string>
+    <string name="feature_r2frida_title">r2frida</string>
+    <string name="feature_r2frida_desc">Powerful dynamic instrumentation integration (WIP)</string>
+    <string name="feature_custom_start_title">Custom Start</string>
+    <string name="feature_custom_start_desc">Run a fully custom R2 command</string>
+    <string name="feature_terminal_title">Advanced Terminal</string>
+    <string name="feature_terminal_desc">Native terminal console, supports complex interactions</string>
+    <string name="feature_manual_title">R2 User Manual</string>
+    <string name="feature_manual_desc">Browse offline Radare2 command help</string>
+    <string name="feature_plugins_title">Plugin Management</string>
+    <string name="feature_plugins_desc">Install and manage extended features (WIP)</string>
+    <string name="features_custom_start_dialog_title">Custom R2 Command</string>
+    <string name="features_custom_start_hint">Full command</string>
+    <string name="features_custom_start_examples">e.g. r2 -  or  r2 \"frida://attach/pid\"</string>
+
 </resources>

@@ -21,6 +21,7 @@ sealed class HomeUiEvent {
     data object NavigateToProject : HomeUiEvent()
     data object NavigateToAbout : HomeUiEvent()
     data object NavigateToSettings : HomeUiEvent()
+    data object NavigateToFeatures : HomeUiEvent()
     data class ShowError(val message: String) : HomeUiEvent()
     data class ShowMessage(val message: String) : HomeUiEvent()
 }
@@ -209,6 +210,12 @@ class HomeViewModel : ViewModel() {
     fun onAboutClicked() {
         viewModelScope.launch {
             _uiEvent.send(HomeUiEvent.NavigateToAbout)
+        }
+    }
+
+    fun onFeaturesClicked() {
+        viewModelScope.launch {
+            _uiEvent.send(HomeUiEvent.NavigateToFeatures)
         }
     }
 }

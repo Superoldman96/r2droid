@@ -42,9 +42,12 @@ object R2PipeManager {
 
     // 待处理的文件路径，由 HomeViewModel 设置，ProjectViewModel 读取
     var pendingFilePath: String? = null
-    
+
     // 待处理的恢复标志 (如 "-i scriptPath")，用于恢复已保存的项目
     var pendingRestoreFlags: String? = null
+
+    // 待处理的自定义完整指令 (如 "frida://attach/pid" 或 "-")
+    var pendingCustomCommand: String? = null
     
     // 待处理的项目 ID，用于关联已保存的项目（便于后续更新保存）
     var pendingProjectId: String? = null
@@ -127,6 +130,42 @@ object R2PipeManager {
                         currentFilePath = null
                         currentProjectId = null
                         throw RuntimeException("R2Pipe process failed to start immediately.")
+                    }
+                } catch (e: Exception) {
+                    _isConnected.set(false)
+                    r2Pipe = null
+                    _state.value = State.Failure("Open R2Pipe session", e)
+                    Result.failure(e)
+                }
+            }
+        }
+    }
+
+    /**
+     * 使用原始参数打开 R2Pipe 会话（用于自定义指令）
+     */
+    suspend fun openRaw(context: Context, rawArgs: String): Result<Unit> {
+        return mutex.withLock {
+            withContext(Dispatchers.IO) {
+                try {
+                    _state.value = State.Executing("Open R2Pipe raw: $rawArgs")
+                    r2Pipe?.quit()
+                    r2Pipe = null
+                    r2Pipe = R2pipe(context.applicationContext, rawArgs = rawArgs)
+                    if (r2Pipe?.isProcessRunning() == true) {
+                        try { r2Pipe!!.cmd("e scr.color=false") } catch (_: Exception) {}
+                        _isConnected.set(true)
+                        _sessionId.incrementAndGet()
+                        currentFilePath = rawArgs
+                        currentProjectId = pendingProjectId
+                        pendingProjectId = null
+                        isDirtyAfterSave = false
+                        _state.value = State.Success("Open R2Pipe session", "Session started")
+                        Result.success(Unit)
+                    } else {
+                        currentFilePath = null
+                        currentProjectId = null
+                        throw RuntimeException("R2Pipe process failed to start.")
                     }
                 } catch (e: Exception) {
                     _isConnected.set(false)

@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -68,7 +69,8 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel(),
     onNavigateToProject: () -> Unit,
     onNavigateToAbout: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    onNavigateToFeatures: () -> Unit
 ) {
     val context = LocalContext.current
     var showDeleteDialog by remember { mutableStateOf<SavedProject?>(null) }
@@ -95,6 +97,9 @@ fun HomeScreen(
                 }
                 is HomeUiEvent.NavigateToSettings -> {
                     onNavigateToSettings()
+                }
+                is HomeUiEvent.NavigateToFeatures -> {
+                    onNavigateToFeatures()
                 }
                 is HomeUiEvent.ShowError -> {
                     Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
@@ -162,15 +167,33 @@ fun HomeScreen(
             
             Spacer(modifier = Modifier.height(48.dp))
 
-            // Main Action: Open File
-            HomeActionButton(
-                title = stringResource(R.string.home_open_file_title),
-                description = stringResource(R.string.home_open_file_desc),
-                icon = Icons.Default.FolderOpen,
-                onClick = {
-                    filePickerLauncher.launch(arrayOf("*/*"))
-                }
-            )
+            // Main Actions: Open File and Features
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                HomeActionButton(
+                    title = stringResource(R.string.home_open_file_title),
+                    description = stringResource(R.string.home_open_file_desc),
+                    icon = Icons.Default.FolderOpen,
+                    onClick = {
+                        filePickerLauncher.launch(arrayOf("*/*"))
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+
+                HomeActionButton(
+                    title = stringResource(R.string.home_features_title),
+                    description = stringResource(R.string.home_features_desc),
+                    icon = Icons.Default.Build,
+                    onClick = viewModel::onFeaturesClicked,
+                    modifier = Modifier.weight(1f),
+                    containerColor = Color(0xFFE0F2F1),
+                    contentColor = Color(0xFF00695C),
+                    iconContainerColor = Color(0xFF009688).copy(alpha = 0.12f),
+                    iconColor = Color(0xFF009688)
+                )
+            }
 
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -369,60 +392,60 @@ fun HomeActionButton(
     title: String,
     description: String,
     icon: ImageVector,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
+    contentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
+    iconContainerColor: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+    iconColor: Color = MaterialTheme.colorScheme.primary
 ) {
     Card(
         onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(120.dp),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
+        colors = CardDefaults.cardColors(containerColor = containerColor)
     ) {
-        Row(
+        Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxWidth()
+                .padding(20.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-            
-            Spacer(modifier = Modifier.size(24.dp))
-            
-            Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(iconContainerColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconColor,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleLarge.copy(
+                    style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold
                     ),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    color = contentColor
                 )
             }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = contentColor.copy(alpha = 0.8f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
-
 @Composable
 fun EmptyHistoryState() {
     Box(

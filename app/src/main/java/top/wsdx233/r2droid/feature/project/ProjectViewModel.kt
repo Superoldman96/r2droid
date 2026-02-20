@@ -48,6 +48,7 @@ sealed interface ProjectEvent {
     data class LoadGraph(val graphType: GraphType) : ProjectEvent
     object Initialize : ProjectEvent
     object StartRestoreSession : ProjectEvent
+    object StartCustomCommandSession : ProjectEvent
     data class StartAnalysisSession(val cmd: String, val writable: Boolean, val flags: String) : ProjectEvent
     object ClearLogs : ProjectEvent
     data class ExecuteCommand(val cmd: String, val callback: (String) -> Unit) : ProjectEvent
@@ -166,6 +167,7 @@ class ProjectViewModel @Inject constructor(
         when (event) {
             is ProjectEvent.Initialize -> initialize()
             is ProjectEvent.StartRestoreSession -> startRestoreSession()
+            is ProjectEvent.StartCustomCommandSession -> startCustomCommandSession()
             is ProjectEvent.StartAnalysisSession -> startAnalysisSession(event.cmd, event.writable, event.flags)
             is ProjectEvent.JumpToAddress -> jumpToAddress(event.address)
             is ProjectEvent.UpdateCursor -> updateCursor(event.address)
@@ -288,8 +290,12 @@ class ProjectViewModel @Inject constructor(
     fun initialize() {
         val path = R2PipeManager.pendingFilePath
         val restoreFlags = R2PipeManager.pendingRestoreFlags
-        
-        if (path != null) {
+        val customCmd = R2PipeManager.pendingCustomCommand
+
+        if (customCmd != null) {
+            // Custom command - skip config, go directly to analyzing
+            _uiState.value = ProjectUiState.Analyzing
+        } else if (path != null) {
             if (restoreFlags != null) {
                 // Restoring a saved project - skip config screen
                 _uiState.value = ProjectUiState.Analyzing
@@ -361,6 +367,23 @@ class ProjectViewModel @Inject constructor(
                 R2PipeManager.pendingRestoreFlags = null
             } else {
                 _uiState.value = ProjectUiState.Error(openResult.exceptionOrNull()?.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun startCustomCommandSession() {
+        val rawArgs = R2PipeManager.pendingCustomCommand ?: return
+        viewModelScope.launch {
+            _uiState.value = ProjectUiState.Analyzing
+            clearLogs()
+            val result = R2PipeManager.openRaw(context, rawArgs)
+            if (result.isSuccess) {
+                loadOverview()
+                R2PipeManager.pendingCustomCommand = null
+            } else {
+                _uiState.value = ProjectUiState.Error(
+                    result.exceptionOrNull()?.message ?: "Unknown error"
+                )
             }
         }
     }

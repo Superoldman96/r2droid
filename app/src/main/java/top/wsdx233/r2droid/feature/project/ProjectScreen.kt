@@ -46,10 +46,15 @@ fun ProjectScreen(
         viewModel.onEvent(ProjectEvent.Initialize)
     }
 
-    // Handle project restoration
+    // Handle project restoration or custom command
     androidx.compose.runtime.LaunchedEffect(uiState) {
-        if (uiState is ProjectUiState.Analyzing && R2PipeManager.pendingRestoreFlags != null) {
-            viewModel.onEvent(ProjectEvent.StartRestoreSession)
+        if (uiState is ProjectUiState.Analyzing) {
+            when {
+                R2PipeManager.pendingCustomCommand != null ->
+                    viewModel.onEvent(ProjectEvent.StartCustomCommandSession)
+                R2PipeManager.pendingRestoreFlags != null ->
+                    viewModel.onEvent(ProjectEvent.StartRestoreSession)
+            }
         }
     }
 
