@@ -168,6 +168,7 @@
     <string name="hex_modify_hex">修改十六进制 (wx)</string>
     <string name="hex_modify_string">修改字符串 (w)</string>
     <string name="hex_modify_opcode">修改指令 (wa)</string>
+    <string name="hex_modify_comment">修改注释 (CCu)</string>
     <string name="hex_modify_default">修改</string>
     <string name="reopen_write_title">文件不可写</string>
     <string name="reopen_write_message">当前文件未以写入模式打开，是否重新以写入模式打开？</string>

@@ -318,11 +318,15 @@ data class DisasmInstruction(
     }
 }
 
+private val BASE64_REGEX = Regex("^[A-Za-z0-9+/]+=*$")
+
 private fun tryDecodeBase64(text: String): String {
+    if (!BASE64_REGEX.matches(text)) return text
     return try {
-        val decoded = Base64.decode(text, Base64.DEFAULT)
+        val decoded = Base64.decode(text, Base64.NO_WRAP)
         val str = String(decoded, Charsets.UTF_8)
-        if (str.all { it.code in 0x20..0x7E || it == '\n' || it == '\r' || it == '\t' }) str else text
+        val reEncoded = Base64.encodeToString(decoded, Base64.NO_WRAP)
+        if (reEncoded == text) str else text
     } catch (_: Exception) {
         text
     }

@@ -316,22 +316,17 @@ fun DisassemblyViewer(
                                 onModify = { type ->
                                     showMenu = false
                                     val capturedOpcode = instr.opcode
-                                    coroutineScope.launch {
-                                        val isWritable = try {
-                                            val ijResult = top.wsdx233.r2droid.util.R2PipeManager.execute("ij").getOrDefault("{}")
-                                            org.json.JSONObject(ijResult).getJSONObject("core").getBoolean("iorw")
-                                        } catch (_: Exception) { false }
-                                        if (isWritable) {
-                                            modifyType = type
-                                            showModifyDialog = true
-                                            modifyInitialValue = when (type) {
-                                                "asm" -> capturedOpcode
-                                                "hex" -> ""
-                                                "string" -> null
-                                                else -> ""
-                                            }
-                                        } else {
-                                            pendingWriteAction = {
+                                    if (type == "comment") {
+                                        modifyType = type
+                                        modifyInitialValue = null
+                                        showModifyDialog = true
+                                    } else {
+                                        coroutineScope.launch {
+                                            val isWritable = try {
+                                                val ijResult = top.wsdx233.r2droid.util.R2PipeManager.execute("ij").getOrDefault("{}")
+                                                org.json.JSONObject(ijResult).getJSONObject("core").getBoolean("iorw")
+                                            } catch (_: Exception) { false }
+                                            if (isWritable) {
                                                 modifyType = type
                                                 showModifyDialog = true
                                                 modifyInitialValue = when (type) {
@@ -340,8 +335,19 @@ fun DisassemblyViewer(
                                                     "string" -> null
                                                     else -> ""
                                                 }
+                                            } else {
+                                                pendingWriteAction = {
+                                                    modifyType = type
+                                                    showModifyDialog = true
+                                                    modifyInitialValue = when (type) {
+                                                        "asm" -> capturedOpcode
+                                                        "hex" -> ""
+                                                        "string" -> null
+                                                        else -> ""
+                                                    }
+                                                }
+                                                showReopenDialog = true
                                             }
-                                            showReopenDialog = true
                                         }
                                     }
                                 },
@@ -445,9 +451,25 @@ fun DisassemblyViewer(
         
         // Async fetch for modify dialog initial value
         LaunchedEffect(showModifyDialog, modifyType, menuTargetAddress) {
-            if (showModifyDialog && modifyType == "string" && menuTargetAddress != null && modifyInitialValue == null) {
-                val result = top.wsdx233.r2droid.util.R2PipeManager.execute("ps @ ${menuTargetAddress}")
-                modifyInitialValue = result.getOrDefault("").trim()
+            if (showModifyDialog && menuTargetAddress != null && modifyInitialValue == null) {
+                when (modifyType) {
+                    "string" -> {
+                        val result = top.wsdx233.r2droid.util.R2PipeManager.execute("ps @ ${menuTargetAddress}")
+                        modifyInitialValue = result.getOrDefault("").trim()
+                    }
+                    "comment" -> {
+                        val result = top.wsdx233.r2droid.util.R2PipeManager.execute("CC. @ ${menuTargetAddress}")
+                        val raw = result.getOrDefault("").trim()
+                        modifyInitialValue = if (raw.matches(Regex("^[A-Za-z0-9+/]+=*$"))) {
+                            try {
+                                val bytes = android.util.Base64.decode(raw, android.util.Base64.NO_WRAP)
+                                val decoded = String(bytes, Charsets.UTF_8)
+                                val reEncoded = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                                if (reEncoded == raw) decoded else raw
+                            } catch (_: Exception) { raw }
+                        } else raw
+                    }
+                }
             }
         }
 
@@ -457,6 +479,7 @@ fun DisassemblyViewer(
                 "hex" -> "Modify Hex (wx)"
                 "string" -> "Modify String (w)"
                 "asm" -> "Modify Opcode (wa)"
+                "comment" -> "Modify Comment (CCu)"
                 else -> "Modify"
             }
             if (modifyInitialValue != null) {
@@ -469,6 +492,7 @@ fun DisassemblyViewer(
                             "hex" -> viewModel.onEvent(DisasmEvent.WriteHex(menuTargetAddress!!, value))
                             "string" -> viewModel.onEvent(DisasmEvent.WriteString(menuTargetAddress!!, value))
                             "asm" -> viewModel.onEvent(DisasmEvent.WriteAsm(menuTargetAddress!!, value))
+                            "comment" -> viewModel.onEvent(DisasmEvent.WriteComment(menuTargetAddress!!, value))
                          }
                     }
                 )

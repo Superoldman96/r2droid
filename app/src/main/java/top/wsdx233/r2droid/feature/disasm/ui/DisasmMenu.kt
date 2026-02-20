@@ -176,6 +176,10 @@ fun DisasmContextMenu(
                         text = { Text(stringResource(R.string.hex_modify_opcode)) },
                         onClick = { onModify("asm") }
                     )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.hex_modify_comment)) },
+                        onClick = { onModify("comment") }
+                    )
                 }
 
                 "function" -> {

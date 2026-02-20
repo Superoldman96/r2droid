@@ -73,6 +73,7 @@ sealed interface DisasmEvent {
     data class WriteAsm(val address: Long, val asm: String) : DisasmEvent
     data class WriteHex(val address: Long, val hex: String) : DisasmEvent
     data class WriteString(val address: Long, val text: String) : DisasmEvent
+    data class WriteComment(val address: Long, val comment: String) : DisasmEvent
     object RefreshData : DisasmEvent
     object Reset : DisasmEvent
     data class FetchXrefs(val address: Long) : DisasmEvent
@@ -145,6 +146,7 @@ class DisasmViewModel @Inject constructor(
             is DisasmEvent.WriteAsm -> writeAsm(event.address, event.asm)
             is DisasmEvent.WriteHex -> writeHex(event.address, event.hex)
             is DisasmEvent.WriteString -> writeString(event.address, event.text)
+            is DisasmEvent.WriteComment -> writeComment(event.address, event.comment)
             is DisasmEvent.RefreshData -> refreshData()
             is DisasmEvent.Reset -> reset()
             is DisasmEvent.FetchXrefs -> fetchXrefs(event.address)
@@ -339,6 +341,15 @@ class DisasmViewModel @Inject constructor(
 
             resetAndScrollTo(addr)
 
+            _dataModifiedEvent.value = System.currentTimeMillis()
+        }
+    }
+
+    fun writeComment(addr: Long, comment: String) {
+        viewModelScope.launch {
+            val escaped = comment.replace("\"", "\\\"")
+            top.wsdx233.r2droid.util.R2PipeManager.execute("CCu \"$escaped\" @ $addr")
+            resetAndScrollTo(addr)
             _dataModifiedEvent.value = System.currentTimeMillis()
         }
     }
