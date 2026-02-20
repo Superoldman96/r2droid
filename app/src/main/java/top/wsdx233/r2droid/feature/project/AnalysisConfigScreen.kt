@@ -1,5 +1,6 @@
 package top.wsdx233.r2droid.feature.project
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,12 +10,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -25,9 +34,11 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,13 +61,6 @@ fun AnalysisConfigScreen(
     var customCmd by remember { mutableStateOf("") }
     var isWritable by remember { mutableStateOf(false) }
     var customFlags by remember { mutableStateOf("") }
-    
-    val levels = listOf(
-        stringResource(R.string.analysis_level_none) to "none",
-        stringResource(R.string.analysis_level_auto) to "aaa",
-        stringResource(R.string.analysis_level_experimental) to "aaaa",
-        stringResource(R.string.analysis_level_custom) to "custom"
-    )
     
     val context = LocalContext.current
     var fileSize by remember { mutableStateOf(0L) }
@@ -107,23 +111,42 @@ fun AnalysisConfigScreen(
             
             // Analysis Level
             Text(stringResource(R.string.analysis_level_title), style = MaterialTheme.typography.titleMedium)
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                levels.forEach { (label, value) ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { selectedLevel = value }
-                            .padding(vertical = 4.dp)
-                    ) {
-                        RadioButton(
-                            selected = (selectedLevel == value),
-                            onClick = { selectedLevel = value }
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(text = label)
-                    }
-                }
+            Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                AnalysisConfigLevelCard(
+                    title = stringResource(R.string.analysis_level_none),
+                    desc = stringResource(R.string.proj_analysis_aa_desc),
+                    icon = Icons.Default.Block,
+                    selected = selectedLevel == "none",
+                    onClick = { selectedLevel = "none" }
+                )
+                AnalysisConfigLevelCard(
+                    title = stringResource(R.string.proj_analysis_aa),
+                    desc = stringResource(R.string.proj_analysis_aa_desc),
+                    icon = Icons.Default.FlashOn,
+                    selected = selectedLevel == "aa",
+                    onClick = { selectedLevel = "aa" }
+                )
+                AnalysisConfigLevelCard(
+                    title = stringResource(R.string.proj_analysis_aaa),
+                    desc = stringResource(R.string.proj_analysis_aaa_desc),
+                    icon = Icons.Default.Speed,
+                    selected = selectedLevel == "aaa",
+                    onClick = { selectedLevel = "aaa" }
+                )
+                AnalysisConfigLevelCard(
+                    title = stringResource(R.string.proj_analysis_aaaa),
+                    desc = stringResource(R.string.proj_analysis_aaaa_desc),
+                    icon = Icons.Default.Psychology,
+                    selected = selectedLevel == "aaaa",
+                    onClick = { selectedLevel = "aaaa" }
+                )
+                AnalysisConfigLevelCard(
+                    title = stringResource(R.string.analysis_level_custom),
+                    desc = stringResource(R.string.analysis_custom_cmd_hint),
+                    icon = Icons.Default.Code,
+                    selected = selectedLevel == "custom",
+                    onClick = { selectedLevel = "custom" }
+                )
             }
             
             if (selectedLevel == "custom") {
@@ -205,6 +228,65 @@ fun AnalysisConfigScreen(
                 Icon(Icons.Default.PlayArrow, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.analysis_start_btn))
+            }
+        }
+    }
+}
+
+@Composable
+private fun AnalysisConfigLevelCard(
+    title: String,
+    desc: String,
+    icon: ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent
+        ),
+        border = BorderStroke(
+            width = if (selected) 2.dp else 1.dp,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(28.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                    color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = desc,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (selected) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
             }
         }
     }

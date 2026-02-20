@@ -16,6 +16,7 @@ import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Science
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -47,9 +48,13 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
     var showSaveDialog by remember { mutableStateOf(false) }
     var showManual by remember { mutableStateOf(false) }
     var showExportReport by remember { mutableStateOf(false) }
+    var showAnalysis by remember { mutableStateOf(false) }
 
     if (showExportReport) {
         ExportReportScreen(onDismiss = { showExportReport = false })
+    }
+    if (showAnalysis) {
+        AnalysisBottomSheet(onDismiss = { showAnalysis = false })
     }
 
     // Manual dialog
@@ -229,16 +234,47 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
             )
         }
         
-        // Terminal Section
-        Text(
-            text = stringResource(top.wsdx233.r2droid.R.string.terminal),
-            style = MaterialTheme.typography.titleMedium
-        )
-        
+        // Analysis Section
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { 
+                .clickable { showAnalysis = true },
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Science,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.proj_analysis_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Text(
+                        text = stringResource(R.string.proj_analysis_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        }
+
+        // Terminal Section
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
                     val intent = android.content.Intent(context, top.wsdx233.r2droid.activity.TerminalActivity::class.java)
                     context.startActivity(intent)
                 },
@@ -258,7 +294,6 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onTertiaryContainer
                 )
-                
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = stringResource(top.wsdx233.r2droid.R.string.terminal),
@@ -273,14 +308,14 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
                 }
             }
         }
-        
+
         // Export Report Section
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { showExportReport = true },
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                containerColor = MaterialTheme.colorScheme.errorContainer
             )
         ) {
             Row(
@@ -293,18 +328,18 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
                 Icon(
                     imageVector = Icons.Default.Assessment,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = MaterialTheme.colorScheme.onErrorContainer
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "导出分析报告",
                         style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onErrorContainer
                     )
                     Text(
                         text = "导出包含函数、相关字符串、引用以及代码特征的完整报告",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
                     )
                 }
             }

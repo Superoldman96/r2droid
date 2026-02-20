@@ -130,7 +130,8 @@ enum class AppScreen {
     Project,
     About,
     Settings,
-    Features
+    Features,
+    R2Frida
 }
 
 @Composable
@@ -235,17 +236,25 @@ fun MainAppNavigation(
             }
             top.wsdx233.r2droid.screen.home.FeaturesScreen(
                 onBackClick = { currentScreen = AppScreen.Home },
+                onNavigateToR2Frida = { currentScreen = AppScreen.R2Frida },
                 onCustomStart = { command ->
                     if (R2PipeManager.isConnected) {
                         R2PipeManager.forceClose()
                     }
-                    // Strip "r2 " prefix if present, since R2pipe adds the binary path
                     val rawArgs = command.trim().removePrefix("r2 ").removePrefix("r2").trim()
                     R2PipeManager.pendingCustomCommand = rawArgs.ifBlank { "-" }
                     R2PipeManager.pendingFilePath = null
                     R2PipeManager.pendingRestoreFlags = null
                     currentScreen = AppScreen.Project
                 }
+            )
+        }
+        AppScreen.R2Frida -> {
+            BackHandler {
+                currentScreen = AppScreen.Features
+            }
+            top.wsdx233.r2droid.feature.r2frida.R2FridaScreen(
+                onBack = { currentScreen = AppScreen.Features }
             )
         }
         AppScreen.Project -> {

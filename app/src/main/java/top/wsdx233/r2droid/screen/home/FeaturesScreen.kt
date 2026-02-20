@@ -34,6 +34,7 @@ import top.wsdx233.r2droid.feature.manual.R2ManualScreen
 @Composable
 fun FeaturesScreen(
     onBackClick: () -> Unit,
+    onNavigateToR2Frida: () -> Unit = {},
     onCustomStart: (String) -> Unit
 ) {
     val context = LocalContext.current
@@ -115,7 +116,7 @@ fun FeaturesScreen(
                 description = stringResource(R.string.feature_r2frida_desc),
                 icon = Icons.Default.BugReport,
                 iconTint = Color(0xFFEF5350),
-                onClick = {}
+                onClick = onNavigateToR2Frida
             )
 
             FeatureCard(

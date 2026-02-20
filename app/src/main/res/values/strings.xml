@@ -273,6 +273,23 @@
     <string name="proj_save_new_desc">Save analysis results for later</string>
     
     <string name="proj_term_desc">Open shell terminal with radare2 environment</string>
+
+    <string name="proj_analysis_title">Run Analysis</string>
+    <string name="proj_analysis_desc">Perform deep analysis on current binary</string>
+    <string name="proj_analysis_sheet_title">Run Analysis</string>
+    <string name="proj_analysis_level">Select Analysis Level</string>
+    <string name="proj_analysis_aa">Basic Analysis (aa)</string>
+    <string name="proj_analysis_aa_desc">Quick analysis of functions and basic blocks</string>
+    <string name="proj_analysis_aaa">Auto Analysis (aaa)</string>
+    <string name="proj_analysis_aaa_desc">Full automatic analysis with references and type inference</string>
+    <string name="proj_analysis_aaaa">Experimental Analysis (aaaa)</string>
+    <string name="proj_analysis_aaaa_desc">Deepest analysis with experimental features, takes longer</string>
+    <string name="proj_analysis_run">Run Analysis</string>
+    <string name="proj_analysis_cancel">Cancel</string>
+    <string name="proj_analysis_running">Analyzing...</string>
+    <string name="proj_analysis_dismiss_hint">You can close this panel and continue working</string>
+    <string name="proj_analysis_done">Analysis complete</string>
+    <string name="proj_analysis_error">Analysis failed</string>
     
     <string name="proj_session_info">Session Info</string>
     <string name="proj_session_status">Status</string>
@@ -507,5 +524,22 @@
     <string name="features_custom_start_dialog_title">Custom R2 Command</string>
     <string name="features_custom_start_hint">Full command</string>
     <string name="features_custom_start_examples">e.g. r2 -  or  r2 \"frida://attach/pid\"</string>
+
+    <!-- R2Frida -->
+    <string name="r2frida_install_title">Install r2frida</string>
+    <string name="r2frida_install_what">What is r2frida?</string>
+    <string name="r2frida_install_what_desc">r2frida bridges radare2 and Frida, enabling powerful dynamic instrumentation — hook functions, trace calls, and inspect memory at runtime.</string>
+    <string name="r2frida_install_btn">Install</string>
+    <string name="r2frida_install_installing">Installing…</string>
+    <string name="r2frida_install_fetching">Fetching release info…</string>
+    <string name="r2frida_install_downloading">Downloading plugin…</string>
+    <string name="r2frida_install_extracting">Extracting files…</string>
+    <string name="r2frida_install_done">Installation complete</string>
+    <string name="r2frida_install_continue">Continue</string>
+    <string name="r2frida_install_switch_hint">Try switching the download source below and retry</string>
+    <string name="r2frida_source_github">Source: GitHub (International)</string>
+    <string name="r2frida_source_gitee">Source: Gitee (China)</string>
+    <string name="r2frida_feature_wip">Coming Soon</string>
+    <string name="r2frida_feature_wip_desc">r2frida features are under development. The plugin has been installed successfully.</string>
 
 </resources>
