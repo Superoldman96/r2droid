@@ -13,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Card
@@ -45,6 +46,11 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
     val saveState by viewModel.saveProjectState.collectAsState()
     var showSaveDialog by remember { mutableStateOf(false) }
     var showManual by remember { mutableStateOf(false) }
+    var showExportReport by remember { mutableStateOf(false) }
+
+    if (showExportReport) {
+        ExportReportScreen(onDismiss = { showExportReport = false })
+    }
 
     // Manual dialog
     if (showManual) {
@@ -263,6 +269,42 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
                         text = stringResource(R.string.proj_term_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        }
+        
+        // Export Report Section
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { showExportReport = true },
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Assessment,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "导出分析报告",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "导出包含函数、相关字符串、引用以及代码特征的完整报告",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                 }
             }

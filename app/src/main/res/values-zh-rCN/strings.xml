@@ -136,6 +136,25 @@
     <string name="binary_language">语言</string>
     <string name="binary_compiled">编译时间</string>
     <string name="binary_subsystem">子系统</string>
+    <string name="binary_guessed_size">猜测大小</string>
+    <string name="binary_main_address">主地址</string>
+    <string name="binary_hashes">哈希值</string>
+    <string name="binary_md5">MD5</string>
+    <string name="binary_sha1">SHA1</string>
+    <string name="binary_sha256">SHA256</string>
+    <string name="binary_architectures">架构配置</string>
+    <string name="binary_entry_points">入口点</string>
+    <string name="binary_headers">文件头</string>
+    <string name="binary_entropy">熵值 (p=ej)</string>
+    <string name="binary_block_size">块大小</string>
+    <string name="binary_block_stats">块统计信息</string>
+    <string name="binary_exec">执行</string>
+    <string name="binary_write">写入</string>
+    <string name="binary_read">读取</string>
+    <string name="binary_and_more">… 以及另外 %1$d 项</string>
+    <string name="binary_show_less">收起</string>
+    <string name="binary_size">大小</string>
+    <string name="binary_size_bytes">%1$d 字节</string>
 
     <string name="search_sections_hint">搜索段...</string>
     <string name="search_symbols_hint">搜索符号...</string>

@@ -104,7 +104,7 @@ fun ProjectListView(
     }
 
     when (tabIndex) {
-        0 -> state.binInfo?.let { OverviewCard(it) }
+        0 -> state.binInfo?.let { OverviewCard(it, listItemActions) }
             ?: Text(stringResource(R.string.hex_no_data), Modifier.fillMaxSize())
         1 -> SearchScreen(actions = listItemActions)
         2 -> if (state.sections == null) Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }

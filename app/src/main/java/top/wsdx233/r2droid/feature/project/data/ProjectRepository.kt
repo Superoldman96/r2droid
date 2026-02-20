@@ -13,11 +13,53 @@ import javax.inject.Inject
 class ProjectRepository @Inject constructor() {
 
     suspend fun getOverview(): Result<BinInfo> {
-        // iIj: Binary Info
-        return R2PipeManager.executeJson("iIj").mapCatching { output ->
-            if (output.isBlank()) throw RuntimeException("Empty response from r2")
-            val json = JSONObject(output)
-            BinInfo.fromJson(json)
+        return runCatching {
+            val iIjOutput = R2PipeManager.executeJson("iIj").getOrThrow()
+            if (iIjOutput.isBlank()) throw RuntimeException("Empty response from r2")
+            val baseInfo = BinInfo.fromJson(JSONObject(iIjOutput))
+            
+            val entropyOut = R2PipeManager.executeJson("p=ej 64").getOrDefault("{}")
+            val entropyData = EntropyData.fromJson(JSONObject(entropyOut))
+
+            val blockStatsOut = R2PipeManager.executeJson("p-j 64 @ 0").getOrDefault("{}")
+            val blockStats = BlockStatsData.fromJson(JSONObject(blockStatsOut))
+            
+            val hashesOut = R2PipeManager.executeJson("itj").getOrDefault("{}")
+            val hashes = HashInfo.fromJson(JSONObject(hashesOut))
+            
+            val mainAddrOut = R2PipeManager.executeJson("iMj").getOrDefault("{}")
+            val mainAddr = MainAddressInfo.fromJson(JSONObject(mainAddrOut))
+            
+            val guessedSizeOut = R2PipeManager.execute("igj").getOrDefault("0").trim()
+            val guessedSize = guessedSizeOut.removePrefix("0x").toLongOrNull(16) ?: 0L
+            
+            val entryPointsOut = R2PipeManager.executeJson("iej").getOrDefault("[]")
+            val entryPointsArr = if (entryPointsOut.startsWith("[")) JSONArray(entryPointsOut) else JSONArray()
+            val entryPoints = mutableListOf<EntryPoint>()
+            for (i in 0 until entryPointsArr.length()) {
+                entryPoints.add(EntryPoint.fromJson(entryPointsArr.getJSONObject(i)))
+            }
+            
+            val archsOut = R2PipeManager.executeJson("iaj").getOrDefault("{}")
+            val archs = ArchInfo.parseList(if (archsOut.startsWith("{")) JSONObject(archsOut) else JSONObject())
+            
+            val headersOut = R2PipeManager.executeJson("ihj").getOrDefault("[]")
+            val headers = HeaderInfo.parseList(if (headersOut.startsWith("[")) JSONArray(headersOut) else JSONArray())
+            
+            val headersStrOut = R2PipeManager.executeJson("iHj").getOrDefault("{}")
+            val headersString = (if (headersStrOut.startsWith("{")) JSONObject(headersStrOut) else JSONObject()).optString("header", "")
+            
+            baseInfo.copy(
+                entropy = entropyData,
+                blockStats = blockStats,
+                hashes = hashes,
+                mainAddr = mainAddr,
+                guessedSize = guessedSize,
+                entryPoints = entryPoints,
+                archs = archs,
+                headers = headers,
+                headersString = headersString
+            )
         }
     }
 

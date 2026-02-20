@@ -166,6 +166,25 @@
     <string name="binary_language">Language</string>
     <string name="binary_compiled">Compiled</string>
     <string name="binary_subsystem">SubSystem</string>
+    <string name="binary_guessed_size">Guessed Size</string>
+    <string name="binary_main_address">Main Address</string>
+    <string name="binary_hashes">Hashes</string>
+    <string name="binary_md5">MD5</string>
+    <string name="binary_sha1">SHA1</string>
+    <string name="binary_sha256">SHA256</string>
+    <string name="binary_architectures">Architectures</string>
+    <string name="binary_entry_points">Entry Points</string>
+    <string name="binary_headers">Headers</string>
+    <string name="binary_entropy">Entropy (p=ej)</string>
+    <string name="binary_block_size">Block Size</string>
+    <string name="binary_block_stats">Block Statistics</string>
+    <string name="binary_exec">Exec</string>
+    <string name="binary_write">Write</string>
+    <string name="binary_read">Read</string>
+    <string name="binary_and_more">… and %1$d more</string>
+    <string name="binary_show_less">Show Less</string>
+    <string name="binary_size">Size</string>
+    <string name="binary_size_bytes">%1$d bytes</string>
 
     <string name="search_sections_hint">Search Sections...</string>
     <string name="search_symbols_hint">Search Symbols...</string>

@@ -13,8 +13,18 @@ data class BinInfo(
     val language: String,
     val machine: String,
     val subSystem: String,
-    val size: Long = 0L
+    val size: Long = 0L,
+    val entropy: EntropyData? = null,
+    val blockStats: BlockStatsData? = null,
+    val hashes: HashInfo? = null,
+    val mainAddr: MainAddressInfo? = null,
+    val guessedSize: Long? = null,
+    val entryPoints: List<EntryPoint> = emptyList(),
+    val archs: List<ArchInfo> = emptyList(),
+    val headers: List<HeaderInfo> = emptyList(),
+    val headersString: String? = null
 ) {
+
     companion object {
         fun fromJson(json: JSONObject): BinInfo {
             return BinInfo(
@@ -354,8 +364,156 @@ data class EntryPoint(
     }
 }
 
+data class EntropyBlock(val addr: Long, val value: Int)
+
+data class EntropyData(
+    val blocksize: Int,
+    val address: Long,
+    val size: Long,
+    val entropy: List<EntropyBlock>
+) {
+    companion object {
+        fun fromJson(json: JSONObject): EntropyData {
+            val entropyArr = json.optJSONArray("entropy")
+            val list = mutableListOf<EntropyBlock>()
+            if (entropyArr != null) {
+                for (i in 0 until entropyArr.length()) {
+                    val e = entropyArr.getJSONObject(i)
+                    list.add(EntropyBlock(e.optLong("addr"), e.optInt("value")))
+                }
+            }
+            return EntropyData(
+                json.optInt("blocksize"),
+                json.optLong("address"),
+                json.optLong("size"),
+                list
+            )
+        }
+    }
+}
+
+data class BlockStat(
+    val offset: Long,
+    val size: Int,
+    val flags: Int,
+    val comments: Int,
+    val symbols: Int,
+    val strings: Int,
+    val perm: String
+)
+
+data class BlockStatsData(
+    val from: Long,
+    val to: Long,
+    val blocksize: Int,
+    val blocks: List<BlockStat>
+) {
+    companion object {
+        fun fromJson(json: JSONObject): BlockStatsData {
+            val blocksArr = json.optJSONArray("blocks")
+            val list = mutableListOf<BlockStat>()
+            if (blocksArr != null) {
+                for (i in 0 until blocksArr.length()) {
+                    val b = blocksArr.getJSONObject(i)
+                    list.add(BlockStat(
+                        b.optLong("offset"),
+                        b.optInt("size"),
+                        b.optInt("flags", 0),
+                        b.optInt("comments", 0),
+                        b.optInt("symbols", 0),
+                        b.optInt("strings", 0),
+                        b.optString("perm", "")
+                    ))
+                }
+            }
+            return BlockStatsData(
+                json.optLong("from"),
+                json.optLong("to"),
+                json.optInt("blocksize"),
+                list
+            )
+        }
+    }
+}
+
+data class ArchInfo(
+    val arch: String,
+    val bits: Int,
+    val offset: Long,
+    val size: Long,
+    val machine: String
+) {
+    companion object {
+        fun parseList(json: JSONObject): List<ArchInfo> {
+            val binsArr = json.optJSONArray("bins") ?: return emptyList()
+            val list = mutableListOf<ArchInfo>()
+            for (i in 0 until binsArr.length()) {
+                val b = binsArr.getJSONObject(i)
+                list.add(ArchInfo(
+                    b.optString("arch"),
+                    b.optInt("bits"),
+                    b.optLong("offset"),
+                    b.optLong("size"),
+                    b.optString("machine")
+                ))
+            }
+            return list
+        }
+    }
+}
+
+data class HeaderInfo(
+    val name: String,
+    val vaddr: Long,
+    val paddr: Long,
+    val size: Int,
+    val value: Long,
+    val format: String
+) {
+    companion object {
+        fun parseList(jsonArray: org.json.JSONArray): List<HeaderInfo> {
+            val list = mutableListOf<HeaderInfo>()
+            for (i in 0 until jsonArray.length()) {
+                val h = jsonArray.getJSONObject(i)
+                list.add(HeaderInfo(
+                    h.optString("name"),
+                    h.optLong("vaddr"),
+                    h.optLong("paddr"),
+                    h.optInt("size"),
+                    h.optLong("value"),
+                    h.optString("format")
+                ))
+            }
+            return list
+        }
+    }
+}
+
+data class HashInfo(val md5: String, val sha1: String, val sha256: String) {
+    companion object {
+        fun fromJson(json: JSONObject): HashInfo {
+            return HashInfo(
+                json.optString("md5"),
+                json.optString("sha1"),
+                json.optString("sha256")
+            )
+        }
+    }
+}
+
+data class MainAddressInfo(val vaddr: Long, val paddr: Long) {
+    companion object {
+        fun fromJson(json: JSONObject): MainAddressInfo {
+            return MainAddressInfo(
+                json.optLong("vaddr"),
+                json.optLong("paddr")
+            )
+        }
+    }
+}
 
 /**
+
  * Basic Xref entry from axfj or axtj.
  * axfj returns: from (current addr), to (target addr), type, opcode
  * axtj returns: from (source addr), type, opcode, fcn_addr, fcn_name, refname
