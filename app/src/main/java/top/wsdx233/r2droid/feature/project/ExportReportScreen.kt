@@ -50,8 +50,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import top.wsdx233.r2droid.R
 import top.wsdx233.r2droid.util.R2PipeManager
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -102,10 +104,10 @@ fun ExportReportScreen(onDismiss: () -> Unit) {
                 }
                 isExporting = false
                 res.onSuccess {
-                    android.widget.Toast.makeText(context, "报告导出完成", android.widget.Toast.LENGTH_SHORT).show()
+                    android.widget.Toast.makeText(context, context.getString(R.string.export_report_success), android.widget.Toast.LENGTH_SHORT).show()
                     onDismiss()
                 }.onFailure { err ->
-                    android.widget.Toast.makeText(context, "导出错误: ${err.message}", android.widget.Toast.LENGTH_LONG).show()
+                    android.widget.Toast.makeText(context, context.getString(R.string.export_report_error, err.message), android.widget.Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -123,7 +125,7 @@ fun ExportReportScreen(onDismiss: () -> Unit) {
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                text = "导出分析报告",
+                text = stringResource(R.string.export_report_title),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
@@ -133,36 +135,36 @@ fun ExportReportScreen(onDismiss: () -> Unit) {
             
             // Format Section
             Text(
-                text = "导出格式",
+                text = stringResource(R.string.export_report_format),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(12.dp))
             
             FormatCard(
-                title = "Markdown 文档",
-                desc = "轻量级标记语言，易于阅读和版本控制",
+                title = stringResource(R.string.export_report_format_md),
+                desc = stringResource(R.string.export_report_format_md_desc),
                 icon = Icons.Default.Description,
                 selected = format == ExportFormat.MARKDOWN,
                 onClick = { format = ExportFormat.MARKDOWN }
             )
             FormatCard(
-                title = "HTML 报告",
-                desc = "交互式网页格式，支持离线浏览",
+                title = stringResource(R.string.export_report_format_html),
+                desc = stringResource(R.string.export_report_format_html_desc),
                 icon = Icons.Default.Language,
                 selected = format == ExportFormat.HTML,
                 onClick = { format = ExportFormat.HTML }
             )
             FormatCard(
-                title = "JSON 数据",
-                desc = "结构化分析数据，便于第三方脚本处理",
+                title = stringResource(R.string.export_report_format_json),
+                desc = stringResource(R.string.export_report_format_json_desc),
                 icon = Icons.Default.DataObject,
                 selected = format == ExportFormat.JSON,
                 onClick = { format = ExportFormat.JSON }
             )
             FormatCard(
-                title = "Frida 脚本",
-                desc = "自动生成目标函数的 Hook 脚本模板",
+                title = stringResource(R.string.export_report_format_frida),
+                desc = stringResource(R.string.export_report_format_frida_desc),
                 icon = Icons.Default.Code,
                 selected = format == ExportFormat.FRIDA,
                 onClick = { format = ExportFormat.FRIDA }
@@ -172,7 +174,7 @@ fun ExportReportScreen(onDismiss: () -> Unit) {
 
             // Content Section
             Text(
-                text = "导出内容",
+                text = stringResource(R.string.export_report_content),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -180,7 +182,7 @@ fun ExportReportScreen(onDismiss: () -> Unit) {
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = includeFunctions, onCheckedChange = { includeFunctions = it })
-                Text("包含核心函数列表", style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.export_report_include_functions), style = MaterialTheme.typography.bodyLarge)
             }
             if (includeFunctions) {
                 Column(modifier = Modifier.padding(start = 48.dp, end = 16.dp)) {
@@ -189,12 +191,12 @@ fun ExportReportScreen(onDismiss: () -> Unit) {
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "最多导出:",
+                            text = stringResource(R.string.export_report_max_export),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = if (maxFunctions >= 1000f) "全部函数" else "${maxFunctions.toInt()} 个函数",
+                            text = if (maxFunctions >= 1000f) stringResource(R.string.export_report_all_functions) else stringResource(R.string.export_report_n_functions, maxFunctions.toInt()),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
@@ -211,12 +213,12 @@ fun ExportReportScreen(onDismiss: () -> Unit) {
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = includeStrings, onCheckedChange = { includeStrings = it })
-                Text("包含硬编码字符串列表", style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.export_report_include_strings), style = MaterialTheme.typography.bodyLarge)
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = includeSymbols, onCheckedChange = { includeSymbols = it })
-                Text("包含动态导入 / 导出表", style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.export_report_include_symbols), style = MaterialTheme.typography.bodyLarge)
             }
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -237,7 +239,7 @@ fun ExportReportScreen(onDismiss: () -> Unit) {
                     horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("取消")
+                        Text(stringResource(R.string.dialog_cancel))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
@@ -245,7 +247,7 @@ fun ExportReportScreen(onDismiss: () -> Unit) {
                             createDocLauncher.launch("${baseFileName}_report$ext")
                         }
                     ) {
-                        Text("确认导出")
+                        Text(stringResource(R.string.export_report_confirm))
                     }
                 }
             }

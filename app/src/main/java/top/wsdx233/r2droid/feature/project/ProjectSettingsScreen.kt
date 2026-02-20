@@ -332,12 +332,12 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "导出分析报告",
+                        text = stringResource(R.string.export_report_title),
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onErrorContainer
                     )
                     Text(
-                        text = "导出包含函数、相关字符串、引用以及代码特征的完整报告",
+                        text = stringResource(R.string.export_report_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
                     )

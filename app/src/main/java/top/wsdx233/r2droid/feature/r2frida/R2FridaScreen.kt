@@ -51,7 +51,10 @@ fun R2FridaScreen(onBack: () -> Unit, onConnect: (String) -> Unit = {}) {
     if (installed && installState.status != R2FridaInstallState.Status.DONE) {
         R2FridaFeatureScreen(onBack = onBack, onConnect = onConnect)
     } else {
-        R2FridaInstallScreen(onBack = onBack, installState = installState, onInstalled = { installed = true })
+        R2FridaInstallScreen(onBack = onBack, installState = installState, onInstalled = {
+            R2FridaInstaller.resetState()
+            installed = true
+        })
     }
 }
 

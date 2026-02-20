@@ -599,4 +599,48 @@
     <string name="r2frida_no_overview">r2frida 模式下无标准概览信息。\n请切换到「r2frida」标签查看会话信息。</string>
     <string name="r2frida_lib_version">版本: %1$s</string>
 
+    <!-- Export Report -->
+    <string name="export_report_title">导出分析报告</string>
+    <string name="export_report_desc">导出包含函数、相关字符串、引用以及代码特征的完整报告</string>
+    <string name="export_report_format">导出格式</string>
+    <string name="export_report_content">导出内容</string>
+    <string name="export_report_format_md">Markdown 文档</string>
+    <string name="export_report_format_md_desc">轻量级标记语言，易于阅读和版本控制</string>
+    <string name="export_report_format_html">HTML 报告</string>
+    <string name="export_report_format_html_desc">交互式网页格式，支持离线浏览</string>
+    <string name="export_report_format_json">JSON 数据</string>
+    <string name="export_report_format_json_desc">结构化分析数据，便于第三方脚本处理</string>
+    <string name="export_report_format_frida">Frida 脚本</string>
+    <string name="export_report_format_frida_desc">自动生成目标函数的 Hook 脚本模板</string>
+    <string name="export_report_include_functions">包含核心函数列表</string>
+    <string name="export_report_max_export">最多导出:</string>
+    <string name="export_report_all_functions">全部函数</string>
+    <string name="export_report_n_functions">%1$d 个函数</string>
+    <string name="export_report_include_strings">包含硬编码字符串列表</string>
+    <string name="export_report_include_symbols">包含动态导入 / 导出表</string>
+    <string name="export_report_confirm">确认导出</string>
+    <string name="export_report_success">报告导出完成</string>
+    <string name="export_report_error">导出错误: %1$s</string>
+    <string name="export_report_progress_collecting">正在收集数据…</string>
+    <string name="export_report_progress_functions">正在提取函数列表…</string>
+    <string name="export_report_progress_strings">正在提取字符串列表…</string>
+    <string name="export_report_progress_symbols">正在提取导入/导出表…</string>
+    <string name="export_report_progress_generating">正在生成报告…</string>
+    <string name="export_report_progress_writing">正在写入文件…</string>
+    <string name="export_report_error_write">无法打开写入流</string>
+    <string name="report_doc_title">静态分析报告 - %1$s</string>
+    <string name="report_doc_arch">架构</string>
+    <string name="report_doc_format">格式</string>
+    <string name="report_doc_file">文件</string>
+    <string name="report_doc_functions">函数列表 (%1$d)</string>
+    <string name="report_doc_imports">导入表 (%1$d)</string>
+    <string name="report_doc_exports">导出表 (%1$d)</string>
+    <string name="report_doc_strings">字符串列表 (%1$d)</string>
+    <string name="report_doc_col_address">地址</string>
+    <string name="report_doc_col_size">大小</string>
+    <string name="report_doc_col_name">名称</string>
+    <string name="report_doc_col_type">类型</string>
+    <string name="report_doc_col_length">长度</string>
+    <string name="report_doc_col_content">内容</string>
+
 </resources>

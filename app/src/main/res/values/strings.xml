@@ -597,4 +597,48 @@
     <string name="r2frida_no_overview">No standard overview in r2frida mode.\nSwitch to the \"r2frida\" tab for session info.</string>
     <string name="r2frida_lib_version">ver: %1$s</string>
 
+    <!-- Export Report -->
+    <string name="export_report_title">Export Analysis Report</string>
+    <string name="export_report_desc">Export a complete report with functions, strings, references and code features</string>
+    <string name="export_report_format">Export Format</string>
+    <string name="export_report_content">Export Content</string>
+    <string name="export_report_format_md">Markdown Document</string>
+    <string name="export_report_format_md_desc">Lightweight markup, easy to read and version control</string>
+    <string name="export_report_format_html">HTML Report</string>
+    <string name="export_report_format_html_desc">Interactive web format, supports offline browsing</string>
+    <string name="export_report_format_json">JSON Data</string>
+    <string name="export_report_format_json_desc">Structured analysis data for third-party scripts</string>
+    <string name="export_report_format_frida">Frida Script</string>
+    <string name="export_report_format_frida_desc">Auto-generate hook script template for target functions</string>
+    <string name="export_report_include_functions">Include core function list</string>
+    <string name="export_report_max_export">Max export:</string>
+    <string name="export_report_all_functions">All functions</string>
+    <string name="export_report_n_functions">%1$d functions</string>
+    <string name="export_report_include_strings">Include hardcoded string list</string>
+    <string name="export_report_include_symbols">Include dynamic imports / exports</string>
+    <string name="export_report_confirm">Export</string>
+    <string name="export_report_success">Report exported successfully</string>
+    <string name="export_report_error">Export error: %1$s</string>
+    <string name="export_report_progress_collecting">Collecting data…</string>
+    <string name="export_report_progress_functions">Extracting function list…</string>
+    <string name="export_report_progress_strings">Extracting string list…</string>
+    <string name="export_report_progress_symbols">Extracting imports/exports…</string>
+    <string name="export_report_progress_generating">Generating report…</string>
+    <string name="export_report_progress_writing">Writing file…</string>
+    <string name="export_report_error_write">Failed to open output stream</string>
+    <string name="report_doc_title">Static Analysis Report - %1$s</string>
+    <string name="report_doc_arch">Architecture</string>
+    <string name="report_doc_format">Format</string>
+    <string name="report_doc_file">File</string>
+    <string name="report_doc_functions">Functions (%1$d)</string>
+    <string name="report_doc_imports">Imports (%1$d)</string>
+    <string name="report_doc_exports">Exports (%1$d)</string>
+    <string name="report_doc_strings">Strings (%1$d)</string>
+    <string name="report_doc_col_address">Address</string>
+    <string name="report_doc_col_size">Size</string>
+    <string name="report_doc_col_name">Name</string>
+    <string name="report_doc_col_type">Type</string>
+    <string name="report_doc_col_length">Length</string>
+    <string name="report_doc_col_content">Content</string>
+
 </resources>

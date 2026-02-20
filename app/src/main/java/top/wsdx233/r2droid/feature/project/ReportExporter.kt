@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import top.wsdx233.r2droid.R
 import top.wsdx233.r2droid.util.R2PipeManager
 import java.io.OutputStream
 
@@ -34,7 +35,7 @@ object ReportExporter {
                 return@withContext Result.failure(Exception("Radare2 session is not connected"))
             }
 
-            onProgress("正在收集数据...")
+            onProgress(context.getString(R.string.export_report_progress_collecting))
             
             // Gather basic info
             val infoStr = R2PipeManager.execute("ij").getOrNull()
@@ -47,7 +48,7 @@ object ReportExporter {
             // Gather elements based on options
             var functionsArray: JSONArray? = null
             if (options.includeFunctions) {
-                onProgress("正在提取函数列表...")
+                onProgress(context.getString(R.string.export_report_progress_functions))
                 val result = R2PipeManager.execute("aflj").getOrNull() ?: "[]"
                 try {
                     val arr = JSONArray(result)
@@ -64,7 +65,7 @@ object ReportExporter {
 
             var stringsArray: JSONArray? = null
             if (options.includeStrings) {
-                onProgress("正在提取字符串列表...")
+                onProgress(context.getString(R.string.export_report_progress_strings))
                 val result = R2PipeManager.execute("izj").getOrNull() ?: "[]"
                 try { stringsArray = JSONArray(result) } catch (_: Exception) {}
             }
@@ -72,23 +73,23 @@ object ReportExporter {
             var importsArray: JSONArray? = null
             var exportsArray: JSONArray? = null
             if (options.includeSymbols) {
-                onProgress("正在提取导入/导出表...")
+                onProgress(context.getString(R.string.export_report_progress_symbols))
                 try { importsArray = JSONArray(R2PipeManager.execute("iij").getOrNull() ?: "[]") } catch (_: Exception) {}
                 try { exportsArray = JSONArray(R2PipeManager.execute("iEj").getOrNull() ?: "[]") } catch (_: Exception) {}
             }
 
-            onProgress("正在生成报告...")
+            onProgress(context.getString(R.string.export_report_progress_generating))
             val content = when (options.format) {
-                ExportFormat.MARKDOWN -> generateMarkdown(fileName, archStr, formatStr, functionsArray, stringsArray, importsArray, exportsArray)
-                ExportFormat.HTML -> generateHtml(fileName, archStr, formatStr, functionsArray, stringsArray, importsArray, exportsArray)
+                ExportFormat.MARKDOWN -> generateMarkdown(context, fileName, archStr, formatStr, functionsArray, stringsArray, importsArray, exportsArray)
+                ExportFormat.HTML -> generateHtml(context, fileName, archStr, formatStr, functionsArray, stringsArray, importsArray, exportsArray)
                 ExportFormat.JSON -> generateJson(fileName, functionsArray, stringsArray, importsArray, exportsArray)
                 ExportFormat.FRIDA -> generateFrida(fileName, functionsArray, importsArray, exportsArray)
             }
 
-            onProgress("正在写入文件...")
+            onProgress(context.getString(R.string.export_report_progress_writing))
             context.contentResolver.openOutputStream(uri)?.use { outputStream: OutputStream ->
                 outputStream.write(content.toByteArray())
-            } ?: return@withContext Result.failure(Exception("无法打开写入留"))
+            } ?: return@withContext Result.failure(Exception(context.getString(R.string.export_report_error_write)))
 
             Result.success(Unit)
         } catch (e: Exception) {
@@ -97,18 +98,18 @@ object ReportExporter {
     }
 
     private fun generateMarkdown(
-        fileName: String, arch: String, format: String,
+        ctx: Context, fileName: String, arch: String, format: String,
         functions: JSONArray?, strings: JSONArray?,
         imports: JSONArray?, exports: JSONArray?
     ): String {
         val sb = StringBuilder()
-        sb.append("# 静态分析报告 - $fileName\n\n")
-        sb.append("**架构**: $arch | **格式**: $format\n\n")
+        sb.append("# ${ctx.getString(R.string.report_doc_title, fileName)}\n\n")
+        sb.append("**${ctx.getString(R.string.report_doc_arch)}**: $arch | **${ctx.getString(R.string.report_doc_format)}**: $format\n\n")
         sb.append("---\n\n")
 
         functions?.let {
-            sb.append("## 函数列表 (${it.length()})\n\n")
-            sb.append("| 地址 | 大小 | 名称 |\n")
+            sb.append("## ${ctx.getString(R.string.report_doc_functions, it.length())}\n\n")
+            sb.append("| ${ctx.getString(R.string.report_doc_col_address)} | ${ctx.getString(R.string.report_doc_col_size)} | ${ctx.getString(R.string.report_doc_col_name)} |\n")
             sb.append("| --- | --- | --- |\n")
             for (i in 0 until it.length()) {
                 val f = it.optJSONObject(i) ?: continue
@@ -118,8 +119,8 @@ object ReportExporter {
         }
 
         imports?.let {
-            sb.append("## 导入表 (${it.length()})\n\n")
-            sb.append("| 名称 | 类型 |\n")
+            sb.append("## ${ctx.getString(R.string.report_doc_imports, it.length())}\n\n")
+            sb.append("| ${ctx.getString(R.string.report_doc_col_name)} | ${ctx.getString(R.string.report_doc_col_type)} |\n")
             sb.append("| --- | --- |\n")
             for (i in 0 until it.length()) {
                 val item = it.optJSONObject(i) ?: continue
@@ -129,8 +130,8 @@ object ReportExporter {
         }
 
         exports?.let {
-            sb.append("## 导出表 (${it.length()})\n\n")
-            sb.append("| 名称 | 大小 | 地址 |\n")
+            sb.append("## ${ctx.getString(R.string.report_doc_exports, it.length())}\n\n")
+            sb.append("| ${ctx.getString(R.string.report_doc_col_name)} | ${ctx.getString(R.string.report_doc_col_size)} | ${ctx.getString(R.string.report_doc_col_address)} |\n")
             sb.append("| --- | --- | --- |\n")
             for (i in 0 until it.length()) {
                 val item = it.optJSONObject(i) ?: continue
@@ -140,8 +141,8 @@ object ReportExporter {
         }
 
         strings?.let {
-            sb.append("## 字符串列表 (${it.length()})\n\n")
-            sb.append("| 地址 | 长度 | 内容 |\n")
+            sb.append("## ${ctx.getString(R.string.report_doc_strings, it.length())}\n\n")
+            sb.append("| ${ctx.getString(R.string.report_doc_col_address)} | ${ctx.getString(R.string.report_doc_col_length)} | ${ctx.getString(R.string.report_doc_col_content)} |\n")
             sb.append("| --- | --- | --- |\n")
             for (i in 0 until it.length()) {
                 val item = it.optJSONObject(i) ?: continue
@@ -155,14 +156,14 @@ object ReportExporter {
     }
 
     private fun generateHtml(
-        fileName: String, arch: String, format: String,
+        ctx: Context, fileName: String, arch: String, format: String,
         functions: JSONArray?, strings: JSONArray?,
         imports: JSONArray?, exports: JSONArray?
     ): String {
         val body = StringBuilder()
 
         functions?.let {
-            body.append("<h2>函数列表 (${it.length()})</h2><table><tr><th>地址</th><th>大小</th><th>名称</th></tr>")
+            body.append("<h2>${ctx.getString(R.string.report_doc_functions, it.length())}</h2><table><tr><th>${ctx.getString(R.string.report_doc_col_address)}</th><th>${ctx.getString(R.string.report_doc_col_size)}</th><th>${ctx.getString(R.string.report_doc_col_name)}</th></tr>")
             for (i in 0 until it.length()) {
                 val f = it.optJSONObject(i) ?: continue
                 body.append("<tr><td><code>0x${java.lang.Long.toHexString(f.optLong("offset"))}</code></td><td>${f.optInt("size")}</td><td><code>${f.optString("name")}</code></td></tr>")
@@ -171,7 +172,7 @@ object ReportExporter {
         }
 
         imports?.let {
-            body.append("<h2>导入表 (${it.length()})</h2><table><tr><th>名称</th><th>类型</th></tr>")
+            body.append("<h2>${ctx.getString(R.string.report_doc_imports, it.length())}</h2><table><tr><th>${ctx.getString(R.string.report_doc_col_name)}</th><th>${ctx.getString(R.string.report_doc_col_type)}</th></tr>")
             for (i in 0 until it.length()) {
                 val item = it.optJSONObject(i) ?: continue
                 body.append("<tr><td><code>${item.optString("name")}</code></td><td>${item.optString("type")}</td></tr>")
@@ -180,7 +181,7 @@ object ReportExporter {
         }
 
         exports?.let {
-            body.append("<h2>导出表 (${it.length()})</h2><table><tr><th>名称</th><th>大小</th><th>地址</th></tr>")
+            body.append("<h2>${ctx.getString(R.string.report_doc_exports, it.length())}</h2><table><tr><th>${ctx.getString(R.string.report_doc_col_name)}</th><th>${ctx.getString(R.string.report_doc_col_size)}</th><th>${ctx.getString(R.string.report_doc_col_address)}</th></tr>")
             for (i in 0 until it.length()) {
                 val item = it.optJSONObject(i) ?: continue
                 body.append("<tr><td><code>${item.optString("name")}</code></td><td>${item.optInt("size")}</td><td><code>0x${java.lang.Long.toHexString(item.optLong("vaddr"))}</code></td></tr>")
@@ -189,7 +190,7 @@ object ReportExporter {
         }
 
         strings?.let {
-            body.append("<h2>字符串列表 (${it.length()})</h2><table><tr><th>地址</th><th>长度</th><th>内容</th></tr>")
+            body.append("<h2>${ctx.getString(R.string.report_doc_strings, it.length())}</h2><table><tr><th>${ctx.getString(R.string.report_doc_col_address)}</th><th>${ctx.getString(R.string.report_doc_col_length)}</th><th>${ctx.getString(R.string.report_doc_col_content)}</th></tr>")
             for (i in 0 until it.length()) {
                 val item = it.optJSONObject(i) ?: continue
                 val str = item.optString("string").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "\\n").replace("\r", "")
@@ -203,7 +204,7 @@ object ReportExporter {
             <html>
             <head>
                 <meta charset="utf-8">
-                <title>静态分析报告 - $fileName</title>
+                <title>${ctx.getString(R.string.report_doc_title, fileName)}</title>
                 <style>
                     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; color: #333; line-height: 1.6; }
                     h1, h2, h3 { color: #2c3e50; }
