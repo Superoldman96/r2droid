@@ -555,4 +555,19 @@
     <string name="r2frida_feature_wip">Coming Soon</string>
     <string name="r2frida_feature_wip_desc">r2frida features are under development. The plugin has been installed successfully.</string>
 
+    <!-- R2Frida Feature -->
+    <string name="frida_connection_settings">Connection Settings</string>
+    <string name="frida_host">Host</string>
+    <string name="frida_port">Port</string>
+    <string name="frida_quick_connect_gadget">Quick Connect Gadget</string>
+    <string name="frida_remote_processes">Remote Processes</string>
+    <string name="frida_local_apps">Local Apps</string>
+    <string name="frida_fetching_processes">Fetching process list…</string>
+    <string name="frida_no_processes">No processes found</string>
+    <string name="frida_fetch_error">Failed to fetch: %1$s</string>
+    <string name="frida_attach">Attach</string>
+    <string name="frida_spawn">Spawn</string>
+    <string name="frida_search_apps">Search apps…</string>
+    <string name="frida_no_apps">No apps found</string>
+
 </resources>

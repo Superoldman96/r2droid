@@ -18,6 +18,8 @@ object SettingsManager {
     private const val KEY_MAX_LOG_ENTRIES = "max_log_entries"
     private const val KEY_DECOMPILER_ZOOM_SCALE = "decompiler_zoom_scale"
     private const val KEY_KEEP_ALIVE = "keep_alive_notification"
+    private const val KEY_FRIDA_HOST = "frida_host"
+    private const val KEY_FRIDA_PORT = "frida_port"
 
     private lateinit var prefs: SharedPreferences
 
@@ -114,4 +116,12 @@ object SettingsManager {
     var keepAliveNotification: Boolean
         get() = prefs.getBoolean(KEY_KEEP_ALIVE, true)
         set(value) { prefs.edit().putBoolean(KEY_KEEP_ALIVE, value).apply() }
+
+    var fridaHost: String
+        get() = prefs.getString(KEY_FRIDA_HOST, "127.0.0.1") ?: "127.0.0.1"
+        set(value) { prefs.edit().putString(KEY_FRIDA_HOST, value).apply() }
+
+    var fridaPort: String
+        get() = prefs.getString(KEY_FRIDA_PORT, "27042") ?: "27042"
+        set(value) { prefs.edit().putString(KEY_FRIDA_PORT, value).apply() }
 }

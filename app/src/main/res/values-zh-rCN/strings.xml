@@ -557,4 +557,19 @@
     <string name="r2frida_feature_wip">即将推出</string>
     <string name="r2frida_feature_wip_desc">r2frida 功能正在开发中，插件已安装成功。</string>
 
+    <!-- R2Frida Feature -->
+    <string name="frida_connection_settings">连接设置</string>
+    <string name="frida_host">主机</string>
+    <string name="frida_port">端口</string>
+    <string name="frida_quick_connect_gadget">快速连接 Gadget</string>
+    <string name="frida_remote_processes">远程进程</string>
+    <string name="frida_local_apps">本地应用</string>
+    <string name="frida_fetching_processes">正在获取进程列表…</string>
+    <string name="frida_no_processes">未发现进程</string>
+    <string name="frida_fetch_error">获取失败：%1$s</string>
+    <string name="frida_attach">附加</string>
+    <string name="frida_spawn">启动</string>
+    <string name="frida_search_apps">搜索应用…</string>
+    <string name="frida_no_apps">未找到应用</string>
+
 </resources>

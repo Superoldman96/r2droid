@@ -259,7 +259,16 @@ fun MainAppNavigation(
                 currentScreen = AppScreen.Features
             }
             top.wsdx233.r2droid.feature.r2frida.R2FridaScreen(
-                onBack = { currentScreen = AppScreen.Features }
+                onBack = { currentScreen = AppScreen.Features },
+                onConnect = { command ->
+                    if (R2PipeManager.isConnected) {
+                        R2PipeManager.forceClose()
+                    }
+                    R2PipeManager.pendingCustomCommand = command
+                    R2PipeManager.pendingFilePath = null
+                    R2PipeManager.pendingRestoreFlags = null
+                    currentScreen = AppScreen.Project
+                }
             )
         }
         AppScreen.Project -> {

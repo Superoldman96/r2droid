@@ -1,7 +1,11 @@
 package top.wsdx233.r2droid.feature.r2frida
 
+import android.content.pm.ApplicationInfo
 import androidx.compose.animation.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -16,21 +20,24 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import top.wsdx233.r2droid.R
 import top.wsdx233.r2droid.data.SettingsManager
 import top.wsdx233.r2droid.util.R2FridaInstallState
 import top.wsdx233.r2droid.util.R2FridaInstaller
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun R2FridaScreen(onBack: () -> Unit) {
+fun R2FridaScreen(onBack: () -> Unit, onConnect: (String) -> Unit = {}) {
     val context = LocalContext.current
     var installed by remember { mutableStateOf(R2FridaInstaller.isInstalled(context)) }
     val installState by R2FridaInstaller.state.collectAsState()
 
-    // After install completes, refresh
     LaunchedEffect(installState.status) {
         if (installState.status == R2FridaInstallState.Status.DONE) {
             installed = R2FridaInstaller.isInstalled(context)
@@ -42,7 +49,7 @@ fun R2FridaScreen(onBack: () -> Unit) {
     }
 
     if (installed && installState.status != R2FridaInstallState.Status.DONE) {
-        R2FridaFeatureScreen(onBack = onBack)
+        R2FridaFeatureScreen(onBack = onBack, onConnect = onConnect)
     } else {
         R2FridaInstallScreen(onBack = onBack, installState = installState, onInstalled = { installed = true })
     }
@@ -326,9 +333,95 @@ private fun StatusCard(
     }
 }
 
+private data class FridaProcess(val pid: String, val name: String)
+
+private suspend fun fetchFridaProcesses(context: android.content.Context, host: String, port: String): Result<List<FridaProcess>> {
+    return withContext(Dispatchers.IO) {
+        try {
+            val workDir = File(context.filesDir, "radare2/bin")
+            val r2Binary = File(workDir, "r2").absolutePath
+            val uri = "frida://attach/remote/$host:$port/"
+
+            val envMap = mutableMapOf<String, String>()
+            val myLd = "${File(context.filesDir, "radare2/lib")}:${File(context.filesDir, "libs")}"
+            val existingLd = System.getenv("LD_LIBRARY_PATH")
+            envMap["LD_LIBRARY_PATH"] = "$myLd${if (existingLd != null) ":$existingLd" else ""}"
+            envMap["XDG_DATA_HOME"] = File(context.filesDir, "r2work").absolutePath
+            envMap["XDG_CACHE_HOME"] = File(context.filesDir, ".cache").absolutePath
+            envMap["HOME"] = workDir.absolutePath
+            envMap["TERM"] = "dumb"
+            envMap["R2_NOCOLOR"] = "1"
+            val systemPath = System.getenv("PATH") ?: "/system/bin:/system/xbin"
+            envMap["PATH"] = "${workDir.absolutePath}:$systemPath"
+
+            val pb = ProcessBuilder("/system/bin/sh", "-c", "$r2Binary \"$uri\"")
+            pb.directory(workDir)
+            pb.environment().putAll(envMap)
+            pb.redirectErrorStream(true)
+            val proc = pb.start()
+            val output = proc.inputStream.bufferedReader().readText()
+            proc.waitFor(10, java.util.concurrent.TimeUnit.SECONDS)
+            proc.destroyForcibly()
+
+            val processes = output.lines()
+                .map { it.trim() }
+                .filter { line -> line.isNotEmpty() && line[0].isDigit() }
+                .mapNotNull { line ->
+                    val parts = line.split(Regex("\\s+"), limit = 2)
+                    if (parts.size == 2) FridaProcess(parts[0], parts[1]) else null
+                }
+            Result.success(processes)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun R2FridaFeatureScreen(onBack: () -> Unit) {
+private fun R2FridaFeatureScreen(onBack: () -> Unit, onConnect: (String) -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    var host by remember { mutableStateOf(SettingsManager.fridaHost) }
+    var port by remember { mutableStateOf(SettingsManager.fridaPort) }
+
+    // Remote process list state
+    var processes by remember { mutableStateOf<List<FridaProcess>>(emptyList()) }
+    var processLoading by remember { mutableStateOf(false) }
+    var processError by remember { mutableStateOf<String?>(null) }
+
+    // Local apps state
+    var localApps by remember { mutableStateOf<List<ApplicationInfo>>(emptyList()) }
+    var appSearchQuery by remember { mutableStateOf("") }
+
+    val pm = context.packageManager
+
+    // Load local apps once
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            localApps = pm.getInstalledApplications(0)
+                .filter { it.flags and ApplicationInfo.FLAG_SYSTEM == 0 }
+                .sortedBy { pm.getApplicationLabel(it).toString().lowercase() }
+        }
+    }
+
+    fun refreshProcesses() {
+        scope.launch {
+            processLoading = true
+            processError = null
+            SettingsManager.fridaHost = host
+            SettingsManager.fridaPort = port
+            val result = fetchFridaProcesses(context, host, port)
+            result.onSuccess { processes = it }
+            result.onFailure { processError = it.message }
+            processLoading = false
+        }
+    }
+
+    // Auto-fetch on first load
+    LaunchedEffect(Unit) { refreshProcesses() }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -341,33 +434,237 @@ private fun R2FridaFeatureScreen(onBack: () -> Unit) {
             )
         }
     ) { padding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Icon(
-                Icons.Default.BugReport,
-                contentDescription = null,
-                modifier = Modifier.size(72.dp),
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-            )
-            Spacer(Modifier.height(16.dp))
+            // Connection Settings Card
+            item { ConnectionSettingsCard(host, port, { host = it }, { port = it }) }
+
+            // Quick Connect Gadget
+            item {
+                Button(
+                    onClick = {
+                        SettingsManager.fridaHost = host
+                        SettingsManager.fridaPort = port
+                        onConnect("\"frida://attach/remote/$host:$port/Gadget\"")
+                    },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.FlashOn, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.frida_quick_connect_gadget))
+                }
+            }
+
+            // Remote Processes Section
+            item {
+                RemoteProcessesHeader(processLoading) { refreshProcesses() }
+            }
+
+            if (processLoading) {
+                item {
+                    Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                    }
+                }
+            } else if (processError != null) {
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            stringResource(R.string.frida_fetch_error, processError ?: ""),
+                            modifier = Modifier.padding(16.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
+            } else if (processes.isEmpty()) {
+                item {
+                    Text(
+                        stringResource(R.string.frida_no_processes),
+                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                items(processes, key = { it.pid }) { proc ->
+                    ProcessItem(proc) {
+                        onConnect("\"frida://attach/remote/$host:$port/${proc.name}\"")
+                    }
+                }
+            }
+
+            // Local Apps Section
+            item {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    stringResource(R.string.frida_local_apps),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            item {
+                OutlinedTextField(
+                    value = appSearchQuery,
+                    onValueChange = { appSearchQuery = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text(stringResource(R.string.frida_search_apps)) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
+
+            val filtered = localApps.filter {
+                val label = pm.getApplicationLabel(it).toString()
+                val pkg = it.packageName
+                label.contains(appSearchQuery, true) || pkg.contains(appSearchQuery, true)
+            }
+
+            if (filtered.isEmpty()) {
+                item {
+                    Text(
+                        stringResource(R.string.frida_no_apps),
+                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                items(filtered, key = { it.packageName }) { app ->
+                    AppItem(app, pm,
+                        onAttach = {
+                            onConnect("\"frida://attach/remote/$host:$port/${app.packageName}\"")
+                        },
+                        onSpawn = {
+                            onConnect("\"frida://spawn/remote/$host:$port/${app.packageName}\"")
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConnectionSettingsCard(
+    host: String, port: String,
+    onHostChange: (String) -> Unit, onPortChange: (String) -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(
-                stringResource(R.string.r2frida_feature_wip),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                stringResource(R.string.frida_connection_settings),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
             )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                stringResource(R.string.r2frida_feature_wip_desc),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 48.dp)
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = host, onValueChange = onHostChange,
+                    modifier = Modifier.weight(1f),
+                    label = { Text(stringResource(R.string.frida_host)) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                OutlinedTextField(
+                    value = port, onValueChange = onPortChange,
+                    modifier = Modifier.width(100.dp),
+                    label = { Text(stringResource(R.string.frida_port)) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RemoteProcessesHeader(loading: Boolean, onRefresh: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            stringResource(R.string.frida_remote_processes),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold
+        )
+        IconButton(onClick = onRefresh, enabled = !loading) {
+            Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.common_refresh))
+        }
+    }
+}
+
+@Composable
+private fun ProcessItem(proc: FridaProcess, onAttach: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onAttach),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(proc.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                Text("PID: ${proc.pid}", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            FilledTonalButton(onClick = onAttach, shape = RoundedCornerShape(8.dp)) {
+                Text(stringResource(R.string.frida_attach))
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppItem(
+    app: ApplicationInfo,
+    pm: android.content.pm.PackageManager,
+    onAttach: () -> Unit,
+    onSpawn: () -> Unit
+) {
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    pm.getApplicationLabel(app).toString(),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    app.packageName,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            FilledTonalButton(onClick = onAttach, shape = RoundedCornerShape(8.dp)) {
+                Text(stringResource(R.string.frida_attach))
+            }
+            Spacer(Modifier.width(6.dp))
+            OutlinedButton(onClick = onSpawn, shape = RoundedCornerShape(8.dp)) {
+                Text(stringResource(R.string.frida_spawn))
+            }
         }
     }
 }
