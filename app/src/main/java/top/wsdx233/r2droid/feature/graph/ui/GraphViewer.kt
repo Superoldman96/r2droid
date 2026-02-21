@@ -375,15 +375,32 @@ private fun routeAllEdges(
         }
     }
 
+    // ── Pre-compute layer Y extents for gap-based routing ──
+    val layerBottomY = mutableMapOf<Int, Float>()
+    val layerTopY = mutableMapOf<Int, Float>()
+    for (ln in layoutNodes) {
+        val l = layerAssignment[ln.node.id] ?: 0
+        layerBottomY[l] = max(layerBottomY.getOrDefault(l, Float.MIN_VALUE), ln.y + ln.height)
+        layerTopY[l] = min(layerTopY.getOrDefault(l, Float.MAX_VALUE), ln.y)
+    }
+
+    // ── Pre-compute incoming port assignments sorted by source X ──
+    val forwardEdges = allEdges.filter { !it.isBackEdge }
+    val incomingByTarget = forwardEdges.groupBy { it.targetNode.node.id }
+    val entryPortIndex = mutableMapOf<Pair<Int, Int>, Int>()
+    val entryPortCount = mutableMapOf<Int, Int>()
+    for ((tgtId, edges) in incomingByTarget) {
+        val sorted = edges.sortedBy { it.sourceNode.x + it.sourceNode.width / 2f }
+        entryPortCount[tgtId] = sorted.size
+        sorted.forEachIndexed { idx, e ->
+            entryPortIndex[e.sourceNode.node.id to tgtId] = idx
+        }
+    }
+
     // ── Route forward edges ──
-    // Group forward edges by the layer gap they pass through for channel assignment.
-    // For each gap (between layer i and i+1), track horizontal segments to offset them.
-    data class GapSegment(val y: Float, val x1: Float, val x2: Float)
-    val gapChannelCounters = mutableMapOf<Int, Int>() // layer -> next channel index
+    val gapChannelCounters = mutableMapOf<Int, Int>()
 
-    for (edge in allEdges) {
-        if (edge.isBackEdge) continue
-
+    for (edge in forwardEdges) {
         val src = edge.sourceNode
         val tgt = edge.targetNode
 
@@ -391,39 +408,74 @@ private fun routeAllEdges(
         val exitX = if (edge.portCount <= 1) {
             src.x + src.width / 2f
         } else {
-            val spread = src.width * 0.4f
+            val spread = src.width * 0.6f
             val startX = src.x + src.width / 2f - spread / 2f
             startX + spread * edge.portIndex / (edge.portCount - 1).coerceAtLeast(1)
         }
         val exitY = src.y + src.height
 
-        // Entry port: center-top of target
-        val entryX = tgt.x + tgt.width / 2f
+        // Entry port: distribute across top of target node
+        val tgtId = tgt.node.id
+        val eCount = entryPortCount[tgtId] ?: 1
+        val eIdx = entryPortIndex[src.node.id to tgtId] ?: 0
+        val entryX = if (eCount <= 1) {
+            tgt.x + tgt.width / 2f
+        } else {
+            val spread = tgt.width * 0.6f
+            val startX = tgt.x + tgt.width / 2f - spread / 2f
+            startX + spread * eIdx / (eCount - 1).coerceAtLeast(1)
+        }
         val entryY = tgt.y
 
-        // Determine the layer gap for the horizontal segment
         val srcLayer = layerAssignment[src.node.id] ?: 0
-        val channelIdx = gapChannelCounters.getOrDefault(srcLayer, 0)
-        gapChannelCounters[srcLayer] = channelIdx + 1
+        val tgtLayer = layerAssignment[tgt.node.id] ?: 0
+        val layerSpan = tgtLayer - srcLayer
 
-        // Midpoint Y: in the gap between source bottom and target top
-        val gapTop = exitY
-        val gapBottom = entryY
-        val gapMid = (gapTop + gapBottom) / 2f
-        // Offset channels so parallel edges don't overlap
-        val midY = gapMid + (channelIdx - channelIdx / 2f) * EDGE_CHANNEL_GAP *
-                (if (channelIdx % 2 == 0) 1f else -1f)
+        val points = mutableListOf<Offset>()
+        points.add(Offset(exitX, exitY))
 
-        val points = if (abs(exitX - entryX) < 2f) {
-            // Straight vertical — no horizontal jog needed
-            listOf(Offset(exitX, exitY), Offset(entryX, entryY))
+        if (abs(exitX - entryX) < 2f && layerSpan <= 1) {
+            // Straight vertical drop
+            points.add(Offset(entryX, entryY))
+        } else if (layerSpan <= 1) {
+            // Single-layer span: one horizontal jog in the gap
+            val gapTop = layerBottomY[srcLayer] ?: exitY
+            val gapBot = layerTopY[tgtLayer] ?: entryY
+            val channelIdx = gapChannelCounters.getOrDefault(srcLayer, 0)
+            gapChannelCounters[srcLayer] = channelIdx + 1
+            val gapMid = (gapTop + gapBot) / 2f
+            val midY = (gapMid + (channelIdx - channelIdx / 2f) * EDGE_CHANNEL_GAP *
+                    (if (channelIdx % 2 == 0) 1f else -1f))
+                .coerceIn(gapTop + 4f, gapBot - 4f)
+            points.add(Offset(exitX, midY))
+            points.add(Offset(entryX, midY))
+            points.add(Offset(entryX, entryY))
         } else {
-            listOf(
-                Offset(exitX, exitY),
-                Offset(exitX, midY),
-                Offset(entryX, midY),
-                Offset(entryX, entryY)
-            )
+            // Multi-layer span: route through each intermediate gap
+            var currentX = exitX
+            for (gap in srcLayer until tgtLayer) {
+                val gapTop = layerBottomY[gap] ?: exitY
+                val gapBot = layerTopY[gap + 1] ?: entryY
+                val channelIdx = gapChannelCounters.getOrDefault(gap, 0)
+                gapChannelCounters[gap] = channelIdx + 1
+                val gapMid = (gapTop + gapBot) / 2f
+                val midY = (gapMid + (channelIdx - channelIdx / 2f) * EDGE_CHANNEL_GAP *
+                        (if (channelIdx % 2 == 0) 1f else -1f))
+                    .coerceIn(gapTop + 4f, gapBot - 4f)
+
+                val nextX = if (gap == tgtLayer - 1) entryX else {
+                    val progress = (gap - srcLayer + 1).toFloat() / layerSpan
+                    exitX + (entryX - exitX) * progress
+                }
+                if (abs(currentX - nextX) >= 2f) {
+                    points.add(Offset(currentX, midY))
+                    points.add(Offset(nextX, midY))
+                } else {
+                    points.add(Offset(currentX, midY))
+                }
+                currentX = nextX
+            }
+            points.add(Offset(entryX, entryY))
         }
 
         result.add(RoutedEdge(points, edge.color, isBackEdge = false))
@@ -832,6 +884,9 @@ private fun DrawScope.drawRoutedEdges(edges: List<RoutedEdge>) {
         val tip = pts.last()
         val from = pts[pts.size - 2]
         drawArrowHead(tip, from, edge.color)
+
+        // Draw endpoint dots for visual clarity
+        drawCircle(color = edge.color, radius = 3.5f, center = pts.first())
     }
 }
 
