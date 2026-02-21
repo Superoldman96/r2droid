@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.DpOffset
 import top.wsdx233.r2droid.R
 import top.wsdx233.r2droid.core.data.model.DisasmInstruction
 
@@ -32,15 +33,17 @@ fun DisasmContextMenu(
     onFunctionXrefs: () -> Unit = {},
     onFunctionVariables: () -> Unit = {},
     onInstructionDetail: () -> Unit = {},
-    onJumpToTarget: ((Long) -> Unit)? = null
+    onJumpToTarget: ((Long) -> Unit)? = null,
+    offset: DpOffset = DpOffset.Zero
 ) {
     if (expanded) {
         // State to track which menu is currently visible: "main", "copy", "modify"
         var currentMenu by remember { mutableStateOf("main") }
-        
+
         DropdownMenu(
             expanded = expanded,
-            onDismissRequest = onDismiss
+            onDismissRequest = onDismiss,
+            offset = offset
         ) {
             when (currentMenu) {
                 "main" -> {

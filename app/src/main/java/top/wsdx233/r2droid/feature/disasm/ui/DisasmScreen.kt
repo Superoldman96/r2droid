@@ -79,6 +79,7 @@ fun DisassemblyViewer(
     // Menu & Dialog States
     var showMenu by remember { mutableStateOf(false) }
     var menuTargetAddress by remember { mutableStateOf<Long?>(null) }
+    var menuTapOffset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
 
     var showModifyDialog by remember { mutableStateOf(false) }
     var modifyType by remember { mutableStateOf("hex") } // hex, string, asm
@@ -90,6 +91,7 @@ fun DisassemblyViewer(
     var pendingWriteAction by remember { mutableStateOf<(() -> Unit)?>(null) }
 
     val clipboardManager = LocalClipboardManager.current
+    val density = androidx.compose.ui.platform.LocalDensity.current
     
     if (disasmDataManager == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -288,18 +290,18 @@ fun DisassemblyViewer(
                     DisasmRow(
                         instr = instr, 
                         isSelected = instr.addr == cursorAddress, 
-                        onClick = { 
+                        onClick = { offset ->
                             if (instr.addr == cursorAddress) {
-                                // Already selected, show menu
                                 menuTargetAddress = instr.addr
+                                menuTapOffset = offset
                                 showMenu = true
                             } else {
-                                onInstructionClick(instr.addr) 
+                                onInstructionClick(instr.addr)
                             }
                         },
-                        onLongClick = {
-                            // 仅设置菜单目标地址并显示菜单，不改变当前选中状态
+                        onLongClick = { offset ->
                             menuTargetAddress = instr.addr
+                            menuTapOffset = offset
                             showMenu = true
                         },
                         showMenu = isThisRowMenuTarget,
@@ -382,6 +384,9 @@ fun DisassemblyViewer(
                                 onJumpToTarget = { addr ->
                                     onInstructionClick(addr)
                                     showMenu = false
+                                },
+                                offset = with(density) {
+                                    androidx.compose.ui.unit.DpOffset(menuTapOffset.x.toDp(), menuTapOffset.y.toDp())
                                 }
                             )
                         },

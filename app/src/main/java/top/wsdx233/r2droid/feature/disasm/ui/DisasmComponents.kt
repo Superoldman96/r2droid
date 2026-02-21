@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
@@ -87,10 +88,10 @@ private fun formatJumpIndex(index: Int): String {
 
 @Composable
 fun DisasmRow(
-    instr: DisasmInstruction, 
-    isSelected: Boolean, 
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
+    instr: DisasmInstruction,
+    isSelected: Boolean,
+    onClick: (Offset) -> Unit,
+    onLongClick: (Offset) -> Unit,
     showMenu: Boolean = false,
     menuContent: @Composable () -> Unit = {},
     jumpIndex: Int? = null,           // Index for this jump (if it's a jump instruction)
@@ -176,8 +177,8 @@ fun DisasmRow(
                 .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
                 .pointerInput(onClick, onLongClick) {
                     detectTapGestures(
-                        onTap = { onClick() },
-                        onLongPress = { onLongClick() }
+                        onTap = { offset -> onClick(offset) },
+                        onLongPress = { offset -> onLongClick(offset) }
                     )
                 }
         ) {

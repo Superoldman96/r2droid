@@ -50,7 +50,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Switch
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -295,7 +295,7 @@ fun ProjectScaffold(
                                         text = {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Text(stringResource(R.string.settings_decompiler_show_line_numbers), modifier = Modifier.weight(1f))
-                                                Switch(checked = showLineNumbers, onCheckedChange = null)
+                                                Checkbox(checked = showLineNumbers, onCheckedChange = null, modifier = Modifier.size(24.dp))
                                             }
                                         },
                                         onClick = { viewModel.toggleLineNumbers() }
@@ -304,7 +304,7 @@ fun ProjectScaffold(
                                         text = {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Text(stringResource(R.string.settings_decompiler_word_wrap), modifier = Modifier.weight(1f))
-                                                Switch(checked = wordWrap, onCheckedChange = null)
+                                                Checkbox(checked = wordWrap, onCheckedChange = null, modifier = Modifier.size(24.dp))
                                             }
                                         },
                                         onClick = { viewModel.toggleWordWrap() }

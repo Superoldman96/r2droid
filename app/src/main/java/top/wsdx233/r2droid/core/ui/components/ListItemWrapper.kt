@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -21,6 +23,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import top.wsdx233.r2droid.R
 
@@ -47,22 +52,37 @@ fun UnifiedListItemWrapper(
 ) {
     var expanded by remember { mutableStateOf(false) }
     var menuScreen by remember { mutableStateOf("Main") }
-    
+    var tapOffset by remember { mutableStateOf(Offset.Zero) }
+    val density = LocalDensity.current
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .shadow(elevation, shape)
             .clip(shape)
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        event.changes.firstOrNull()?.let { change ->
+                            if (change.pressed && !change.previousPressed) {
+                                tapOffset = change.position
+                            }
+                        }
+                    }
+                }
+            }
             .clickable { expanded = true }
     ) {
         content()
-        
+
         DropdownMenu(
             expanded = expanded,
-            onDismissRequest = { 
-                expanded = false 
+            onDismissRequest = {
+                expanded = false
                 menuScreen = "Main"
-            }
+            },
+            offset = with(density) { DpOffset(tapOffset.x.toDp(), tapOffset.y.toDp()) }
         ) {
             when (menuScreen) {
                 "Main" -> {

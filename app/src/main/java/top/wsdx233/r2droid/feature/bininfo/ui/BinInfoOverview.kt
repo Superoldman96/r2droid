@@ -77,14 +77,11 @@ fun OverviewSectionCard(
     icon: ImageVector,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    ElevatedCard(
+    OutlinedCard(
         modifier = Modifier
             .fillMaxWidth()
             .animateContentSize(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp)
-        )
     ) {
         Column(
             modifier = Modifier

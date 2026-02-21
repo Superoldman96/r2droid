@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.DpOffset
 import top.wsdx233.r2droid.R
 
 @Composable
@@ -24,14 +25,16 @@ fun HexContextMenu(
     onCopy: (String) -> Unit,
     onModify: (String) -> Unit, // type: hex, string, asm
     onXrefs: () -> Unit,
-    onCustomCommand: () -> Unit
+    onCustomCommand: () -> Unit,
+    offset: DpOffset = DpOffset.Zero
 ) {
     if (expanded) {
         var currentMenu by remember { mutableStateOf("main") }
-        
+
         DropdownMenu(
             expanded = expanded,
-            onDismissRequest = onDismiss
+            onDismissRequest = onDismiss,
+            offset = offset
         ) {
             when (currentMenu) {
                 "main" -> {
