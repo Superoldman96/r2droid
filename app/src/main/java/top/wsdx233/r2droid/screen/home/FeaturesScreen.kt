@@ -2,6 +2,7 @@ package top.wsdx233.r2droid.screen.home
 
 import android.content.Intent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -56,7 +57,7 @@ fun FeaturesScreen(
             onDismissRequest = { showCustomStartDialog = false },
             title = { Text(stringResource(R.string.features_custom_start_dialog_title)) },
             text = {
-                Column {
+                Column(modifier = Modifier.focusable()) {
                     OutlinedTextField(
                         value = customCommand,
                         onValueChange = { customCommand = it },

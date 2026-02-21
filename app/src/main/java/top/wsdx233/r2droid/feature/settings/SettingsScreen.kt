@@ -9,6 +9,7 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -486,18 +487,20 @@ fun SettingsScreen(
             onDismissRequest = { showR2rcDialog = false },
             title = { Text(stringResource(R.string.settings_r2rc)) },
             text = {
-                OutlinedTextField(
-                    value = tempR2rcContent,
-                    onValueChange = { tempR2rcContent = it },
-                    label = { Text(stringResource(R.string.settings_content_label)) },
-                    modifier = Modifier.fillMaxWidth().height(300.dp),
-                    maxLines = 20
-                )
+                Column(modifier = Modifier.focusable()) {
+                    OutlinedTextField(
+                        value = tempR2rcContent,
+                        onValueChange = { tempR2rcContent = it },
+                        label = { Text(stringResource(R.string.settings_content_label)) },
+                        modifier = Modifier.fillMaxWidth().height(300.dp),
+                        maxLines = 20
+                    )
+                }
             },
             confirmButton = {
-                TextButton(onClick = { 
+                TextButton(onClick = {
                     viewModel.saveR2rcContent(context, tempR2rcContent)
-                    showR2rcDialog = false 
+                    showR2rcDialog = false
                 }) {
                     Text(stringResource(R.string.settings_save))
                 }
@@ -625,12 +628,14 @@ fun SettingsScreen(
             onDismissRequest = { showMaxLogDialog = false },
             title = { Text(stringResource(R.string.settings_max_log_entries)) },
             text = {
-                OutlinedTextField(
-                    value = tempMaxLog,
-                    onValueChange = { tempMaxLog = it.filter { c -> c.isDigit() } },
-                    label = { Text(stringResource(R.string.settings_max_log_entries_desc)) },
-                    singleLine = true
-                )
+                Column(modifier = Modifier.focusable()) {
+                    OutlinedTextField(
+                        value = tempMaxLog,
+                        onValueChange = { tempMaxLog = it.filter { c -> c.isDigit() } },
+                        label = { Text(stringResource(R.string.settings_max_log_entries_desc)) },
+                        singleLine = true
+                    )
+                }
             },
             confirmButton = {
                 TextButton(onClick = {

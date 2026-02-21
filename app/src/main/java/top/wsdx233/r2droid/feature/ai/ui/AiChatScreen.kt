@@ -8,6 +8,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -513,14 +514,16 @@ private fun SystemPromptDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.ai_system_prompt)) },
         text = {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 8,
-                maxLines = 15,
-                label = { Text(stringResource(R.string.ai_prompt_label)) }
-            )
+            Column(modifier = Modifier.focusable()) {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 8,
+                    maxLines = 15,
+                    label = { Text(stringResource(R.string.ai_prompt_label)) }
+                )
+            }
         },
         confirmButton = {
             TextButton(onClick = { onSave(text) }) {
@@ -552,13 +555,15 @@ private fun EditMessageDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.ai_edit_message)) },
         text = {
-            OutlinedTextField(
-                value = text,
-                onValueChange = onTextChange,
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 3,
-                maxLines = 10
-            )
+            Column(modifier = Modifier.focusable()) {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = onTextChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 10
+                )
+            }
         },
         confirmButton = {
             TextButton(onClick = onConfirm, enabled = text.isNotBlank()) {

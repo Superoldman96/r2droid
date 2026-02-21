@@ -1,6 +1,8 @@
 package top.wsdx233.r2droid.feature.project
 
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -135,13 +137,15 @@ fun ProjectScreen(
             onDismissRequest = { showSaveBeforeExitDialog = false },
             title = { Text(stringResource(top.wsdx233.r2droid.R.string.project_save_title)) },
             text = {
-                OutlinedTextField(
-                    value = exitProjectName,
-                    onValueChange = { exitProjectName = it },
-                    label = { Text(stringResource(top.wsdx233.r2droid.R.string.project_save_name_hint)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Column(modifier = Modifier.focusable()) {
+                    OutlinedTextField(
+                        value = exitProjectName,
+                        onValueChange = { exitProjectName = it },
+                        label = { Text(stringResource(top.wsdx233.r2droid.R.string.project_save_name_hint)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             },
             confirmButton = {
                 TextButton(

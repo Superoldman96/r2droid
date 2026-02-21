@@ -1,5 +1,7 @@
 package top.wsdx233.r2droid.core.ui.dialogs
 
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
@@ -25,12 +27,14 @@ fun ModifyDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
+            Column(modifier = Modifier.focusable()) {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
         },
         confirmButton = {
             TextButton(

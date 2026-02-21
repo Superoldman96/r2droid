@@ -1,6 +1,7 @@
 package top.wsdx233.r2droid.feature.project
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,7 +40,7 @@ fun SaveProjectDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(top.wsdx233.r2droid.R.string.project_save_title)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(modifier = Modifier.focusable(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 if (existingProjectId != null) {
                     // Options for existing project
                     Row(

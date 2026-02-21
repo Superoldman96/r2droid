@@ -1,5 +1,6 @@
 package top.wsdx233.r2droid.core.ui.dialogs
 
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
@@ -42,7 +43,7 @@ fun JumpDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            Column {
+            Column(modifier = Modifier.focusable()) {
                 OutlinedTextField(
                     value = text,
                     onValueChange = {
