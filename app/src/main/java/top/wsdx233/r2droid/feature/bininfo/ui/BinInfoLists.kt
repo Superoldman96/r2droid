@@ -179,7 +179,7 @@ fun SymbolList(
 ) {
     FilterableList(
         items = symbols,
-        filterPredicate = { item, query -> item.name.contains(query, ignoreCase = true) },
+        filterPredicate = { item, query -> (item.realname ?: item.name).contains(query, ignoreCase = true) },
         placeholder = stringResource(R.string.search_symbols_hint),
         onRefresh = onRefresh,
         externalSearchQuery = searchQuery,
@@ -193,8 +193,9 @@ fun SymbolList(
 @Composable
 fun SymbolItem(symbol: Symbol, actions: ListItemActions) {
     val accent = MaterialTheme.colorScheme.primary
+    val displayName = symbol.realname ?: symbol.name
     UnifiedListItemWrapper(
-        title = symbol.name,
+        title = displayName,
         address = symbol.vAddr,
         fullText = "Symbol: ${symbol.name}, Type: ${symbol.type}, VAddr: 0x${symbol.vAddr.toString(16)}",
         actions = actions,
@@ -212,12 +213,21 @@ fun SymbolItem(symbol: Symbol, actions: ListItemActions) {
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = symbol.name,
+                        text = displayName,
                         style = MaterialTheme.typography.titleMedium,
                         color = accent,
-                        maxLines = 1,
+                        maxLines = 3,
                         overflow = TextOverflow.Ellipsis
                     )
+                    if (symbol.realname != null) {
+                        Text(
+                            text = symbol.name,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                     InfoTag(symbol.type)
                 }
                 AddressBadge(symbol.vAddr, accent)

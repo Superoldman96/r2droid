@@ -69,7 +69,8 @@ data class Symbol(
     val type: String,
     val vAddr: Long,
     val pAddr: Long,
-    val isImported: Boolean
+    val isImported: Boolean,
+    val realname: String? = null
 ) {
     companion object {
         fun fromJson(json: JSONObject): Symbol {
@@ -78,7 +79,8 @@ data class Symbol(
                 type = json.optString("type", ""),
                 vAddr = json.optLong("vaddr", 0),
                 pAddr = json.optLong("paddr", 0),
-                isImported = json.optBoolean("is_imported", false)
+                isImported = json.optBoolean("is_imported", false),
+                realname = json.optString("realname", "").ifEmpty { null }
             )
         }
     }
