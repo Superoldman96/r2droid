@@ -123,6 +123,10 @@ class ProjectViewModel @Inject constructor(
     private val _scrollToSelectionTrigger = MutableStateFlow(0)
     val scrollToSelectionTrigger: StateFlow<Int> = _scrollToSelectionTrigger.asStateFlow()
 
+    // Track current detail tab to avoid unnecessary decompilation calls
+    // 0=Hex, 1=Disasm, 2=Decompiler, 3=Graph
+    var currentDetailTab: Int = 1
+
     // Project-scoped decompiler type (initialized from global default)
     private val _currentDecompiler = MutableStateFlow(SettingsManager.decompilerDefault)
     val currentDecompiler: StateFlow<String> = _currentDecompiler.asStateFlow()
@@ -620,42 +624,28 @@ class ProjectViewModel @Inject constructor(
             // Update r2 seek
             R2PipeManager.execute("s $addr")
             _uiState.value = current.copy(
-                decompilation = null,
+                decompilation = if (currentDetailTab == 2) null else current.decompilation,
                 cursorAddress = addr
             )
 
-            // Reload decompilation for the new address
-            val funcStart = repository.getFunctionStart(addr).getOrDefault(addr)
-            val result = repository.getDecompilation(funcStart, _currentDecompiler.value)
-            val currentState = _uiState.value
-            if (currentState is ProjectUiState.Success) {
-                _uiState.value = currentState.copy(decompilation = result.getOrNull())
+            // Only reload decompilation when on the decompiler tab
+            if (currentDetailTab == 2) {
+                val funcStart = repository.getFunctionStart(addr).getOrDefault(addr)
+                val result = repository.getDecompilation(funcStart, _currentDecompiler.value)
+                val currentState = _uiState.value
+                if (currentState is ProjectUiState.Success) {
+                    _uiState.value = currentState.copy(decompilation = result.getOrNull())
+                }
             }
         }
     }
 
     /**
-     * Jump to address and immediately reload decompilation.
-     * Used when user clicks an already-selected function name in the decompiler.
+     * Jump to address from the decompiler view.
+     * Delegates to jumpToAddress which handles decompilation reload when on tab 2.
      */
     fun jumpAndDecompile(addr: Long) {
-        val current = _uiState.value as? ProjectUiState.Success ?: return
-        pushAddressToHistory(currentOffset)
-        currentOffset = addr
-
-        viewModelScope.launch {
-            R2PipeManager.execute("s $addr")
-            val stateAfterSeek = _uiState.value as? ProjectUiState.Success ?: return@launch
-            _uiState.value = stateAfterSeek.copy(decompilation = null, cursorAddress = addr)
-
-            // Reload decompilation for the target function
-            val funcStart = repository.getFunctionStart(addr).getOrDefault(addr)
-            val result = repository.getDecompilation(funcStart, _currentDecompiler.value)
-            val currentState = _uiState.value
-            if (currentState is ProjectUiState.Success) {
-                _uiState.value = currentState.copy(decompilation = result.getOrNull())
-            }
-        }
+        jumpToAddress(addr)
     }
 
     fun loadGraph(graphType: GraphType) {

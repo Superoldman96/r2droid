@@ -215,10 +215,10 @@ object ReportExporter {
                 </style>
             </head>
             <body>
-                <h1>静态分析报告</h1>
-                <p><strong>文件:</strong> $fileName</p>
-                <p><strong>架构:</strong> $arch</p>
-                <p><strong>格式:</strong> $format</p>
+                <h1>${ctx.getString(R.string.report_doc_title, fileName)}</h1>
+                <p><strong>${ctx.getString(R.string.report_doc_file)}:</strong> $fileName</p>
+                <p><strong>${ctx.getString(R.string.report_doc_arch)}:</strong> $arch</p>
+                <p><strong>${ctx.getString(R.string.report_doc_format)}:</strong> $format</p>
                 <hr>
                 $body
             </body>

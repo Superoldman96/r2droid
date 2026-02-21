@@ -177,6 +177,11 @@ fun ProjectScaffold(
         }
     }
 
+    // Sync detail tab index to ViewModel for conditional decompilation loading
+    androidx.compose.runtime.LaunchedEffect(selectedDetailTabIndex) {
+        viewModel.currentDetailTab = selectedDetailTabIndex
+    }
+
     val listTabs = listOf(
         R.string.proj_tab_overview, R.string.proj_tab_search, R.string.proj_tab_sections, R.string.proj_tab_symbols,
         R.string.proj_tab_imports, R.string.proj_tab_relocs, R.string.proj_tab_strings, R.string.proj_tab_functions
@@ -383,6 +388,7 @@ fun ProjectScaffold(
                     onJump = { addr ->
                         selectedCategory = MainCategory.Detail
                         selectedDetailTabIndex = 1
+                        viewModel.currentDetailTab = 1
                         viewModel.onEvent(ProjectEvent.JumpToAddress(addr))
                         disasmViewModel.onEvent(DisasmEvent.DismissXrefs)
                     }
@@ -418,6 +424,7 @@ fun ProjectScaffold(
                     onJump = { addr ->
                         selectedCategory = MainCategory.Detail
                         selectedDetailTabIndex = 1
+                        viewModel.currentDetailTab = 1
                         viewModel.onEvent(ProjectEvent.JumpToAddress(addr))
                         disasmViewModel.onEvent(DisasmEvent.DismissFunctionInfo)
                     }
@@ -435,6 +442,7 @@ fun ProjectScaffold(
                     onJump = { addr ->
                         selectedCategory = MainCategory.Detail
                         selectedDetailTabIndex = 1
+                        viewModel.currentDetailTab = 1
                         viewModel.onEvent(ProjectEvent.JumpToAddress(addr))
                         disasmViewModel.onEvent(DisasmEvent.DismissFunctionXrefs)
                     }
@@ -642,6 +650,7 @@ fun ProjectScaffold(
                                 onNavigateToDetail = { addr, tabIdx ->
                                     selectedCategory = MainCategory.Detail
                                     selectedDetailTabIndex = tabIdx
+                                    viewModel.currentDetailTab = tabIdx
                                     viewModel.onEvent(ProjectEvent.JumpToAddress(addr))
                                 }
                             )
@@ -678,11 +687,13 @@ fun ProjectScaffold(
                                     onJumpToHex = { addr ->
                                         selectedCategory = MainCategory.Detail
                                         selectedDetailTabIndex = 0
+                                        viewModel.currentDetailTab = 0
                                         viewModel.onEvent(ProjectEvent.JumpToAddress(addr))
                                     },
                                     onJumpToDisasm = { addr ->
                                         selectedCategory = MainCategory.Detail
                                         selectedDetailTabIndex = 1
+                                        viewModel.currentDetailTab = 1
                                         viewModel.onEvent(ProjectEvent.JumpToAddress(addr))
                                     },
                                     onShowXrefs = { addr ->

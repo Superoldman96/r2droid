@@ -56,6 +56,7 @@ fun ProjectDetailView(
         val cursor = state.cursorAddress
         if (tabIndex == 0) hexViewModel.onEvent(HexEvent.PreloadHex(cursor))
         if (tabIndex == 1) disasmViewModel.onEvent(DisasmEvent.Preload(cursor))
+        if (tabIndex == 2) viewModel.onEvent(ProjectEvent.LoadDecompilation)
         if (tabIndex == 3) viewModel.onEvent(ProjectEvent.LoadGraph(state.graphType))
     }
     
