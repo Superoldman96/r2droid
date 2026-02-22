@@ -4,14 +4,23 @@ import android.content.Context
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.launch
 
+import top.wsdx233.r2droid.core.data.db.*
 import top.wsdx233.r2droid.core.data.source.R2PipeDataSource
 import top.wsdx233.r2droid.core.data.model.*
 import top.wsdx233.r2droid.data.SettingsManager
+import top.wsdx233.r2droid.feature.bininfo.data.BinInfoRepository
 import top.wsdx233.r2droid.feature.project.data.ProjectRepository
 import top.wsdx233.r2droid.feature.project.data.SavedProjectRepository
 import top.wsdx233.r2droid.util.R2PipeManager
@@ -96,7 +105,14 @@ sealed class SaveProjectState {
 class ProjectViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repository: ProjectRepository,
-    private val savedProjectRepository: SavedProjectRepository
+    private val savedProjectRepository: SavedProjectRepository,
+    private val binInfoRepository: BinInfoRepository,
+    private val stringDao: StringDao,
+    private val sectionDao: SectionDao,
+    private val symbolDao: SymbolDao,
+    private val importDao: ImportDao,
+    private val relocationDao: RelocationDao,
+    private val functionDao: FunctionDao
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ProjectUiState>(ProjectUiState.Idle)
@@ -114,6 +130,101 @@ class ProjectViewModel @Inject constructor(
     private val _saveProjectState = MutableStateFlow<SaveProjectState>(SaveProjectState.Idle)
     val saveProjectState: StateFlow<SaveProjectState> = _saveProjectState.asStateFlow()
     
+    // === Strings Paging ===
+    private val _stringsSearchQuery = MutableStateFlow("")
+    val stringsSearchQuery: StateFlow<String> = _stringsSearchQuery.asStateFlow()
+
+    // 字符串是否正在同步到数据库
+    private val _stringsSyncing = MutableStateFlow(false)
+    val stringsSyncing: StateFlow<Boolean> = _stringsSyncing.asStateFlow()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val stringsPagingData: Flow<PagingData<StringEntity>> = _stringsSearchQuery.flatMapLatest { query ->
+        Pager(PagingConfig(pageSize = 50, enablePlaceholders = true)) {
+            if (query.isBlank()) stringDao.getPagingSource()
+            else stringDao.searchStrings(query)
+        }.flow
+    }.cachedIn(viewModelScope)
+
+    fun updateStringsSearchQuery(query: String) {
+        _stringsSearchQuery.value = query
+    }
+
+    // === Sections Paging ===
+    private val _sectionsSearchQuery = MutableStateFlow("")
+    val sectionsSearchQuery: StateFlow<String> = _sectionsSearchQuery.asStateFlow()
+    private val _sectionsSyncing = MutableStateFlow(false)
+    val sectionsSyncing: StateFlow<Boolean> = _sectionsSyncing.asStateFlow()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val sectionsPagingData: Flow<PagingData<SectionEntity>> = _sectionsSearchQuery.flatMapLatest { query ->
+        Pager(PagingConfig(pageSize = 50, enablePlaceholders = true)) {
+            if (query.isBlank()) sectionDao.getPagingSource() else sectionDao.search(query)
+        }.flow
+    }.cachedIn(viewModelScope)
+
+    fun updateSectionsSearchQuery(query: String) { _sectionsSearchQuery.value = query }
+
+    // === Symbols Paging ===
+    private val _symbolsSearchQuery = MutableStateFlow("")
+    val symbolsSearchQuery: StateFlow<String> = _symbolsSearchQuery.asStateFlow()
+    private val _symbolsSyncing = MutableStateFlow(false)
+    val symbolsSyncing: StateFlow<Boolean> = _symbolsSyncing.asStateFlow()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val symbolsPagingData: Flow<PagingData<SymbolEntity>> = _symbolsSearchQuery.flatMapLatest { query ->
+        Pager(PagingConfig(pageSize = 50, enablePlaceholders = true)) {
+            if (query.isBlank()) symbolDao.getPagingSource() else symbolDao.search(query)
+        }.flow
+    }.cachedIn(viewModelScope)
+
+    fun updateSymbolsSearchQuery(query: String) { _symbolsSearchQuery.value = query }
+
+    // === Imports Paging ===
+    private val _importsSearchQuery = MutableStateFlow("")
+    val importsSearchQuery: StateFlow<String> = _importsSearchQuery.asStateFlow()
+    private val _importsSyncing = MutableStateFlow(false)
+    val importsSyncing: StateFlow<Boolean> = _importsSyncing.asStateFlow()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val importsPagingData: Flow<PagingData<ImportEntity>> = _importsSearchQuery.flatMapLatest { query ->
+        Pager(PagingConfig(pageSize = 50, enablePlaceholders = true)) {
+            if (query.isBlank()) importDao.getPagingSource() else importDao.search(query)
+        }.flow
+    }.cachedIn(viewModelScope)
+
+    fun updateImportsSearchQuery(query: String) { _importsSearchQuery.value = query }
+
+    // === Relocations Paging ===
+    private val _relocationsSearchQuery = MutableStateFlow("")
+    val relocationsSearchQuery: StateFlow<String> = _relocationsSearchQuery.asStateFlow()
+    private val _relocationsSyncing = MutableStateFlow(false)
+    val relocationsSyncing: StateFlow<Boolean> = _relocationsSyncing.asStateFlow()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val relocationsPagingData: Flow<PagingData<RelocationEntity>> = _relocationsSearchQuery.flatMapLatest { query ->
+        Pager(PagingConfig(pageSize = 50, enablePlaceholders = true)) {
+            if (query.isBlank()) relocationDao.getPagingSource() else relocationDao.search(query)
+        }.flow
+    }.cachedIn(viewModelScope)
+
+    fun updateRelocationsSearchQuery(query: String) { _relocationsSearchQuery.value = query }
+
+    // === Functions Paging ===
+    private val _functionsSearchQuery = MutableStateFlow("")
+    val functionsSearchQuery: StateFlow<String> = _functionsSearchQuery.asStateFlow()
+    private val _functionsSyncing = MutableStateFlow(false)
+    val functionsSyncing: StateFlow<Boolean> = _functionsSyncing.asStateFlow()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val functionsPagingData: Flow<PagingData<FunctionEntity>> = _functionsSearchQuery.flatMapLatest { query ->
+        Pager(PagingConfig(pageSize = 50, enablePlaceholders = true)) {
+            if (query.isBlank()) functionDao.getPagingSource() else functionDao.search(query)
+        }.flow
+    }.cachedIn(viewModelScope)
+
+    fun updateFunctionsSearchQuery(query: String) { _functionsSearchQuery.value = query }
+
     // === Hex/Disasm coordination ===
     // Event to notify UI that data might have changed globally (e.g. via console command)
     private val _globalDataInvalidated = MutableStateFlow(0L)
@@ -468,13 +579,14 @@ class ProjectViewModel @Inject constructor(
     fun loadSections(forceRefresh: Boolean = false) {
         val current = _uiState.value as? ProjectUiState.Success ?: return
         if (!forceRefresh && current.sections != null) return
-        
+
         viewModelScope.launch {
-            val result = repository.getSections()
-            // Ensure we are still in success state
+            _sectionsSyncing.value = true
+            binInfoRepository.syncSectionsToDb()
+            _sectionsSyncing.value = false
             val currentState = _uiState.value
             if (currentState is ProjectUiState.Success) {
-                _uiState.value = currentState.copy(sections = result.getOrDefault(emptyList()))
+                _uiState.value = currentState.copy(sections = emptyList())
             }
         }
     }
@@ -484,10 +596,12 @@ class ProjectViewModel @Inject constructor(
         if (!forceRefresh && current.symbols != null) return
 
         viewModelScope.launch {
-            val result = repository.getSymbols()
+            _symbolsSyncing.value = true
+            binInfoRepository.syncSymbolsToDb()
+            _symbolsSyncing.value = false
             val currentState = _uiState.value
             if (currentState is ProjectUiState.Success) {
-                _uiState.value = currentState.copy(symbols = result.getOrDefault(emptyList()))
+                _uiState.value = currentState.copy(symbols = emptyList())
             }
         }
     }
@@ -497,10 +611,12 @@ class ProjectViewModel @Inject constructor(
         if (!forceRefresh && current.imports != null) return
 
         viewModelScope.launch {
-            val result = repository.getImports()
+            _importsSyncing.value = true
+            binInfoRepository.syncImportsToDb()
+            _importsSyncing.value = false
             val currentState = _uiState.value
             if (currentState is ProjectUiState.Success) {
-                _uiState.value = currentState.copy(imports = result.getOrDefault(emptyList()))
+                _uiState.value = currentState.copy(imports = emptyList())
             }
         }
     }
@@ -510,10 +626,12 @@ class ProjectViewModel @Inject constructor(
         if (!forceRefresh && current.relocations != null) return
 
         viewModelScope.launch {
-            val result = repository.getRelocations()
+            _relocationsSyncing.value = true
+            binInfoRepository.syncRelocationsToDb()
+            _relocationsSyncing.value = false
             val currentState = _uiState.value
             if (currentState is ProjectUiState.Success) {
-                _uiState.value = currentState.copy(relocations = result.getOrDefault(emptyList()))
+                _uiState.value = currentState.copy(relocations = emptyList())
             }
         }
     }
@@ -523,10 +641,13 @@ class ProjectViewModel @Inject constructor(
         if (!forceRefresh && current.strings != null) return
 
         viewModelScope.launch {
-            val result = repository.getStrings()
+            _stringsSyncing.value = true
+            val result = binInfoRepository.syncStringsToDb()
+            _stringsSyncing.value = false
             val currentState = _uiState.value
             if (currentState is ProjectUiState.Success) {
-                _uiState.value = currentState.copy(strings = result.getOrDefault(emptyList()))
+                // 标记 strings 已加载（用空列表占位，实际数据从 Paging 读取）
+                _uiState.value = currentState.copy(strings = emptyList())
             }
         }
     }
@@ -536,10 +657,12 @@ class ProjectViewModel @Inject constructor(
         if (!forceRefresh && current.functions != null) return
 
         viewModelScope.launch {
-            val result = repository.getFunctions()
+            _functionsSyncing.value = true
+            binInfoRepository.syncFunctionsToDb()
+            _functionsSyncing.value = false
             val currentState = _uiState.value
             if (currentState is ProjectUiState.Success) {
-                _uiState.value = currentState.copy(functions = result.getOrDefault(emptyList()))
+                _uiState.value = currentState.copy(functions = emptyList())
             }
         }
     }

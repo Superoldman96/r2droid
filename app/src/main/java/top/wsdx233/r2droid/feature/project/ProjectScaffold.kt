@@ -64,7 +64,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -152,10 +151,6 @@ fun ProjectScaffold(
     var showJumpDialog by remember { mutableStateOf(false) }
     val isR2Frida = R2PipeManager.isR2FridaSession
     val isWide = LocalWindowWidthClass.current != WindowWidthClass.Compact
-
-    // Hoisted ListTab state (survives category switches)
-    val listSearchQueries = remember { mutableStateMapOf<Int, String>() }
-    val listScrollStates = remember { mutableStateMapOf<Int, androidx.compose.foundation.lazy.LazyListState>() }
 
     // Hoisted CommandScreen state
     var cmdInput by remember { mutableStateOf("") }
@@ -593,8 +588,6 @@ fun ProjectScaffold(
                         MainCategory.List -> {
                             ProjectListView(
                                 tabIndex = selectedListTabIndex,
-                                searchQueries = listSearchQueries,
-                                listStates = listScrollStates,
                                 onNavigateToDetail = { addr, tabIdx ->
                                     selectedCategory = MainCategory.Detail
                                     selectedDetailTabIndex = tabIdx

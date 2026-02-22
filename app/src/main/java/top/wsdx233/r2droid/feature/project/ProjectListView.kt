@@ -2,7 +2,7 @@ package top.wsdx233.r2droid.feature.project
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.lazy.LazyListState
+
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
@@ -10,7 +10,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -21,13 +20,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import top.wsdx233.r2droid.core.ui.components.ListItemActions
 import top.wsdx233.r2droid.util.R2PipeManager
-import top.wsdx233.r2droid.feature.bininfo.ui.FunctionList
-import top.wsdx233.r2droid.feature.bininfo.ui.ImportList
 import top.wsdx233.r2droid.feature.bininfo.ui.OverviewCard
-import top.wsdx233.r2droid.feature.bininfo.ui.RelocationList
-import top.wsdx233.r2droid.feature.bininfo.ui.SectionList
-import top.wsdx233.r2droid.feature.bininfo.ui.StringList
-import top.wsdx233.r2droid.feature.bininfo.ui.SymbolList
+import top.wsdx233.r2droid.feature.bininfo.ui.PagingSectionList
+import top.wsdx233.r2droid.feature.bininfo.ui.PagingSymbolList
+import top.wsdx233.r2droid.feature.bininfo.ui.PagingImportList
+import top.wsdx233.r2droid.feature.bininfo.ui.PagingRelocationList
+import top.wsdx233.r2droid.feature.bininfo.ui.PagingStringList
+import top.wsdx233.r2droid.feature.bininfo.ui.PagingFunctionList
 import top.wsdx233.r2droid.feature.disasm.DisasmEvent
 import top.wsdx233.r2droid.feature.disasm.DisasmViewModel
 import top.wsdx233.r2droid.feature.search.ui.SearchScreen
@@ -37,17 +36,10 @@ fun ProjectListView(
     viewModel: ProjectViewModel = hiltViewModel(),
     disasmViewModel: DisasmViewModel = hiltViewModel(),
     tabIndex: Int,
-    searchQueries: SnapshotStateMap<Int, String>,
-    listStates: SnapshotStateMap<Int, LazyListState>,
     onNavigateToDetail: (Long, Int) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val state = uiState as? ProjectUiState.Success ?: return
-
-    // Helper to get or create LazyListState for a tab
-    fun getListState(tab: Int): LazyListState {
-        return listStates.getOrPut(tab) { LazyListState() }
-    }
 
     val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
     
@@ -120,41 +112,60 @@ fun ProjectListView(
                 }
             } else Text(stringResource(R.string.hex_no_data), Modifier.fillMaxSize())
         1 -> SearchScreen(actions = listItemActions)
-        2 -> if (state.sections == null) Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            else SectionList(state.sections, listItemActions,
+        2 -> {
+            val syncing by viewModel.sectionsSyncing.collectAsState()
+            val query by viewModel.sectionsSearchQuery.collectAsState()
+            if (state.sections == null || syncing) Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            else PagingSectionList(viewModel.sectionsPagingData, listItemActions,
                 onRefresh = { viewModel.onEvent(ProjectEvent.LoadSections(forceRefresh = true)) },
-                searchQuery = searchQueries[2] ?: "",
-                onSearchQueryChange = { searchQueries[2] = it },
-                listState = getListState(2))
-        3 -> if (state.symbols == null) Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            else SymbolList(state.symbols, listItemActions,
+                searchQuery = query, onSearchQueryChange = { viewModel.updateSectionsSearchQuery(it) })
+        }
+        3 -> {
+            val syncing by viewModel.symbolsSyncing.collectAsState()
+            val query by viewModel.symbolsSearchQuery.collectAsState()
+            if (state.symbols == null || syncing) Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            else PagingSymbolList(viewModel.symbolsPagingData, listItemActions,
                 onRefresh = { viewModel.onEvent(ProjectEvent.LoadSymbols(forceRefresh = true)) },
-                searchQuery = searchQueries[3] ?: "",
-                onSearchQueryChange = { searchQueries[3] = it },
-                listState = getListState(3))
-        4 -> if (state.imports == null) Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            else ImportList(state.imports, listItemActions,
+                searchQuery = query, onSearchQueryChange = { viewModel.updateSymbolsSearchQuery(it) })
+        }
+        4 -> {
+            val syncing by viewModel.importsSyncing.collectAsState()
+            val query by viewModel.importsSearchQuery.collectAsState()
+            if (state.imports == null || syncing) Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            else PagingImportList(viewModel.importsPagingData, listItemActions,
                 onRefresh = { viewModel.onEvent(ProjectEvent.LoadImports(forceRefresh = true)) },
-                searchQuery = searchQueries[4] ?: "",
-                onSearchQueryChange = { searchQueries[4] = it },
-                listState = getListState(4))
-        5 -> if (state.relocations == null) Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            else RelocationList(state.relocations, listItemActions,
+                searchQuery = query, onSearchQueryChange = { viewModel.updateImportsSearchQuery(it) })
+        }
+        5 -> {
+            val syncing by viewModel.relocationsSyncing.collectAsState()
+            val query by viewModel.relocationsSearchQuery.collectAsState()
+            if (state.relocations == null || syncing) Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            else PagingRelocationList(viewModel.relocationsPagingData, listItemActions,
                 onRefresh = { viewModel.onEvent(ProjectEvent.LoadRelocations(forceRefresh = true)) },
-                searchQuery = searchQueries[5] ?: "",
-                onSearchQueryChange = { searchQueries[5] = it },
-                listState = getListState(5))
-        6 -> if (state.strings == null) Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            else StringList(state.strings, listItemActions,
-                onRefresh = { viewModel.onEvent(ProjectEvent.LoadStrings(forceRefresh = true)) },
-                searchQuery = searchQueries[6] ?: "",
-                onSearchQueryChange = { searchQueries[6] = it },
-                listState = getListState(6))
-        7 -> if (state.functions == null) Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            else FunctionList(state.functions, functionListActions,
+                searchQuery = query, onSearchQueryChange = { viewModel.updateRelocationsSearchQuery(it) })
+        }
+        6 -> {
+            val stringsSyncing by viewModel.stringsSyncing.collectAsState()
+            val stringsSearchQuery by viewModel.stringsSearchQuery.collectAsState()
+            if (state.strings == null || stringsSyncing) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            } else {
+                PagingStringList(
+                    pagingData = viewModel.stringsPagingData,
+                    actions = listItemActions,
+                    onRefresh = { viewModel.onEvent(ProjectEvent.LoadStrings(forceRefresh = true)) },
+                    searchQuery = stringsSearchQuery,
+                    onSearchQueryChange = { viewModel.updateStringsSearchQuery(it) }
+                )
+            }
+        }
+        7 -> {
+            val syncing by viewModel.functionsSyncing.collectAsState()
+            val query by viewModel.functionsSearchQuery.collectAsState()
+            if (state.functions == null || syncing) Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            else PagingFunctionList(viewModel.functionsPagingData, functionListActions,
                 onRefresh = { viewModel.onEvent(ProjectEvent.LoadFunctions(forceRefresh = true)) },
-                searchQuery = searchQueries[7] ?: "",
-                onSearchQueryChange = { searchQueries[7] = it },
-                listState = getListState(7))
+                searchQuery = query, onSearchQueryChange = { viewModel.updateFunctionsSearchQuery(it) })
+        }
     }
 }

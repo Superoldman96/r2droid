@@ -7,6 +7,7 @@ import java.io.BufferedInputStream
 import java.io.BufferedWriter
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.InputStream
 import java.io.OutputStreamWriter
 import java.util.concurrent.TimeUnit
 
@@ -209,6 +210,20 @@ class R2pipe(context: Context, private val filePath: String? = null, private val
         return cmd(jsonCommand)
     }
 
+    /**
+     * 流式执行命令，返回一个 InputStream，遇到 \0 时返回 EOF。
+     * 调用方必须在读取完毕后关闭返回的 InputStream。
+     */
+    fun cmdStream(command: String): InputStream {
+        LogManager.log(LogType.COMMAND, command)
+        if (!isRunning || process == null) throw IllegalStateException("R2 not running")
+        flushInputStream()
+        writer?.write(command)
+        writer?.newLine()
+        writer?.flush()
+        return R2ProcessInputStream(inputStream!!)
+    }
+
     fun quit() {
         try {
             if (isRunning) {
@@ -291,4 +306,34 @@ class R2pipe(context: Context, private val filePath: String? = null, private val
             return R2pipe(context)
         }
     }
+}
+
+/**
+ * 包装 InputStream，当读到 \0 时表示当前命令输出结束，返回 EOF (-1)。
+ * 注意：close() 不会关闭底层流（底层流由 R2pipe 管理）。
+ */
+class R2ProcessInputStream(private val source: InputStream) : InputStream() {
+    private var ended = false
+
+    override fun read(): Int {
+        if (ended) return -1
+        val b = source.read()
+        if (b <= 0) { ended = true; return -1 }
+        return b
+    }
+
+    override fun read(b: ByteArray, off: Int, len: Int): Int {
+        if (ended) return -1
+        val count = source.read(b, off, len)
+        if (count <= 0) { ended = true; return -1 }
+        for (i in off until off + count) {
+            if (b[i].toInt() == 0) {
+                ended = true
+                return if (i == off) -1 else i - off
+            }
+        }
+        return count
+    }
+
+    override fun close() { /* 不关闭底层流 */ }
 }

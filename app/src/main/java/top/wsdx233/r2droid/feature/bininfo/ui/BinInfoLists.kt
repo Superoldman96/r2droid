@@ -12,6 +12,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -31,9 +35,21 @@ import top.wsdx233.r2droid.core.data.model.Relocation
 import top.wsdx233.r2droid.core.data.model.Section
 import top.wsdx233.r2droid.core.data.model.StringInfo
 import top.wsdx233.r2droid.core.data.model.Symbol
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.paging.PagingData
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemKey
+import kotlinx.coroutines.flow.Flow
+import top.wsdx233.r2droid.core.data.db.*
+import top.wsdx233.r2droid.core.ui.components.AutoHideScrollbar
 import top.wsdx233.r2droid.core.ui.components.FilterableList
 import top.wsdx233.r2droid.core.ui.components.ListItemActions
+import top.wsdx233.r2droid.core.ui.components.SearchBar
 import top.wsdx233.r2droid.core.ui.components.UnifiedListItemWrapper
 import top.wsdx233.r2droid.ui.theme.LocalAppFont
 
@@ -416,6 +432,19 @@ fun StringItem(stringInfo: StringInfo, actions: ListItemActions) {
 }
 
 @Composable
+fun PagingStringList(
+    pagingData: Flow<PagingData<StringEntity>>,
+    actions: ListItemActions,
+    onRefresh: (() -> Unit)? = null,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit
+) {
+    GenericPagingList(pagingData, stringResource(R.string.search_strings_hint), onRefresh, searchQuery, onSearchQueryChange, itemKey = { it.vAddr }) { item ->
+        StringItem(StringInfo(item.string, item.vAddr, item.section, item.type), actions)
+    }
+}
+
+@Composable
 fun FunctionList(
     functions: List<FunctionInfo>,
     actions: ListItemActions,
@@ -482,5 +511,107 @@ fun FunctionItem(func: FunctionInfo, actions: ListItemActions) {
                 AddressBadge(func.addr, accent)
             }
         }
+    }
+}
+
+@Composable
+private fun <T : Any> GenericPagingList(
+    pagingData: Flow<PagingData<T>>,
+    placeholder: String,
+    onRefresh: (() -> Unit)?,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    itemKey: (T) -> Any,
+    itemContent: @Composable (T) -> Unit
+) {
+    val lazyPagingItems = pagingData.collectAsLazyPagingItems()
+    val listState = rememberLazyListState()
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            SearchBar(query = searchQuery, onQueryChange = onSearchQueryChange, placeholder = placeholder, modifier = Modifier.weight(1f))
+            if (onRefresh != null) {
+                IconButton(onClick = onRefresh) {
+                    Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.common_refresh), tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Box(modifier = Modifier.weight(1f)) {
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(count = lazyPagingItems.itemCount, key = lazyPagingItems.itemKey { itemKey(it) }) { index ->
+                    lazyPagingItems[index]?.let { itemContent(it) }
+                }
+            }
+            if (lazyPagingItems.itemCount > 0) {
+                AutoHideScrollbar(listState = listState, totalItems = lazyPagingItems.itemCount, modifier = Modifier.align(Alignment.CenterEnd))
+            }
+        }
+    }
+}
+
+@Composable
+fun PagingSectionList(
+    pagingData: Flow<PagingData<SectionEntity>>,
+    actions: ListItemActions,
+    onRefresh: (() -> Unit)? = null,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit
+) {
+    GenericPagingList(pagingData, stringResource(R.string.search_sections_hint), onRefresh, searchQuery, onSearchQueryChange, itemKey = { it.vAddr }) { item ->
+        SectionItem(Section(item.name, item.size, item.vSize, item.perm, item.vAddr, item.pAddr), actions)
+    }
+}
+
+@Composable
+fun PagingSymbolList(
+    pagingData: Flow<PagingData<SymbolEntity>>,
+    actions: ListItemActions,
+    onRefresh: (() -> Unit)? = null,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit
+) {
+    GenericPagingList(pagingData, stringResource(R.string.search_symbols_hint), onRefresh, searchQuery, onSearchQueryChange, itemKey = { it.id }) { item ->
+        SymbolItem(Symbol(item.name, item.type, item.vAddr, item.pAddr, item.isImported, item.realname), actions)
+    }
+}
+
+@Composable
+fun PagingImportList(
+    pagingData: Flow<PagingData<ImportEntity>>,
+    actions: ListItemActions,
+    onRefresh: (() -> Unit)? = null,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit
+) {
+    GenericPagingList(pagingData, stringResource(R.string.search_imports_hint), onRefresh, searchQuery, onSearchQueryChange, itemKey = { it.id }) { item ->
+        ImportItem(ImportInfo(item.name, item.ordinal, item.type, item.plt), actions)
+    }
+}
+
+@Composable
+fun PagingRelocationList(
+    pagingData: Flow<PagingData<RelocationEntity>>,
+    actions: ListItemActions,
+    onRefresh: (() -> Unit)? = null,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit
+) {
+    GenericPagingList(pagingData, stringResource(R.string.search_relocations_hint), onRefresh, searchQuery, onSearchQueryChange, itemKey = { it.id }) { item ->
+        RelocationItem(Relocation(item.name, item.type, item.vAddr, item.pAddr), actions)
+    }
+}
+
+@Composable
+fun PagingFunctionList(
+    pagingData: Flow<PagingData<FunctionEntity>>,
+    actions: ListItemActions,
+    onRefresh: (() -> Unit)? = null,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit
+) {
+    GenericPagingList(pagingData, stringResource(R.string.search_functions_hint), onRefresh, searchQuery, onSearchQueryChange, itemKey = { it.addr }) { item ->
+        FunctionItem(FunctionInfo(item.name, item.addr, item.size, item.nbbs, item.signature), actions)
     }
 }

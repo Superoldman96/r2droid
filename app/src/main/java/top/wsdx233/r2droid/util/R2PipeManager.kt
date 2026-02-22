@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.io.InputStream
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -221,6 +222,35 @@ object R2PipeManager {
                         _isConnected.set(false)
                     }
 
+                    Result.failure(e)
+                }
+            }
+        }
+    }
+
+    /**
+     * 流式执行命令，在 mutex 保护下将 InputStream 传给 block 处理。
+     * mutex 在 block 执行完毕后才释放，确保管道安全。
+     */
+    suspend fun <T> executeStream(cmd: String, block: suspend (InputStream) -> T): Result<T> {
+        return mutex.withLock {
+            withContext(Dispatchers.IO) {
+                if (r2Pipe == null || !_isConnected.get()) {
+                    return@withContext Result.failure(IllegalStateException("R2Pipe is not connected."))
+                }
+                try {
+                    _state.value = State.Executing(cmd)
+                    val pipe = r2Pipe!!
+                    val stream = pipe.cmdStream(cmd)
+                    val result = block(stream)
+                    isDirtyAfterSave = true
+                    _state.value = State.Success(cmd, "Stream completed")
+                    Result.success(result)
+                } catch (e: Exception) {
+                    _state.value = State.Failure(cmd, e)
+                    if (r2Pipe?.isProcessRunning() != true) {
+                        _isConnected.set(false)
+                    }
                     Result.failure(e)
                 }
             }
