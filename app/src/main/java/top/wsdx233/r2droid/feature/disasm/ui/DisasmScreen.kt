@@ -1,6 +1,8 @@
 package top.wsdx233.r2droid.feature.disasm.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -31,7 +33,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
@@ -42,6 +43,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.jeziellago.compose.markdowntext.MarkdownText
 import kotlinx.coroutines.launch
 import top.wsdx233.r2droid.core.ui.dialogs.CustomCommandDialog
 import top.wsdx233.r2droid.core.ui.dialogs.FunctionInfoDialog
@@ -54,6 +56,7 @@ import top.wsdx233.r2droid.core.ui.dialogs.XrefsDialog
 import top.wsdx233.r2droid.core.ui.components.AutoHideAddressScrollbar
 import top.wsdx233.r2droid.ui.theme.LocalAppFont
 import top.wsdx233.r2droid.R
+import androidx.compose.runtime.setValue
 
 /**
  * Virtualized Disassembly Viewer - uses DisasmDataManager for smooth infinite scrolling.
@@ -615,8 +618,69 @@ fun DisassemblyViewer(
                 detail = instructionDetailState.data,
                 isLoading = instructionDetailState.isLoading,
                 targetAddress = instructionDetailState.targetAddress,
+                aiExplanation = instructionDetailState.aiExplanation,
+                aiExplainLoading = instructionDetailState.aiExplainLoading,
+                aiExplainError = instructionDetailState.aiExplainError,
                 onDismiss = { viewModel.onEvent(DisasmEvent.DismissInstructionDetail) },
-                onJump = { addr -> onInstructionClick(addr) }
+                onJump = { addr -> onInstructionClick(addr) },
+                onAiExplain = { addr ->
+                    viewModel.onEvent(DisasmEvent.ExplainInstructionWithAi(addr))
+                }
+            )
+        }
+
+        val aiPolishState by viewModel.aiPolishState.collectAsState()
+        if (aiPolishState.visible) {
+            AlertDialog(
+                onDismissRequest = { viewModel.onEvent(DisasmEvent.DismissAiPolish) },
+                title = {
+                    Text(
+                        text = androidx.compose.ui.res.stringResource(R.string.disasm_ai_explain_result_title)
+                    )
+                },
+                text = {
+                    when {
+                        aiPolishState.isLoading -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(160.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                        aiPolishState.error != null -> {
+                            Text(
+                                text = aiPolishState.error ?: "",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                        else -> {
+                            androidx.compose.foundation.text.selection.SelectionContainer {
+                                MarkdownText(
+                                    markdown = aiPolishState.result,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(360.dp)
+                                        .verticalScroll(rememberScrollState()),
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    ),
+//                                    syntaxHighlightColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+//                                    syntaxHighlightTextColor = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    androidx.compose.material3.TextButton(
+                        onClick = { viewModel.onEvent(DisasmEvent.DismissAiPolish) }
+                    ) {
+                        Text(androidx.compose.ui.res.stringResource(R.string.func_close))
+                    }
+                }
             )
         }
     }

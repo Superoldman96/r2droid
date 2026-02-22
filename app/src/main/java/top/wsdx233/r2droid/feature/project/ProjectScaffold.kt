@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuOpen
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MyLocation
@@ -93,6 +94,7 @@ import top.wsdx233.r2droid.feature.hex.HexEvent
 import top.wsdx233.r2droid.feature.hex.HexViewModel
 import top.wsdx233.r2droid.feature.ai.AiViewModel
 import top.wsdx233.r2droid.feature.ai.ui.AiChatScreen
+import top.wsdx233.r2droid.feature.ai.ui.AiPromptsScreen
 import top.wsdx233.r2droid.feature.ai.ui.AiProviderSettingsScreen
 import top.wsdx233.r2droid.feature.terminal.ui.CommandScreen
 import top.wsdx233.r2droid.core.ui.components.CommandSuggestButton
@@ -195,7 +197,7 @@ fun ProjectScaffold(
     )
     val detailTabs = listOf(R.string.proj_tab_hex, R.string.proj_tab_disassembly, R.string.proj_tab_decompile, R.string.proj_tab_graph)
     val projectTabs = listOf(R.string.proj_tab_settings, R.string.proj_tab_cmd, R.string.proj_tab_logs)
-    val aiTabs = listOf(R.string.ai_tab_chat, R.string.ai_tab_settings)
+    val aiTabs = listOf(R.string.ai_tab_chat, R.string.ai_tab_settings, R.string.ai_tab_prompts)
     val r2fridaTabs = listOf(
         R.string.r2frida_tab_overview, R.string.r2frida_tab_libraries, R.string.r2frida_tab_scripts,
         R.string.r2frida_tab_entries, R.string.r2frida_tab_exports, R.string.r2frida_tab_strings,
@@ -271,11 +273,12 @@ fun ProjectScaffold(
                                         color = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                                     )
-                                    listOf("r2ghidra", "jsdec", "native").forEach { type ->
+                                    listOf("r2ghidra", "jsdec", "native", "aipdg").forEach { type ->
                                         val labelRes = when (type) {
                                             "r2ghidra" -> R.string.decompiler_r2ghidra
                                             "jsdec" -> R.string.decompiler_jsdec
-                                            else -> R.string.decompiler_native
+                                            "native" -> R.string.decompiler_native
+                                            else -> R.string.decompiler_aipdg
                                         }
                                         androidx.compose.material3.DropdownMenuItem(
                                             text = {
@@ -324,6 +327,19 @@ fun ProjectScaffold(
                                         }
                                     )
                                 }
+                            }
+                        }
+                        if (selectedDetailTabIndex == 1) {
+                            androidx.compose.material3.IconButton(
+                                onClick = {
+                                    val currentAddress = (uiState as? ProjectUiState.Success)?.cursorAddress ?: 0L
+                                    disasmViewModel.onEvent(DisasmEvent.AiPolishDisassembly(currentAddress))
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Filled.AutoFixHigh,
+                                    contentDescription = stringResource(R.string.disasm_ai_explain)
+                                )
                             }
                         }
                         androidx.compose.material3.IconButton(onClick = { showJumpDialog = true }) {
@@ -609,6 +625,7 @@ fun ProjectScaffold(
                             when (selectedAiTabIndex) {
                                 0 -> AiChatScreen(aiViewModel)
                                 1 -> AiProviderSettingsScreen(aiViewModel)
+                                2 -> AiPromptsScreen()
                             }
                         }
                         MainCategory.R2Frida -> {

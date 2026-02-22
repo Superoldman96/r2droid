@@ -31,6 +31,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -202,6 +203,19 @@ private fun ProviderCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                    Text(
+                        text = if (provider.useResponsesApi) {
+                            stringResource(R.string.ai_provider_response_api_on)
+                        } else {
+                            stringResource(R.string.ai_provider_response_api_off)
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isActive) {
+                            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
                 }
                 IconButton(onClick = onEdit) {
                     Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.ai_edit))
@@ -251,6 +265,7 @@ private fun ProviderEditDialog(
     var baseUrl by remember { mutableStateOf(provider?.baseUrl ?: "https://api.openai.com/v1") }
     var apiKey by remember { mutableStateOf(provider?.apiKey ?: "") }
     var modelsText by remember { mutableStateOf(provider?.models?.joinToString(", ") ?: "") }
+    var useResponsesApi by remember { mutableStateOf(provider?.useResponsesApi ?: false) }
 
     var showModelSelector by remember { mutableStateOf(false) }
     var fetchedModels by remember { mutableStateOf<List<String>?>(null) }
@@ -290,6 +305,28 @@ private fun ProviderEditDialog(
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text("sk-...") }
                 )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.ai_provider_response_api),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = stringResource(R.string.ai_provider_response_api_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Switch(
+                        checked = useResponsesApi,
+                        onCheckedChange = { useResponsesApi = it }
+                    )
+                }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -365,7 +402,8 @@ private fun ProviderEditDialog(
                                 name = name.trim(),
                                 baseUrl = baseUrl.trim(),
                                 apiKey = apiKey.trim(),
-                                models = models
+                                models = models,
+                                useResponsesApi = useResponsesApi
                             )
                         )
                     }

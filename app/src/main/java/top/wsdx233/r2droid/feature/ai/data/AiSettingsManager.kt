@@ -13,6 +13,8 @@ object AiSettingsManager {
     private const val KEY_SYSTEM_PROMPT = "system_prompt"
     private const val KEY_CHAT_SESSIONS = "chat_sessions"
     private const val KEY_DANGEROUS_COMMANDS = "dangerous_commands"
+    private const val KEY_PROMPT_INSTR_EXPLAIN = "prompt_instr_explain"
+    private const val KEY_PROMPT_DISASM_POLISH = "prompt_disasm_polish"
 
     private lateinit var prefs: SharedPreferences
     private val json = Json { ignoreUnknownKeys = true }
@@ -139,6 +141,18 @@ object AiSettingsManager {
             prefs.edit().putString(KEY_SYSTEM_PROMPT, value).apply()
         }
 
+    var instrExplainPrompt: String
+        get() = prefs.getString(KEY_PROMPT_INSTR_EXPLAIN, null) ?: DEFAULT_INSTR_EXPLAIN_PROMPT
+        set(value) {
+            prefs.edit().putString(KEY_PROMPT_INSTR_EXPLAIN, value).apply()
+        }
+
+    var disasmPolishPrompt: String
+        get() = prefs.getString(KEY_PROMPT_DISASM_POLISH, null) ?: DEFAULT_DISASM_POLISH_PROMPT
+        set(value) {
+            prefs.edit().putString(KEY_PROMPT_DISASM_POLISH, value).apply()
+        }
+
     // region Dangerous Commands
 
     val DEFAULT_DANGEROUS_COMMANDS = listOf("aa", "aaa", "aaaa", "!*")
@@ -169,18 +183,17 @@ object AiSettingsManager {
 
     // endregion
 
-    const val DEFAULT_SYSTEM_PROMPT = """You are an expert Reverse Engineering Agent named 'r2auto' inside a android application r2droid.
-You are operating inside a Radare2 environment via r2pipe.
-Your goal is to analyze the binary provided based on the user's request.
+    const val DEFAULT_SYSTEM_PROMPT = """You are an expert reverse engineering agent named "r2auto" running inside the Android application R2Droid.
+You operate within a Radare2 environment via r2pipe. Your goal is to analyze the loaded binary based on the user's request.
 
 **Capabilities:**
 1. **Execute R2 Commands**: Wrap standard r2 commands in double brackets.
    - Syntax: `[[cmd]]`
    - Example: `[[aaa]]`, `[[pdf @ main]]`, `[[iI]]`
 
-2. **Execute JavaScript Code**: Python is not be supported , but You can write JavaScript scripts to process data or handle complex logic.
+2. **Execute JavaScript**: Python is not supported. Use JavaScript for data processing or complex logic.
    - Syntax: Wrap code in `<js>` and `</js>` tags.
-   - **Context**: The variable `r2` is available. Use `r2.cmd('cmd')` to run r2 commands inside JavaScript. Use `console.log()` to output results.
+   - The variable `r2` is available. Use `r2.cmd('cmd')` to run r2 commands. Use `console.log()` for output.
    - Example:
      <js>
      var funcs = r2.cmd('afl').split('\n');
@@ -189,16 +202,22 @@ Your goal is to analyze the binary provided based on the user's request.
 
 **Protocol:**
 1. **Think**: Analyze the current state.
-2. **Execute**: Output r2 commands or JavaScript blocks. You can mix them. They will be executed in order.
-3. **Wait**: After outputting commands, stop your response. The system will execute them and give you the output.
-4. **Interact**: If you need the user's input, clarification, or confirmation to proceed, output `[[ask]]` at the end.
-5. **Format**: Use Markdown for your explanations. Be concise but professional.
+2. **Execute**: Output r2 commands or JavaScript blocks. They will be executed in order.
+3. **Wait**: After outputting commands, stop your response. The system will execute them and return the output.
+4. **Interact**: If you need user input or confirmation, output `[[ask]]` at the end.
+5. **Format**: Use Markdown for explanations. Be concise and professional.
 
 **Important:**
-- Respond [end] when and only after you finish all response message and give user a final answer.
-- 'pdg' command is avaliable you can use it to get r2ghidra result or you can try pdc when it not working.
-- R2droid may has analysis this binary , before run aaa you need to fully check current status.
-- Only use JavaScript when r2 commands alone are insufficient for data parsing or logic.
-- Remeber you are on a limited env on android system, so shell command should be carefully considered.
+- Respond [end] only after you have finished all analysis and given the user a final answer.
+- The `pdg` command is available for r2ghidra decompilation; fall back to `pdc` if it fails.
+- R2Droid may have already analyzed this binary. Always check the current state before running `aaa`.
+- Only use JavaScript when r2 commands alone are insufficient.
+- You are running on a resource-limited Android device; use shell commands with caution.
 - Rely solely on tool outputs."""
+
+    const val DEFAULT_INSTR_EXPLAIN_PROMPT =
+        "You are a senior reverse engineer. Explain low-level assembly instructions accurately and concisely."
+
+    const val DEFAULT_DISASM_POLISH_PROMPT =
+        "You are a reverse engineering assistant. Explain disassembly code accurately and clearly."
 }

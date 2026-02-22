@@ -96,6 +96,7 @@
     <string name="decompiler_r2ghidra">r2ghidra</string>
     <string name="decompiler_native">native</string>
     <string name="decompiler_jsdec">jsdec</string>
+    <string name="decompiler_aipdg">AIPdg</string>
     <string name="decompiler_switch">切换反编译器</string>
     <string name="decompiler_section_decompiler">反编译器</string>
     <string name="decompiler_section_display">显示</string>
@@ -327,6 +328,8 @@
     <string name="settings_project_dir_desc">项目保存位置</string>
     <string name="settings_max_log_entries">最大日志条数</string>
     <string name="settings_max_log_entries_desc">保留的最大日志记录数量</string>
+    <string name="settings_ai_provider">AI 提供商</string>
+    <string name="settings_ai_provider_desc">配置 AI 提供商和模型</string>
     <string name="settings_dir_picker_title">选择目录</string>
     <string name="settings_file_picker_title">选择文件</string>
     <string name="settings_reset">重置</string>
@@ -431,8 +434,13 @@
     <string name="instr_detail_cycles">周期</string>
     <string name="instr_detail_sign">符号</string>
     <string name="instr_detail_no_data">无指令详情。</string>
+    <string name="instr_detail_ai_explain">AI 解释</string>
+    <string name="instr_detail_ai_explain_action">解释</string>
+    <string name="instr_detail_ai_explain_result">AI 分析结果</string>
     <string name="menu_instruction_detail">指令详情</string>
     <string name="menu_jump_to">跳转到 %s</string>
+    <string name="disasm_ai_explain">AI 解释</string>
+    <string name="disasm_ai_explain_result_title">AI 反汇编解释</string>
 
     <!-- Update -->
     <string name="settings_about">关于</string>
@@ -451,6 +459,7 @@
     <string name="proj_category_ai">AI</string>
     <string name="ai_tab_chat">聊天</string>
     <string name="ai_tab_settings">提供商</string>
+    <string name="ai_tab_prompts">提示词</string>
     <string name="ai_role_you">你</string>
     <string name="ai_role_assistant">助手</string>
     <string name="ai_role_execution">执行结果</string>
@@ -491,6 +500,10 @@
     <string name="ai_confirm">确定</string>
     <string name="ai_provider_delete_title">删除提供商？</string>
     <string name="ai_provider_delete_message">确定要删除"%1$s"吗？</string>
+    <string name="ai_provider_response_api">使用 Responses API</string>
+    <string name="ai_provider_response_api_desc">使用 `/responses` 接口而不是 chat completions</string>
+    <string name="ai_provider_response_api_on">Responses API：已开启</string>
+    <string name="ai_provider_response_api_off">Responses API：已关闭</string>
     <string name="ai_select_copy">选择并复制</string>
     <string name="ai_copy_all">全部复制</string>
     <string name="ai_history">历史记录</string>
@@ -499,6 +512,23 @@
     <string name="ai_history_delete_message">确定要删除这条对话记录吗？</string>
     <string name="ai_show_more">展开全部（%1$d 字符）</string>
     <string name="ai_show_less">收起</string>
+    <string name="ai_thought">思考内容</string>
+    <string name="ai_thought_expand">展开</string>
+
+    <!-- AI Thinking Level -->
+    <string name="ai_thinking_none">无</string>
+    <string name="ai_thinking_auto">自动</string>
+    <string name="ai_thinking_light">轻度</string>
+    <string name="ai_thinking_normal">普通</string>
+    <string name="ai_thinking_heavy">重度</string>
+
+    <!-- AI Prompts -->
+    <string name="ai_prompt_agent_title">Agent 系统提示词</string>
+    <string name="ai_prompt_agent_desc">AI 聊天代理 (r2auto) 的系统提示词</string>
+    <string name="ai_prompt_instr_title">指令解释</string>
+    <string name="ai_prompt_instr_desc">解释汇编指令时使用的系统提示词</string>
+    <string name="ai_prompt_disasm_title">反汇编分析</string>
+    <string name="ai_prompt_disasm_desc">分析反汇编代码时使用的系统提示词</string>
 
     <!-- AI Command Approval -->
     <string name="ai_approval_title">需要批准执行指令</string>

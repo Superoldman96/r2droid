@@ -344,6 +344,8 @@ fun AiChatScreen(viewModel: AiViewModel) {
             text = inputText,
             onTextChange = { inputText = it },
             isGenerating = uiState.isGenerating,
+            thinkingLevel = uiState.thinkingLevel,
+            onThinkingLevelChange = { viewModel.onEvent(AiEvent.SetThinkingLevel(it)) },
             onSend = {
                 if (inputText.isNotBlank()) {
                     viewModel.onEvent(AiEvent.SendMessage(inputText.trim()))

@@ -101,7 +101,7 @@ object SettingsManager {
         get() = prefs.getBoolean(KEY_DECOMPILER_WORD_WRAP, false)
         set(value) { prefs.edit().putBoolean(KEY_DECOMPILER_WORD_WRAP, value).apply() }
 
-    // "r2ghidra" or "native"
+    // "r2ghidra", "jsdec", "native", or "aipdg"
     var decompilerDefault: String
         get() = prefs.getString(KEY_DECOMPILER_DEFAULT, "r2ghidra") ?: "r2ghidra"
         set(value) { prefs.edit().putString(KEY_DECOMPILER_DEFAULT, value).apply() }

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,13 +34,17 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import top.wsdx233.r2droid.R
 import top.wsdx233.r2droid.data.SettingsManager
+import top.wsdx233.r2droid.feature.ai.AiViewModel
+import top.wsdx233.r2droid.feature.ai.ui.AiProviderSettingsScreen
 import top.wsdx233.r2droid.util.UriUtils
 
 class SettingsViewModel : androidx.lifecycle.ViewModel() {
@@ -239,6 +244,7 @@ fun SettingsScreen(
     var showMigrateDialog by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
     var showDecompilerDialog by remember { mutableStateOf(false) }
+    var showAiProviderSettings by remember { mutableStateOf(false) }
     var showMaxLogDialog by remember { mutableStateOf(false) }
     var tempMaxLog by remember { mutableStateOf("") }
     var pendingNewProjectHome by remember { mutableStateOf<String?>(null) }
@@ -315,6 +321,15 @@ fun SettingsScreen(
                         tempMaxLog = maxLogEntries.toString()
                         showMaxLogDialog = true
                     }
+                )
+            }
+
+            item {
+                SettingsItem(
+                    title = stringResource(R.string.settings_ai_provider),
+                    subtitle = stringResource(R.string.settings_ai_provider_desc),
+                    icon = Icons.Default.SmartToy,
+                    onClick = { showAiProviderSettings = true }
                 )
             }
 
@@ -438,6 +453,7 @@ fun SettingsScreen(
                 val decompilerLabel = when(decompilerDefault) {
                     "native" -> stringResource(R.string.decompiler_native)
                     "jsdec" -> stringResource(R.string.decompiler_jsdec)
+                    "aipdg" -> stringResource(R.string.decompiler_aipdg)
                     else -> stringResource(R.string.decompiler_r2ghidra)
                 }
                 SettingsItem(
@@ -633,6 +649,7 @@ fun SettingsScreen(
                     LanguageOption(stringResource(R.string.decompiler_r2ghidra), "r2ghidra", decompilerDefault) { viewModel.setDecompilerDefault(it); showDecompilerDialog = false }
                     LanguageOption(stringResource(R.string.decompiler_jsdec), "jsdec", decompilerDefault) { viewModel.setDecompilerDefault(it); showDecompilerDialog = false }
                     LanguageOption(stringResource(R.string.decompiler_native), "native", decompilerDefault) { viewModel.setDecompilerDefault(it); showDecompilerDialog = false }
+                    LanguageOption(stringResource(R.string.decompiler_aipdg), "aipdg", decompilerDefault) { viewModel.setDecompilerDefault(it); showDecompilerDialog = false }
                 }
             },
             confirmButton = {
@@ -696,6 +713,37 @@ fun SettingsScreen(
                 }
             }
         )
+    }
+
+    if (showAiProviderSettings) {
+        Dialog(
+            onDismissRequest = { showAiProviderSettings = false },
+            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(modifier = Modifier.fillMaxSize()) {
+                val aiViewModel: AiViewModel = hiltViewModel()
+                Scaffold(
+                    topBar = {
+                        TopAppBar(
+                            title = { Text(stringResource(R.string.settings_ai_provider)) },
+                            navigationIcon = {
+                                IconButton(onClick = { showAiProviderSettings = false }) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                                }
+                            }
+                        )
+                    }
+                ) { innerPadding ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    ) {
+                        AiProviderSettingsScreen(viewModel = aiViewModel)
+                    }
+                }
+            }
+        }
     }
 }
 

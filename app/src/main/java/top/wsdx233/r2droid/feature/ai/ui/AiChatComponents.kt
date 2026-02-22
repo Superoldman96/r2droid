@@ -73,7 +73,28 @@ import top.wsdx233.r2droid.feature.ai.data.ActionResult
 import top.wsdx233.r2droid.feature.ai.data.ActionType
 import top.wsdx233.r2droid.feature.ai.data.ChatMessage
 import top.wsdx233.r2droid.feature.ai.data.ChatRole
+import top.wsdx233.r2droid.feature.ai.data.ThinkingLevel
 import top.wsdx233.r2droid.feature.ai.PendingApproval
+
+private data class ThoughtContent(
+    val thought: String,
+    val visibleContent: String
+)
+
+private fun extractThoughtContent(raw: String): ThoughtContent {
+    val regex = Regex("(?s)<think>(.*?)</think>")
+    val matches = regex.findAll(raw).toList()
+    if (matches.isEmpty()) return ThoughtContent("", raw)
+    val thought = matches.joinToString("\n\n") { it.groupValues[1].trim() }
+    val visible = regex.replace(raw, "").trim()
+    return ThoughtContent(thought = thought, visibleContent = visible)
+}
+
+private fun collapseToLastTwoLines(text: String): String {
+    val lines = text.lines()
+    if (lines.size <= 2) return text
+    return lines.takeLast(2).joinToString("\n")
+}
 
 // region Message Bubbles
 
@@ -89,6 +110,10 @@ fun MessageBubble(
 ) {
     val isUser = message.role == ChatRole.User
     var showMenu by remember { mutableStateOf(false) }
+    var thoughtExpanded by remember { mutableStateOf(false) }
+    val thoughtContent = remember(message.content) { extractThoughtContent(message.content) }
+    val displayThought = if (thoughtExpanded) thoughtContent.thought else collapseToLastTwoLines(thoughtContent.thought)
+    val messageContent = thoughtContent.visibleContent.ifBlank { message.content }
 
     val maxWidth = LocalConfiguration.current.screenWidthDp.dp * 0.85f
 
@@ -131,8 +156,16 @@ fun MessageBubble(
                     )
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
+                    if (thoughtContent.thought.isNotBlank()) {
+                        ThoughtBlock(
+                            thought = displayThought,
+                            expanded = thoughtExpanded,
+                            onToggle = { thoughtExpanded = !thoughtExpanded }
+                        )
+                        Spacer(Modifier.height(8.dp))
+                    }
                     MarkdownText(
-                        markdown = message.content,
+                        markdown = messageContent,
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer
                             else MaterialTheme.colorScheme.onSurface
@@ -205,6 +238,10 @@ fun MessageBubble(
 @Composable
 fun StreamingMessageBubble(content: String) {
     val maxWidth = LocalConfiguration.current.screenWidthDp.dp * 0.85f
+    var thoughtExpanded by remember(content) { mutableStateOf(false) }
+    val thoughtContent = remember(content) { extractThoughtContent(content) }
+    val displayThought = if (thoughtExpanded) thoughtContent.thought else collapseToLastTwoLines(thoughtContent.thought)
+    val messageContent = thoughtContent.visibleContent.ifBlank { content }
     val infiniteTransition = rememberInfiniteTransition(label = "cursor")
     val cursorAlpha by infiniteTransition.animateFloat(
         initialValue = 1f, targetValue = 0f,
@@ -234,14 +271,24 @@ fun StreamingMessageBubble(content: String) {
                 verticalAlignment = Alignment.Bottom
             ) {
                 Box(modifier = Modifier.weight(1f, fill = false)) {
-                    MarkdownText(
-                        markdown = content,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = MaterialTheme.colorScheme.onSurface
-                        ),
-                        syntaxHighlightColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        syntaxHighlightTextColor = MaterialTheme.colorScheme.onSurface
-                    )
+                    Column {
+                        if (thoughtContent.thought.isNotBlank()) {
+                            ThoughtBlock(
+                                thought = displayThought,
+                                expanded = thoughtExpanded,
+                                onToggle = { thoughtExpanded = !thoughtExpanded }
+                            )
+                            Spacer(Modifier.height(8.dp))
+                        }
+                        MarkdownText(
+                            markdown = messageContent,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurface
+                            ),
+                            syntaxHighlightColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            syntaxHighlightTextColor = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
                 // Blinking cursor
                 Box(
@@ -257,6 +304,46 @@ fun StreamingMessageBubble(content: String) {
 }
 
 // endregion
+
+@Composable
+private fun ThoughtBlock(
+    thought: String,
+    expanded: Boolean,
+    onToggle: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.55f)
+    ) {
+        Column(modifier = Modifier.padding(10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.ai_thought),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(onClick = onToggle) {
+                    Text(
+                        text = if (expanded) stringResource(R.string.ai_show_less)
+                        else stringResource(R.string.ai_thought_expand),
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+            }
+            Text(
+                text = thought,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontFamily = FontFamily.Monospace
+                ),
+                color = MaterialTheme.colorScheme.onTertiaryContainer
+            )
+        }
+    }
+}
 
 // region Select & Copy Dialog
 
@@ -412,9 +499,13 @@ fun ChatInputBar(
     text: String,
     onTextChange: (String) -> Unit,
     isGenerating: Boolean,
+    thinkingLevel: ThinkingLevel,
+    onThinkingLevelChange: (ThinkingLevel) -> Unit,
     onSend: () -> Unit,
     onStop: () -> Unit
 ) {
+    var showThinkingMenu by remember { mutableStateOf(false) }
+
     Surface(
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 4.dp
@@ -425,6 +516,40 @@ fun ChatInputBar(
                 .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Thinking level button
+            Box {
+                IconButton(onClick = { showThinkingMenu = true }) {
+                    Text(
+                        text = thinkingLevelIcon(thinkingLevel),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (thinkingLevel.apiEffort != null)
+                            MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                DropdownMenu(
+                    expanded = showThinkingMenu,
+                    onDismissRequest = { showThinkingMenu = false }
+                ) {
+                    ThinkingLevel.entries.forEach { level ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    thinkingLevelLabel(level),
+                                    color = if (level == thinkingLevel)
+                                        MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurface
+                                )
+                            },
+                            onClick = {
+                                onThinkingLevelChange(level)
+                                showThinkingMenu = false
+                            }
+                        )
+                    }
+                }
+            }
+
             OutlinedTextField(
                 value = text,
                 onValueChange = onTextChange,
@@ -457,6 +582,24 @@ fun ChatInputBar(
             }
         }
     }
+}
+
+@Composable
+private fun thinkingLevelIcon(level: ThinkingLevel): String = when (level) {
+    ThinkingLevel.None -> "⊘"
+    ThinkingLevel.Auto -> "A"
+    ThinkingLevel.Light -> "L"
+    ThinkingLevel.Normal -> "M"
+    ThinkingLevel.Heavy -> "H"
+}
+
+@Composable
+private fun thinkingLevelLabel(level: ThinkingLevel): String = when (level) {
+    ThinkingLevel.None -> stringResource(R.string.ai_thinking_none)
+    ThinkingLevel.Auto -> stringResource(R.string.ai_thinking_auto)
+    ThinkingLevel.Light -> stringResource(R.string.ai_thinking_light)
+    ThinkingLevel.Normal -> stringResource(R.string.ai_thinking_normal)
+    ThinkingLevel.Heavy -> stringResource(R.string.ai_thinking_heavy)
 }
 
 // endregion

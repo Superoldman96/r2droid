@@ -19,6 +19,7 @@ import top.wsdx233.r2droid.feature.ai.data.ChatRole
 import top.wsdx233.r2droid.feature.ai.data.ChatSession
 import top.wsdx233.r2droid.feature.ai.data.R2ActionExecutor
 import top.wsdx233.r2droid.feature.ai.data.ActionResult
+import top.wsdx233.r2droid.feature.ai.data.ThinkingLevel
 import kotlinx.coroutines.CompletableDeferred
 import javax.inject.Inject
 
@@ -38,6 +39,7 @@ sealed interface AiEvent {
     data class DeleteChat(val sessionId: String) : AiEvent
     object ApproveCommand : AiEvent
     object DenyCommand : AiEvent
+    data class SetThinkingLevel(val level: ThinkingLevel) : AiEvent
 }
 
 data class PendingApproval(
@@ -54,7 +56,8 @@ data class AiUiState(
     val systemPrompt: String = AiSettingsManager.DEFAULT_SYSTEM_PROMPT,
     val chatSessions: List<ChatSession> = emptyList(),
     val currentChatId: String? = null,
-    val pendingApproval: PendingApproval? = null
+    val pendingApproval: PendingApproval? = null,
+    val thinkingLevel: ThinkingLevel = ThinkingLevel.Auto
 )
 
 @HiltViewModel
@@ -104,6 +107,7 @@ class AiViewModel @Inject constructor(
             is AiEvent.DeleteChat -> deleteChat(event.sessionId)
             is AiEvent.ApproveCommand -> resolveApproval(true)
             is AiEvent.DenyCommand -> resolveApproval(false)
+            is AiEvent.SetThinkingLevel -> _uiState.update { it.copy(thinkingLevel = event.level) }
         }
     }
 
@@ -134,7 +138,13 @@ class AiViewModel @Inject constructor(
             try {
                 val fullResponse = StringBuilder()
 
-                aiRepository.streamChat(state.messages, model, state.systemPrompt)
+                aiRepository.streamChat(
+                    messages = state.messages,
+                    modelName = model,
+                    systemPrompt = state.systemPrompt,
+                    useResponsesApi = provider.useResponsesApi,
+                    thinkingLevel = state.thinkingLevel
+                )
                     .collect { delta ->
                         fullResponse.append(delta)
                         _uiState.update { it.copy(streamingContent = fullResponse.toString()) }

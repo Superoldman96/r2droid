@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.jeziellago.compose.markdowntext.MarkdownText
 import top.wsdx233.r2droid.R
 import top.wsdx233.r2droid.core.data.model.InstructionDetail
 import top.wsdx233.r2droid.ui.theme.LocalAppFont
@@ -35,8 +36,12 @@ fun InstructionDetailDialog(
     detail: InstructionDetail?,
     isLoading: Boolean,
     targetAddress: Long,
+    aiExplanation: String = "",
+    aiExplainLoading: Boolean = false,
+    aiExplainError: String? = null,
     onDismiss: () -> Unit,
-    onJump: ((Long) -> Unit)? = null
+    onJump: ((Long) -> Unit)? = null,
+    onAiExplain: ((Long) -> Unit)? = null
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -71,9 +76,18 @@ fun InstructionDetailDialog(
                     }
                 }
                 else -> {
-                    InstructionDetailContent(detail, onJump = onJump?.let { jump ->
+                    InstructionDetailContent(
+                        detail = detail,
+                        onJump = onJump?.let { jump ->
                         { addr: Long -> jump(addr); onDismiss() }
-                    })
+                        },
+                        aiExplanation = aiExplanation,
+                        aiExplainLoading = aiExplainLoading,
+                        aiExplainError = aiExplainError,
+                        onAiExplain = onAiExplain?.let { explain ->
+                            { explain(targetAddress) }
+                        }
+                    )
                 }
             }
         },
@@ -88,7 +102,11 @@ fun InstructionDetailDialog(
 @Composable
 private fun InstructionDetailContent(
     detail: InstructionDetail,
-    onJump: ((Long) -> Unit)?
+    onJump: ((Long) -> Unit)?,
+    aiExplanation: String,
+    aiExplainLoading: Boolean,
+    aiExplainError: String?,
+    onAiExplain: (() -> Unit)?
 ) {
     SelectionContainer {
     Column(
@@ -148,6 +166,66 @@ private fun InstructionDetailContent(
             if (detail.sign) stringResource(R.string.common_yes)
             else stringResource(R.string.common_no)
         )
+
+        Spacer(Modifier.height(8.dp))
+        HorizontalDivider()
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.instr_detail_ai_explain),
+                style = MaterialTheme.typography.titleSmall
+            )
+            if (onAiExplain != null) {
+                TextButton(onClick = onAiExplain, enabled = !aiExplainLoading) {
+                    Text(stringResource(R.string.instr_detail_ai_explain_action))
+                }
+            }
+        }
+
+        if (aiExplainLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else if (!aiExplainError.isNullOrBlank()) {
+            Text(
+                text = aiExplainError,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        } else if (aiExplanation.isNotBlank()) {
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = stringResource(R.string.instr_detail_ai_explain_result),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    MarkdownText(
+                        markdown = aiExplanation,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        syntaxHighlightColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        syntaxHighlightTextColor = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+        }
     }
     }
 }

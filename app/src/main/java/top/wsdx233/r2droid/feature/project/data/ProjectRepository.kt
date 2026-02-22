@@ -1,16 +1,25 @@
-package top.wsdx233.r2droid.feature.project.data
+﻿package top.wsdx233.r2droid.feature.project.data
 
 import org.json.JSONArray
 import org.json.JSONObject
 import top.wsdx233.r2droid.core.data.model.*
+import top.wsdx233.r2droid.core.data.parser.CLexer
+import top.wsdx233.r2droid.feature.ai.data.AiRepository
+import top.wsdx233.r2droid.feature.ai.data.AiSettingsManager
+import top.wsdx233.r2droid.feature.ai.data.ChatMessage
+import top.wsdx233.r2droid.feature.ai.data.ChatRole
 import top.wsdx233.r2droid.util.R2PipeManager
+import java.util.Locale
+import kotlinx.coroutines.flow.collect
 
 /**
  * Repository to fetch analysis data from R2Pipe.
  */
 import javax.inject.Inject
 
-class ProjectRepository @Inject constructor() {
+class ProjectRepository @Inject constructor(
+    private val aiRepository: AiRepository
+) {
 
     suspend fun getOverview(): Result<BinInfo> {
         return runCatching {
@@ -203,6 +212,17 @@ class ProjectRepository @Inject constructor() {
     }
 
     suspend fun getDecompilation(offset: Long, decompilerType: String = "r2ghidra"): Result<DecompilationData> {
+        if (decompilerType == "aipdg") {
+            return runCatching {
+                val pdg = R2PipeManager.execute("pdg @ $offset").getOrDefault("").trim()
+                val source = pdg.ifBlank { throw RuntimeException("Empty pdg output") }
+                val polished = requestAiPdgPolish(offset, source)
+                DecompilationData(
+                    code = polished,
+                    annotations = CLexer.tokenize(polished)
+                )
+            }
+        }
         if (decompilerType == "jsdec") {
             return R2PipeManager.executeJson("pddj @ $offset").mapCatching { output ->
                 if (output.isBlank()) throw RuntimeException("Empty decompilation output")
@@ -217,6 +237,52 @@ class ProjectRepository @Inject constructor() {
             if (output.isBlank()) throw RuntimeException("Empty decompilation output")
             DecompilationData.fromJson(JSONObject(output))
         }
+    }
+
+    private suspend fun requestAiPdgPolish(offset: Long, pdg: String): String {
+        val config = AiSettingsManager.configFlow.value
+        val provider = config.providers.find { it.id == config.activeProviderId }
+            ?: throw IllegalStateException("No AI provider configured")
+        val model = config.activeModelName ?: provider.models.firstOrNull()
+            ?: throw IllegalStateException("No model selected")
+
+        aiRepository.configure(provider)
+
+        val userPrompt = buildString {
+            appendLine("Please beautify the following `pdg` output for readability.")
+            appendLine("Requirements:")
+            appendLine("1) Preserve original semantics.")
+            appendLine("2) Improve structure and naming readability without inventing facts.")
+            appendLine("3) Add brief, useful comments when needed.")
+            appendLine("4) Output plain text for decompiler rendering (no fenced code blocks).")
+            appendLine()
+            appendLine("Function address: 0x${offset.toString(16).uppercase()}")
+            appendLine()
+            appendLine("PDG:")
+            appendLine(pdg)
+            appendLine()
+            appendLine(buildLanguagePromptInstruction())
+        }
+
+        val output = StringBuilder()
+        aiRepository.streamChat(
+            messages = listOf(ChatMessage(role = ChatRole.User, content = userPrompt)),
+            modelName = model,
+            systemPrompt = "You are a reverse engineering assistant. Beautify decompiler output for readability while keeping technical accuracy.",
+            useResponsesApi = provider.useResponsesApi
+        ).collect { chunk ->
+            output.append(chunk)
+        }
+
+        return output.toString().trim().ifBlank {
+            throw IllegalStateException("AI returned empty decompilation")
+        }
+    }
+    private fun buildLanguagePromptInstruction(): String {
+        val locale = Locale.getDefault()
+        val tag = locale.toLanguageTag()
+        val display = locale.getDisplayLanguage(locale).ifBlank { tag }
+        return "Respond in the system language: $display ($tag)."
     }
     suspend fun getFunctionStart(addr: Long): Result<Long> {
         // Find function containing addr.
@@ -442,7 +508,7 @@ class ProjectRepository @Inject constructor() {
      * Get function flow graph (agj) for the function at the given address.
      */
     suspend fun getFunctionGraph(addr: Long): Result<GraphData> {
-        val cmd = "agf@$addr > 0 ; agj @ $addr" // 这是个玄学问题，不知道为什么agf之后流程图显示地更整齐，可能是r2内部有自动排列
+        val cmd = "agf@$addr > 0 ; agj @ $addr" // 杩欐槸涓巹瀛﹂棶棰橈紝涓嶇煡閬撲负浠€涔坅gf涔嬪悗娴佺▼鍥炬樉绀哄湴鏇存暣榻愶紝鍙兘鏄痳2鍐呴儴鏈夎嚜鍔ㄦ帓鍒?
         return R2PipeManager.executeJson(cmd).mapCatching { output ->
             if (output.isBlank() || output == "[]") throw RuntimeException("Empty graph output")
             val jsonArray = JSONArray(output)
@@ -540,4 +606,5 @@ class ProjectRepository @Inject constructor() {
         }
     }
 }
+
 

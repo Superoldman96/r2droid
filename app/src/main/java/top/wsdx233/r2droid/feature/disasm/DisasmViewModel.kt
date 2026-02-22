@@ -5,7 +5,10 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.json.JSONArray
 import top.wsdx233.r2droid.core.data.model.FunctionDetailInfo
 import top.wsdx233.r2droid.core.data.model.FunctionVariablesData
 import top.wsdx233.r2droid.core.data.model.FunctionXref
@@ -14,6 +17,11 @@ import top.wsdx233.r2droid.core.data.model.Section
 import top.wsdx233.r2droid.core.data.model.Xref
 import top.wsdx233.r2droid.core.data.model.XrefsData
 import top.wsdx233.r2droid.core.data.source.R2PipeDataSource
+import top.wsdx233.r2droid.feature.ai.data.AiRepository
+import top.wsdx233.r2droid.feature.ai.data.AiSettingsManager
+import top.wsdx233.r2droid.feature.ai.data.ChatMessage
+import top.wsdx233.r2droid.feature.ai.data.ChatRole
+import top.wsdx233.r2droid.feature.ai.data.ThinkingLevel
 import top.wsdx233.r2droid.feature.disasm.data.DisasmDataManager
 import top.wsdx233.r2droid.feature.disasm.data.DisasmRepository
 import top.wsdx233.r2droid.util.R2PipeManager
@@ -23,6 +31,7 @@ import kotlinx.coroutines.Job
 
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import java.util.Locale
 
 
 data class XrefsState(
@@ -57,7 +66,18 @@ data class InstructionDetailState(
     val visible: Boolean = false,
     val data: InstructionDetail? = null,
     val isLoading: Boolean = false,
-    val targetAddress: Long = 0L
+    val targetAddress: Long = 0L,
+    val aiExplanation: String = "",
+    val aiExplainLoading: Boolean = false,
+    val aiExplainError: String? = null
+)
+
+data class AiPolishState(
+    val visible: Boolean = false,
+    val isLoading: Boolean = false,
+    val targetAddress: Long = 0L,
+    val result: String = "",
+    val error: String? = null
 )
 
 /**
@@ -89,12 +109,16 @@ sealed interface DisasmEvent {
     object DismissFunctionVariables : DisasmEvent
     data class RenameFunctionVariable(val address: Long, val oldName: String, val newName: String) : DisasmEvent
     data class FetchInstructionDetail(val address: Long) : DisasmEvent
+    data class ExplainInstructionWithAi(val address: Long) : DisasmEvent
     object DismissInstructionDetail : DisasmEvent
+    data class AiPolishDisassembly(val address: Long) : DisasmEvent
+    object DismissAiPolish : DisasmEvent
 }
 
 @HiltViewModel
 class DisasmViewModel @Inject constructor(
-    private val disasmRepository: DisasmRepository
+    private val disasmRepository: DisasmRepository,
+    private val aiRepository: AiRepository
 ) : ViewModel() {
 
     // DisasmDataManager for virtualized disassembly viewing
@@ -127,6 +151,9 @@ class DisasmViewModel @Inject constructor(
     // Instruction Detail State
     private val _instructionDetailState = MutableStateFlow(InstructionDetailState())
     val instructionDetailState: StateFlow<InstructionDetailState> = _instructionDetailState.asStateFlow()
+
+    private val _aiPolishState = MutableStateFlow(AiPolishState())
+    val aiPolishState: StateFlow<AiPolishState> = _aiPolishState.asStateFlow()
 
     // Scroll target: emitted after data is loaded at target address
     // Pair of (targetAddress, index) - UI observes this to scroll after data is ready
@@ -161,7 +188,10 @@ class DisasmViewModel @Inject constructor(
             is DisasmEvent.DismissFunctionVariables -> dismissFunctionVariables()
             is DisasmEvent.RenameFunctionVariable -> renameFunctionVariable(event.address, event.oldName, event.newName)
             is DisasmEvent.FetchInstructionDetail -> fetchInstructionDetail(event.address)
+            is DisasmEvent.ExplainInstructionWithAi -> explainInstructionWithAi(event.address)
             is DisasmEvent.DismissInstructionDetail -> dismissInstructionDetail()
+            is DisasmEvent.AiPolishDisassembly -> polishDisassemblyWithAi(event.address)
+            is DisasmEvent.DismissAiPolish -> dismissAiPolish()
         }
     }
 
@@ -490,5 +520,184 @@ class DisasmViewModel @Inject constructor(
 
     private fun dismissInstructionDetail() {
         _instructionDetailState.value = _instructionDetailState.value.copy(visible = false)
+    }
+
+    private fun explainInstructionWithAi(addr: Long) {
+        _instructionDetailState.value = _instructionDetailState.value.copy(
+            visible = true,
+            targetAddress = addr,
+            aiExplanation = "",
+            aiExplainLoading = true,
+            aiExplainError = null
+        )
+        viewModelScope.launch {
+            runCatching {
+                val detail = _instructionDetailState.value.data
+                    ?: disasmRepository.getInstructionDetail(addr).getOrNull()
+                    ?: throw IllegalStateException("No instruction detail")
+
+                val userPrompt = buildString {
+                    appendLine("Please explain this assembly instruction in a concise reverse-engineering style.")
+                    appendLine("Address: 0x${detail.addr.toString(16).uppercase()}")
+                    appendLine("Opcode: ${detail.opcode}")
+                    appendLine("Disasm: ${detail.disasm}")
+                    appendLine("Pseudo: ${detail.pseudo}")
+                    appendLine("Type/Family: ${detail.type} / ${detail.family}")
+                    if (detail.jump != null) appendLine("Jump: 0x${detail.jump.toString(16).uppercase()}")
+                    if (detail.fail != null) appendLine("Fail: 0x${detail.fail.toString(16).uppercase()}")
+                    appendLine("ESIL: ${detail.esil}")
+                    appendLine("Use markdown headings and concise bullet points.")
+                    appendLine("Sections: Summary / Effects / RE Tips.")
+                }
+                requestAiText(
+                    userPrompt = userPrompt,
+                    systemPrompt = AiSettingsManager.instrExplainPrompt,
+                    onDelta = { delta ->
+                        appendInstructionExplainWithTypewriter(delta)
+                    }
+                )
+            }.onSuccess { text ->
+                _instructionDetailState.value = _instructionDetailState.value.copy(
+                    aiExplainLoading = false,
+                    aiExplanation = if (text.isNotBlank()) text else _instructionDetailState.value.aiExplanation,
+                    aiExplainError = null
+                )
+            }.onFailure { throwable ->
+                _instructionDetailState.value = _instructionDetailState.value.copy(
+                    aiExplainLoading = false,
+                    aiExplainError = throwable.message ?: "AI explain failed"
+                )
+            }
+        }
+    }
+
+    private fun polishDisassemblyWithAi(addr: Long) {
+        _aiPolishState.value = AiPolishState(
+            visible = true,
+            isLoading = true,
+            targetAddress = addr,
+            result = "",
+            error = null
+        )
+        viewModelScope.launch {
+            runCatching {
+                val inFunction = isAddressInFunction(addr)
+                val source = if (inFunction) {
+                    R2PipeManager.execute("pdf @ $addr").getOrDefault("")
+                } else {
+                    R2PipeManager.execute("pd 120 @ $addr").getOrDefault("")
+                }.trim().ifBlank {
+                    throw IllegalStateException("No disassembly output for explanation")
+                }
+
+                val userPrompt = buildString {
+                    appendLine("Explain the following disassembly in a reverse-engineering friendly way.")
+                    appendLine("Target address: 0x${addr.toString(16).uppercase()}")
+                    appendLine("Context source: ${if (inFunction) "pdf (function)" else "pd (linear disassembly)"}")
+                    appendLine()
+                    appendLine("Disassembly Source:")
+                    appendLine(source)
+                    appendLine("Requirements:")
+                    appendLine("1) Explain key instructions, control flow, and intent.")
+                    appendLine("2) Keep addresses and symbol names if present.")
+                    appendLine("3) Add concise semantic comments where useful.")
+                    appendLine("4) Use markdown headings and bullet points, no fenced code blocks.")
+                }
+                requestAiText(
+                    userPrompt = userPrompt,
+                    systemPrompt = AiSettingsManager.disasmPolishPrompt,
+                    onDelta = { delta ->
+                        appendAiPolishWithTypewriter(delta)
+                    }
+                )
+            }.onSuccess { text ->
+                _aiPolishState.value = _aiPolishState.value.copy(
+                    isLoading = false,
+                    result = if (text.isNotBlank()) text else _aiPolishState.value.result,
+                    error = null
+                )
+            }.onFailure { throwable ->
+                _aiPolishState.value = _aiPolishState.value.copy(
+                    isLoading = false,
+                    error = throwable.message ?: "AI polish failed"
+                )
+            }
+        }
+    }
+
+    private fun dismissAiPolish() {
+        _aiPolishState.value = _aiPolishState.value.copy(visible = false)
+    }
+
+    private suspend fun requestAiText(
+        userPrompt: String,
+        systemPrompt: String,
+        onDelta: suspend (String) -> Unit = {}
+    ): String {
+        val config = AiSettingsManager.configFlow.value
+        val provider = config.providers.find { it.id == config.activeProviderId }
+            ?: throw IllegalStateException("No AI provider configured")
+        val model = config.activeModelName ?: provider.models.firstOrNull()
+            ?: throw IllegalStateException("No model selected")
+
+        aiRepository.configure(provider)
+
+        val finalPrompt = buildString {
+            appendLine(userPrompt.trim())
+            appendLine()
+            appendLine(buildLanguagePromptInstruction())
+        }
+
+        val output = StringBuilder()
+        aiRepository.streamChat(
+            messages = listOf(ChatMessage(role = ChatRole.User, content = finalPrompt)),
+            modelName = model,
+            systemPrompt = systemPrompt,
+            useResponsesApi = provider.useResponsesApi,
+            thinkingLevel = ThinkingLevel.Light
+        ).collect { chunk ->
+            output.append(chunk)
+            onDelta(chunk)
+        }
+
+        return output.toString().trim().ifBlank {
+            throw IllegalStateException("AI returned empty response")
+        }
+    }
+
+    private fun buildLanguagePromptInstruction(): String {
+        val locale = Locale.getDefault()
+        val tag = locale.toLanguageTag()
+        val display = locale.getDisplayLanguage(locale).ifBlank { tag }
+        return "Respond in the system language: $display ($tag)."
+    }
+
+    private suspend fun isAddressInFunction(addr: Long): Boolean {
+        return runCatching {
+            val output = R2PipeManager.executeJson("afij @ $addr").getOrDefault("[]")
+            if (output.isBlank() || output == "[]") {
+                false
+            } else {
+                JSONArray(output).length() > 0
+            }
+        }.getOrDefault(false)
+    }
+
+    private suspend fun appendInstructionExplainWithTypewriter(delta: String) {
+        delta.forEach { ch ->
+            _instructionDetailState.value = _instructionDetailState.value.copy(
+                aiExplanation = _instructionDetailState.value.aiExplanation + ch
+            )
+            delay(8L)
+        }
+    }
+
+    private suspend fun appendAiPolishWithTypewriter(delta: String) {
+        delta.forEach { ch ->
+            _aiPolishState.value = _aiPolishState.value.copy(
+                result = _aiPolishState.value.result + ch
+            )
+            delay(8L)
+        }
     }
 }

@@ -9,7 +9,8 @@ data class AiProvider(
     val name: String,
     val baseUrl: String,
     val apiKey: String,
-    val models: List<String>
+    val models: List<String>,
+    val useResponsesApi: Boolean = false
 )
 
 @Serializable
@@ -42,6 +43,14 @@ data class ActionResult(
 
 @Serializable
 enum class ActionType { R2Command, JavaScript }
+
+enum class ThinkingLevel(val labelResKey: String, val apiEffort: String?) {
+    None("ai_thinking_none", null),
+    Auto("ai_thinking_auto", null),
+    Light("ai_thinking_light", "low"),
+    Normal("ai_thinking_normal", "medium"),
+    Heavy("ai_thinking_heavy", "high");
+}
 
 @Serializable
 data class ChatSession(

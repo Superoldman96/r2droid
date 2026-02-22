@@ -69,6 +69,8 @@
     <string name="settings_project_dir_desc">Location where projects are saved</string>
     <string name="settings_max_log_entries">Max Log Entries</string>
     <string name="settings_max_log_entries_desc">Maximum number of log entries to keep</string>
+    <string name="settings_ai_provider">AI Providers</string>
+    <string name="settings_ai_provider_desc">Configure AI providers and models</string>
     <string name="settings_dir_picker_title">Select Directory</string>
     <string name="settings_file_picker_title">Select File</string>
     <string name="settings_reset">Reset</string>
@@ -126,6 +128,7 @@
     <string name="decompiler_r2ghidra">r2ghidra</string>
     <string name="decompiler_native">native</string>
     <string name="decompiler_jsdec">jsdec</string>
+    <string name="decompiler_aipdg">AIPdg</string>
     <string name="decompiler_switch">Switch Decompiler</string>
     <string name="decompiler_section_decompiler">Decompiler</string>
     <string name="decompiler_section_display">Display</string>
@@ -429,8 +432,13 @@
     <string name="instr_detail_cycles">Cycles</string>
     <string name="instr_detail_sign">Sign</string>
     <string name="instr_detail_no_data">No instruction detail available.</string>
+    <string name="instr_detail_ai_explain">AI Explanation</string>
+    <string name="instr_detail_ai_explain_action">Explain</string>
+    <string name="instr_detail_ai_explain_result">AI Analysis</string>
     <string name="menu_instruction_detail">Instruction Detail</string>
     <string name="menu_jump_to">Jump to %s</string>
+    <string name="disasm_ai_explain">AI Explain</string>
+    <string name="disasm_ai_explain_result_title">AI Disassembly Explanation</string>
 
     <!-- Update -->
     <string name="settings_about">About</string>
@@ -449,6 +457,7 @@
     <string name="proj_category_ai">AI</string>
     <string name="ai_tab_chat">Chat</string>
     <string name="ai_tab_settings">Providers</string>
+    <string name="ai_tab_prompts">Prompts</string>
     <string name="ai_role_you">You</string>
     <string name="ai_role_assistant">Assistant</string>
     <string name="ai_role_execution">Execution Result</string>
@@ -489,6 +498,10 @@
     <string name="ai_confirm">OK</string>
     <string name="ai_provider_delete_title">Delete Provider?</string>
     <string name="ai_provider_delete_message">Are you sure you want to delete \"%1$s\"?</string>
+    <string name="ai_provider_response_api">Use Responses API</string>
+    <string name="ai_provider_response_api_desc">Use `/responses` instead of chat completions</string>
+    <string name="ai_provider_response_api_on">Responses API: ON</string>
+    <string name="ai_provider_response_api_off">Responses API: OFF</string>
     <string name="ai_select_copy">Select &amp; Copy</string>
     <string name="ai_copy_all">Copy All</string>
     <string name="ai_history">History</string>
@@ -497,6 +510,23 @@
     <string name="ai_history_delete_message">Are you sure you want to delete this conversation?</string>
     <string name="ai_show_more">Show all (%1$d chars)</string>
     <string name="ai_show_less">Collapse</string>
+    <string name="ai_thought">Thoughts</string>
+    <string name="ai_thought_expand">Expand</string>
+
+    <!-- AI Thinking Level -->
+    <string name="ai_thinking_none">None</string>
+    <string name="ai_thinking_auto">Auto</string>
+    <string name="ai_thinking_light">Light</string>
+    <string name="ai_thinking_normal">Normal</string>
+    <string name="ai_thinking_heavy">Heavy</string>
+
+    <!-- AI Prompts -->
+    <string name="ai_prompt_agent_title">Agent System Prompt</string>
+    <string name="ai_prompt_agent_desc">System prompt for the AI chat agent (r2auto)</string>
+    <string name="ai_prompt_instr_title">Instruction Explanation</string>
+    <string name="ai_prompt_instr_desc">System prompt for explaining assembly instructions</string>
+    <string name="ai_prompt_disasm_title">Disassembly Analysis</string>
+    <string name="ai_prompt_disasm_desc">System prompt for analyzing disassembly code</string>
 
     <!-- AI Command Approval -->
     <string name="ai_approval_title">Command Approval Required</string>
