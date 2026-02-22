@@ -623,9 +623,9 @@ fun DisassemblyViewer(
                 aiExplainError = instructionDetailState.aiExplainError,
                 onDismiss = { viewModel.onEvent(DisasmEvent.DismissInstructionDetail) },
                 onJump = { addr -> onInstructionClick(addr) },
-                onAiExplain = { addr ->
+                onAiExplain = if (top.wsdx233.r2droid.data.SettingsManager.aiEnabled) { { addr ->
                     viewModel.onEvent(DisasmEvent.ExplainInstructionWithAi(addr))
-                }
+                } } else null
             )
         }
 

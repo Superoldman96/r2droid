@@ -150,6 +150,7 @@ fun ProjectScaffold(
     var selectedR2FridaTabIndex by remember { mutableIntStateOf(0) }
     var showJumpDialog by remember { mutableStateOf(false) }
     val isR2Frida = R2PipeManager.isR2FridaSession
+    val isAiEnabled = top.wsdx233.r2droid.data.SettingsManager.aiEnabled
     val isWide = LocalWindowWidthClass.current != WindowWidthClass.Compact
 
     // Hoisted CommandScreen state
@@ -324,7 +325,7 @@ fun ProjectScaffold(
                                 }
                             }
                         }
-                        if (selectedDetailTabIndex == 1) {
+                        if (selectedDetailTabIndex == 1 && isAiEnabled) {
                             androidx.compose.material3.IconButton(
                                 onClick = {
                                     val currentAddress = (uiState as? ProjectUiState.Success)?.cursorAddress ?: 0L
@@ -520,6 +521,7 @@ fun ProjectScaffold(
                     Spacer(Modifier.height(8.dp))
                     MainCategory.values()
                         .filter { it != MainCategory.R2Frida || isR2Frida }
+                        .filter { it != MainCategory.AI || isAiEnabled }
                         .forEach { category ->
                             NavigationRailItem(
                                 selected = selectedCategory == category,
@@ -932,6 +934,7 @@ private fun ProjectBottomBar(
             ) {
                 MainCategory.values()
                     .filter { it != MainCategory.R2Frida || isR2Frida }
+                    .filter { it != MainCategory.AI || top.wsdx233.r2droid.data.SettingsManager.aiEnabled }
                     .forEach { category ->
                         NavigationBarItem(
                             selected = selectedCategory == category,

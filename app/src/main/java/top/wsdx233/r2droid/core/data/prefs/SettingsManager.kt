@@ -21,6 +21,7 @@ object SettingsManager {
     private const val KEY_FRIDA_HOST = "frida_host"
     private const val KEY_FRIDA_PORT = "frida_port"
     private const val KEY_MENU_AT_TOUCH = "menu_at_touch"
+    private const val KEY_AI_ENABLED = "ai_enabled"
 
     private lateinit var prefs: SharedPreferences
 
@@ -129,4 +130,8 @@ object SettingsManager {
     var menuAtTouch: Boolean
         get() = prefs.getBoolean(KEY_MENU_AT_TOUCH, true)
         set(value) { prefs.edit().putBoolean(KEY_MENU_AT_TOUCH, value).apply() }
+
+    var aiEnabled: Boolean
+        get() = prefs.getBoolean(KEY_AI_ENABLED, true)
+        set(value) { prefs.edit().putBoolean(KEY_AI_ENABLED, value).apply() }
 }

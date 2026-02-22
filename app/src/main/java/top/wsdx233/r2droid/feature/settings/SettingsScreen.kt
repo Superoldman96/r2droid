@@ -67,6 +67,9 @@ class SettingsViewModel : androidx.lifecycle.ViewModel() {
     private val _menuAtTouch = MutableStateFlow(SettingsManager.menuAtTouch)
     val menuAtTouch = _menuAtTouch.asStateFlow()
 
+    private val _aiEnabled = MutableStateFlow(SettingsManager.aiEnabled)
+    val aiEnabled = _aiEnabled.asStateFlow()
+
     private val _decompilerShowLineNumbers = MutableStateFlow(SettingsManager.decompilerShowLineNumbers)
     val decompilerShowLineNumbers = _decompilerShowLineNumbers.asStateFlow()
 
@@ -157,6 +160,11 @@ class SettingsViewModel : androidx.lifecycle.ViewModel() {
         _menuAtTouch.value = value
     }
 
+    fun setAiEnabled(value: Boolean) {
+        SettingsManager.aiEnabled = value
+        _aiEnabled.value = value
+    }
+
     fun setDecompilerShowLineNumbers(value: Boolean) {
         SettingsManager.decompilerShowLineNumbers = value
         _decompilerShowLineNumbers.value = value
@@ -199,6 +207,7 @@ class SettingsViewModel : androidx.lifecycle.ViewModel() {
         SettingsManager.maxLogEntries = 100
         SettingsManager.keepAliveNotification = true
         SettingsManager.menuAtTouch = true
+        SettingsManager.aiEnabled = true
         _fontPath.value = null
         _language.value = "system"
         _projectHome.value = null
@@ -210,6 +219,7 @@ class SettingsViewModel : androidx.lifecycle.ViewModel() {
         _maxLogEntries.value = 100
         _keepAlive.value = true
         _menuAtTouch.value = true
+        _aiEnabled.value = true
     }
 }
 
@@ -230,6 +240,7 @@ fun SettingsScreen(
     val maxLogEntries by viewModel.maxLogEntries.collectAsState()
     val keepAlive by viewModel.keepAlive.collectAsState()
     val menuAtTouch by viewModel.menuAtTouch.collectAsState()
+    val aiEnabled by viewModel.aiEnabled.collectAsState()
 
     val context = LocalContext.current
     
@@ -321,6 +332,15 @@ fun SettingsScreen(
                         tempMaxLog = maxLogEntries.toString()
                         showMaxLogDialog = true
                     }
+                )
+            }
+
+            item {
+                SettingsToggleItem(
+                    title = stringResource(R.string.settings_ai_enabled),
+                    subtitle = stringResource(R.string.settings_ai_enabled_desc),
+                    checked = aiEnabled,
+                    onCheckedChange = { viewModel.setAiEnabled(it) }
                 )
             }
 

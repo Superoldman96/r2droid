@@ -328,6 +328,8 @@
     <string name="settings_project_dir_desc">项目保存位置</string>
     <string name="settings_max_log_entries">最大日志条数</string>
     <string name="settings_max_log_entries_desc">保留的最大日志记录数量</string>
+    <string name="settings_ai_enabled">启用AI功能</string>
+    <string name="settings_ai_enabled_desc">显示AI助手标签页和AI解释功能</string>
     <string name="settings_ai_provider">AI 提供商</string>
     <string name="settings_ai_provider_desc">配置 AI 提供商和模型</string>
     <string name="settings_dir_picker_title">选择目录</string>

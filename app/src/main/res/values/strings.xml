@@ -69,6 +69,8 @@
     <string name="settings_project_dir_desc">Location where projects are saved</string>
     <string name="settings_max_log_entries">Max Log Entries</string>
     <string name="settings_max_log_entries_desc">Maximum number of log entries to keep</string>
+    <string name="settings_ai_enabled">Enable AI Features</string>
+    <string name="settings_ai_enabled_desc">Show AI assistant tab and AI explanation features</string>
     <string name="settings_ai_provider">AI Providers</string>
     <string name="settings_ai_provider_desc">Configure AI providers and models</string>
     <string name="settings_dir_picker_title">Select Directory</string>
