@@ -73,6 +73,8 @@
     <string name="settings_ai_enabled_desc">Show AI assistant tab and AI explanation features</string>
     <string name="settings_ai_provider">AI Providers</string>
     <string name="settings_ai_provider_desc">Configure AI providers and models</string>
+    <string name="settings_ai_truncate_limit">AI Output Truncate Limit</string>
+    <string name="settings_ai_truncate_limit_desc">Max characters before truncating AI command output</string>
     <string name="settings_dir_picker_title">Select Directory</string>
     <string name="settings_file_picker_title">Select File</string>
     <string name="settings_reset">Reset</string>

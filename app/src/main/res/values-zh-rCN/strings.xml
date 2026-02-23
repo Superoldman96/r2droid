@@ -337,6 +337,8 @@
     <string name="settings_ai_enabled_desc">显示AI助手标签页和AI解释功能</string>
     <string name="settings_ai_provider">AI 提供商</string>
     <string name="settings_ai_provider_desc">配置 AI 提供商和模型</string>
+    <string name="settings_ai_truncate_limit">AI 输出截断限制</string>
+    <string name="settings_ai_truncate_limit_desc">AI 指令输出超过此字符数时进行截断</string>
     <string name="settings_dir_picker_title">选择目录</string>
     <string name="settings_file_picker_title">选择文件</string>
     <string name="settings_reset">重置</string>

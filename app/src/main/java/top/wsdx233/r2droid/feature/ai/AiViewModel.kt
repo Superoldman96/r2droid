@@ -13,6 +13,7 @@ import top.wsdx233.r2droid.feature.ai.data.ActionType
 import top.wsdx233.r2droid.feature.ai.data.AiProvider
 import top.wsdx233.r2droid.feature.ai.data.AiProviderConfig
 import top.wsdx233.r2droid.feature.ai.data.AiRepository
+import top.wsdx233.r2droid.data.SettingsManager
 import top.wsdx233.r2droid.feature.ai.data.AiSettingsManager
 import top.wsdx233.r2droid.feature.ai.data.ChatMessage
 import top.wsdx233.r2droid.feature.ai.data.ChatRole
@@ -223,8 +224,9 @@ class AiViewModel @Inject constructor(
                     // If not complete, feed results back and continue
                     if (!parsed.isComplete && !parsed.hasAsk) {
                         var feedbackText = feedbackBuilder.toString()
-                        if (feedbackText.length > 8000) {
-                            feedbackText = feedbackText.take(8000) + "\n... [Output Truncated] ..."
+                        val truncateLimit = SettingsManager.aiOutputTruncateLimit
+                        if (feedbackText.length > truncateLimit) {
+                            feedbackText = feedbackText.take(truncateLimit) + "\n... [Output Truncated] ..."
                         }
                         val feedbackMsg = ChatMessage(
                             role = ChatRole.ExecutionResult,

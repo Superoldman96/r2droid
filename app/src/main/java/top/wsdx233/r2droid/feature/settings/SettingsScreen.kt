@@ -70,6 +70,9 @@ class SettingsViewModel : androidx.lifecycle.ViewModel() {
     private val _aiEnabled = MutableStateFlow(SettingsManager.aiEnabled)
     val aiEnabled = _aiEnabled.asStateFlow()
 
+    private val _aiOutputTruncateLimit = MutableStateFlow(SettingsManager.aiOutputTruncateLimit)
+    val aiOutputTruncateLimit = _aiOutputTruncateLimit.asStateFlow()
+
     private val _decompilerShowLineNumbers = MutableStateFlow(SettingsManager.decompilerShowLineNumbers)
     val decompilerShowLineNumbers = _decompilerShowLineNumbers.asStateFlow()
 
@@ -165,6 +168,11 @@ class SettingsViewModel : androidx.lifecycle.ViewModel() {
         _aiEnabled.value = value
     }
 
+    fun setAiOutputTruncateLimit(value: Int) {
+        SettingsManager.aiOutputTruncateLimit = value
+        _aiOutputTruncateLimit.value = value
+    }
+
     fun setDecompilerShowLineNumbers(value: Boolean) {
         SettingsManager.decompilerShowLineNumbers = value
         _decompilerShowLineNumbers.value = value
@@ -208,6 +216,7 @@ class SettingsViewModel : androidx.lifecycle.ViewModel() {
         SettingsManager.keepAliveNotification = true
         SettingsManager.menuAtTouch = true
         SettingsManager.aiEnabled = true
+        SettingsManager.aiOutputTruncateLimit = 100000
         _fontPath.value = null
         _language.value = "system"
         _projectHome.value = null
@@ -220,6 +229,7 @@ class SettingsViewModel : androidx.lifecycle.ViewModel() {
         _keepAlive.value = true
         _menuAtTouch.value = true
         _aiEnabled.value = true
+        _aiOutputTruncateLimit.value = 100000
     }
 }
 
@@ -241,6 +251,7 @@ fun SettingsScreen(
     val keepAlive by viewModel.keepAlive.collectAsState()
     val menuAtTouch by viewModel.menuAtTouch.collectAsState()
     val aiEnabled by viewModel.aiEnabled.collectAsState()
+    val aiOutputTruncateLimit by viewModel.aiOutputTruncateLimit.collectAsState()
 
     val context = LocalContext.current
     
@@ -258,6 +269,8 @@ fun SettingsScreen(
     var showAiProviderSettings by remember { mutableStateOf(false) }
     var showMaxLogDialog by remember { mutableStateOf(false) }
     var tempMaxLog by remember { mutableStateOf("") }
+    var showAiTruncateDialog by remember { mutableStateOf(false) }
+    var tempAiTruncateLimit by remember { mutableStateOf("") }
     var pendingNewProjectHome by remember { mutableStateOf<String?>(null) }
     var oldProjectHome by remember { mutableStateOf<String?>(null) }
     
@@ -350,6 +363,18 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_ai_provider_desc),
                     icon = Icons.Default.SmartToy,
                     onClick = { showAiProviderSettings = true }
+                )
+            }
+
+            item {
+                SettingsItem(
+                    title = stringResource(R.string.settings_ai_truncate_limit),
+                    subtitle = aiOutputTruncateLimit.toString(),
+                    icon = Icons.Default.SmartToy,
+                    onClick = {
+                        tempAiTruncateLimit = aiOutputTruncateLimit.toString()
+                        showAiTruncateDialog = true
+                    }
                 )
             }
 
@@ -707,6 +732,39 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showMaxLogDialog = false }) {
+                    Text(stringResource(R.string.settings_cancel))
+                }
+            }
+        )
+    }
+
+    if (showAiTruncateDialog) {
+        AlertDialog(
+            onDismissRequest = { showAiTruncateDialog = false },
+            title = { Text(stringResource(R.string.settings_ai_truncate_limit)) },
+            text = {
+                Column(modifier = Modifier.focusable()) {
+                    OutlinedTextField(
+                        value = tempAiTruncateLimit,
+                        onValueChange = { tempAiTruncateLimit = it.filter { c -> c.isDigit() } },
+                        label = { Text(stringResource(R.string.settings_ai_truncate_limit_desc)) },
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val value = tempAiTruncateLimit.toIntOrNull()
+                    if (value != null && value > 0) {
+                        viewModel.setAiOutputTruncateLimit(value)
+                    }
+                    showAiTruncateDialog = false
+                }) {
+                    Text(stringResource(R.string.settings_save))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAiTruncateDialog = false }) {
                     Text(stringResource(R.string.settings_cancel))
                 }
             }

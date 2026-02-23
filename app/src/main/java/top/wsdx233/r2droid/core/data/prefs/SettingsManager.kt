@@ -22,6 +22,7 @@ object SettingsManager {
     private const val KEY_FRIDA_PORT = "frida_port"
     private const val KEY_MENU_AT_TOUCH = "menu_at_touch"
     private const val KEY_AI_ENABLED = "ai_enabled"
+    private const val KEY_AI_OUTPUT_TRUNCATE_LIMIT = "ai_output_truncate_limit"
 
     private lateinit var prefs: SharedPreferences
 
@@ -134,4 +135,8 @@ object SettingsManager {
     var aiEnabled: Boolean
         get() = prefs.getBoolean(KEY_AI_ENABLED, true)
         set(value) { prefs.edit().putBoolean(KEY_AI_ENABLED, value).apply() }
+
+    var aiOutputTruncateLimit: Int
+        get() = prefs.getInt(KEY_AI_OUTPUT_TRUNCATE_LIMIT, 100000)
+        set(value) { prefs.edit().putInt(KEY_AI_OUTPUT_TRUNCATE_LIMIT, value).apply() }
 }
