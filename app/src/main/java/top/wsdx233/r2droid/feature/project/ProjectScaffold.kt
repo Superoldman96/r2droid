@@ -260,6 +260,7 @@ fun ProjectScaffold(
                             val currentDecompiler by viewModel.currentDecompiler.collectAsState()
                             val showLineNumbers by viewModel.decompilerShowLineNumbers.collectAsState()
                             val wordWrap by viewModel.decompilerWordWrap.collectAsState()
+                            val soraMode by viewModel.decompilerSoraMode.collectAsState()
                             Box {
                                 androidx.compose.material3.IconButton(onClick = { showDecompilerMenu = true }) {
                                     Icon(Icons.Filled.Build, contentDescription = stringResource(R.string.decompiler_switch))
@@ -336,11 +337,13 @@ fun ProjectScaffold(
                                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                                     )
                                     androidx.compose.material3.DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.decompiler_export_builtin)) },
-                                        onClick = {
-                                            showDecompilerMenu = false
-                                            viewModel.toggleSoraMode()
-                                        }
+                                        text = {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text(stringResource(R.string.decompiler_export_builtin), modifier = Modifier.weight(1f))
+                                                Checkbox(checked = soraMode, onCheckedChange = null, modifier = Modifier.size(24.dp))
+                                            }
+                                        },
+                                        onClick = { viewModel.toggleSoraMode() }
                                     )
                                     androidx.compose.material3.DropdownMenuItem(
                                         text = { Text(stringResource(R.string.decompiler_export_external)) },
