@@ -1,5 +1,6 @@
 package top.wsdx233.r2droid.feature.disasm.data
 
+import android.util.Log
 import android.util.LruCache
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -24,6 +25,7 @@ class DisasmDataManager(
 ) {
     private val addressRange: Long = endAddress - startAddress
     companion object {
+        private const val TAG = "DisasmDataMgr"
         // Instructions per chunk to fetch
         const val INSTRUCTIONS_PER_CHUNK = 100
 
@@ -45,7 +47,13 @@ class DisasmDataManager(
     // Track chunks currently being loaded to avoid duplicate requests
     private val loadingSet = mutableSetOf<Long>()
     private val loadingMutex = Mutex()
-    
+
+    // Generation counter — incremented on every far jump.
+    // Load coroutines capture the value before doing async work;
+    // if it has changed by the time they finish, the result is stale and discarded.
+    @Volatile
+    private var generation = 0
+
     // Callback to notify when a chunk is loaded (for UI refresh)
     var onChunkLoaded: ((Long) -> Unit)? = null
 
@@ -81,6 +89,19 @@ class DisasmDataManager(
      */
     fun getSnapshot(): List<DisasmInstruction> = allInstructions
     
+    /**
+     * Prepare for a far jump: increment generation so in-flight loads become stale,
+     * clear the LRU cache (old address data), and clear the loading set.
+     */
+    suspend fun prepareForJump() {
+        generation++
+        Log.w(TAG, "prepareForJump: generation=$generation, evicting cache & loadingSet")
+        cache.evictAll()
+        loadingMutex.withLock {
+            loadingSet.clear()
+        }
+    }
+
     /**
      * Get instruction at a specific index in the virtual list.
      * Returns null if the instruction is not yet loaded.
@@ -206,24 +227,28 @@ class DisasmDataManager(
      * Load instructions around an address if not already loaded.
      */
     suspend fun loadChunkAroundAddress(addr: Long) {
+        val gen = generation  // capture before async work
+
         // Align to chunk boundary (approximate)
-        val chunkStart = (addr / (INSTRUCTIONS_PER_CHUNK * AVG_INSTRUCTION_SIZE)) * 
+        val chunkStart = (addr / (INSTRUCTIONS_PER_CHUNK * AVG_INSTRUCTION_SIZE)) *
                         (INSTRUCTIONS_PER_CHUNK * AVG_INSTRUCTION_SIZE)
-        
+
         // Already cached
         if (cache.get(chunkStart) != null) return
-        
+
         // Check if already loading
         loadingMutex.withLock {
             if (loadingSet.contains(chunkStart)) return
             loadingSet.add(chunkStart)
         }
-        
+
         try {
-            // We need to find a valid starting address
-            // First, try to load from the given address
             val result = repository.getDisassembly(addr, INSTRUCTIONS_PER_CHUNK)
             result.onSuccess { instructions ->
+                if (generation != gen) {
+                    Log.w(TAG, "loadChunkAround: STALE gen=$gen cur=$generation, discarding ${instructions.size} instrs at ${"%X".format(addr)}")
+                    return@onSuccess
+                }
                 if (instructions.isNotEmpty()) {
                     cache.put(chunkStart, instructions)
                     mergeInstructions(instructions)
@@ -241,15 +266,20 @@ class DisasmDataManager(
      * Load instructions starting from a specific address.
      */
     suspend fun loadFromAddress(startAddr: Long, forward: Boolean = true) {
+        val gen = generation
         // Check if already loading this region
         loadingMutex.withLock {
             if (loadingSet.contains(startAddr)) return
             loadingSet.add(startAddr)
         }
-        
+
         try {
             val result = repository.getDisassembly(startAddr, INSTRUCTIONS_PER_CHUNK)
             result.onSuccess { instructions ->
+                if (generation != gen) {
+                    Log.w(TAG, "loadFromAddress: STALE gen=$gen cur=$generation, discarding ${instructions.size} instrs at ${"%X".format(startAddr)}")
+                    return@onSuccess
+                }
                 if (instructions.isNotEmpty()) {
                     cache.put(startAddr, instructions)
                     mergeInstructions(instructions)
@@ -267,26 +297,29 @@ class DisasmDataManager(
      * Preload chunks around the given address.
      */
     suspend fun preloadAround(addr: Long, rangeChunks: Int = 2) {
+        val gen = generation
         // Load the current chunk first
         loadChunkAroundAddress(addr)
-        
+        if (generation != gen) return  // jump happened mid-preload
+
         // Find current position in loaded list
         val currentIndex = findClosestIndex(addr)
         if (currentIndex < 0) return
-        
-        // Calculate estimated addresses for prev/next chunks
+
         val avgChunkSize = INSTRUCTIONS_PER_CHUNK * AVG_INSTRUCTION_SIZE
-        
+
         // Preload previous chunks
         for (i in 1..rangeChunks) {
+            if (generation != gen) return
             val prevAddr = (addr - i * avgChunkSize).coerceAtLeast(startAddress)
             if (prevAddr >= startAddress) {
                 loadChunkAroundAddress(prevAddr)
             }
         }
-        
+
         // Preload next chunks
         for (i in 1..rangeChunks) {
+            if (generation != gen) return
             val nextAddr = addr + i * avgChunkSize
             if (nextAddr < endAddress) {
                 loadChunkAroundAddress(nextAddr)
@@ -362,8 +395,11 @@ class DisasmDataManager(
      * Reset and load initial data around an address.
      */
     suspend fun resetAndLoadAround(addr: Long) {
+        generation++
+        Log.w(TAG, "resetAndLoadAround: RESET, target=${"%X".format(addr)}, was ${allInstructions.size} instrs, gen=$generation")
         allInstructions = emptyList()
         cache.evictAll()
+        loadingMutex.withLock { loadingSet.clear() }
         
         // Load centered around address
         // First, seek back a bit to get context
@@ -383,6 +419,7 @@ class DisasmDataManager(
      * This ensures data is available before attempting to scroll.
      */
     suspend fun loadAndFindIndex(addr: Long): Int {
+        val gen = generation
         // If already loaded nearby, just find the index
         val existingIndex = findClosestIndex(addr)
         if (existingIndex >= 0) {
@@ -394,6 +431,10 @@ class DisasmDataManager(
 
         // Load data at the target address
         loadFromAddress(addr, true)
+        if (generation != gen) {
+            Log.w(TAG, "loadAndFindIndex: generation changed during load, aborting")
+            return findClosestIndex(addr).coerceAtLeast(0)
+        }
 
         // Also try loading slightly before to get context
         val prevAddr = (addr - INSTRUCTIONS_PER_CHUNK * AVG_INSTRUCTION_SIZE / 2)

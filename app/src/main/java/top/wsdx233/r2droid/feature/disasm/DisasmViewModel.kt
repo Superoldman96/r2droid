@@ -262,6 +262,8 @@ class DisasmViewModel @Inject constructor(
 
     // Job for scroll-related loading - cancelled on each new scroll request
     private var scrollJob: Job? = null
+    // Job for background preloading - cancelled on far jumps to prevent stale-address loads
+    private var preloadJob: Job? = null
 
     /**
      * Load data at target address, then emit scroll target with correct index.
@@ -279,13 +281,15 @@ class DisasmViewModel @Inject constructor(
 
     /**
      * Jump to a distant address via scrollbar drag or explicit jump.
-     * Resets all cached data to avoid address discontinuities, then scrolls to target.
+     * Cancels in-flight preloads and increments generation to discard stale loads.
      */
     fun scrollbarJumpTo(addr: Long) {
         val manager = disasmDataManager ?: return
         scrollJob?.cancel()
+        preloadJob?.cancel()   // kill stale-address preloads
         scrollJob = viewModelScope.launch {
-            val index = manager.jumpToAddress(addr)
+            manager.prepareForJump()
+            val index = manager.loadAndFindIndex(addr)
             _disasmCacheVersion.value++
             _scrollTarget.value = Pair(addr, index)
         }
@@ -463,7 +467,8 @@ class DisasmViewModel @Inject constructor(
      */
     fun preloadDisasmAround(addr: Long) {
         val manager = disasmDataManager ?: return
-        viewModelScope.launch {
+        preloadJob?.cancel()
+        preloadJob = viewModelScope.launch {
             manager.preloadAround(addr, 2)
         }
     }

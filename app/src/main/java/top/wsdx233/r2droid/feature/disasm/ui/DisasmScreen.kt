@@ -431,11 +431,12 @@ fun DisassemblyViewer(
             alwaysShow = true,
             onScrollToAddress = { targetAddr ->
                 // During drag: only do immediate scroll within loaded data, no loading
-                val immediateIndex = disasmDataManager.estimateIndexForAddress(targetAddr)
-                val clampedIndex = immediateIndex.coerceIn(0, maxOf(0, disasmDataManager.loadedInstructionCount - 1))
-                coroutineScope.launch {
-                    listState.scrollToItem(clampedIndex)
-                }
+//                val immediateIndex = disasmDataManager.estimateIndexForAddress(targetAddr)
+//                val clampedIndex = immediateIndex.coerceIn(0, maxOf(0, disasmDataManager.loadedInstructionCount - 1))
+//                coroutineScope.launch {
+//                    listState.scrollToItem(clampedIndex)
+//                }
+                viewModel.scrollbarJumpTo(targetAddr)
             },
             onDragComplete = { targetAddr ->
                 // On drag end / tap: treat as a full jump — reset data to avoid address gaps
