@@ -266,38 +266,9 @@ fun DisassemblyViewer(
     }
     
     Box(Modifier.fillMaxSize()) {
-        // Build jump tracking maps for internal jumps
-        // These maps connect jump instructions to their targets with indices
-        val jumpMaps = remember(cacheVersion, loadedCount) {
-            val jumpToIndex = mutableMapOf<Long, Int>()     // jump instruction addr -> index
-            val targetToIndex = mutableMapOf<Long, Int>()   // jump target addr -> index
-            var jumpCounter = 1
-            
-            // Scan all loaded instructions to build jump maps
-            for (i in 0 until loadedCount) {
-                val instr = disasmDataManager.getInstructionAt(i) ?: continue
-                
-                // Check if this is an internal jump instruction
-                if (instr.type in listOf("jmp", "cjmp", "ujmp") && instr.jump != null) {
-                    // Check if it's internal (within the same function)
-                    val isInternal = instr.fcnAddr > 0 && 
-                                     instr.jump >= instr.fcnAddr && 
-                                     instr.jump <= instr.fcnLast
-                    
-                    if (isInternal) {
-                        // Assign index to this jump
-                        jumpToIndex[instr.addr] = jumpCounter
-                        // Also mark the target with the same index
-                        targetToIndex[instr.jump] = jumpCounter
-                        jumpCounter++
-                    }
-                }
-            }
-            
-            Pair(jumpToIndex, targetToIndex)
-        }
-        
-        val (jumpToIndex, targetToIndex) = jumpMaps
+        // Jump maps are pre-computed in DisasmDataManager on background thread
+        val jumpToIndex = remember(cacheVersion) { disasmDataManager.jumpToIndexMap }
+        val targetToIndex = remember(cacheVersion) { disasmDataManager.targetToIndexMap }
         
         LazyColumn(
             state = listState,
@@ -467,8 +438,8 @@ fun DisassemblyViewer(
                 }
             },
             onDragComplete = { targetAddr ->
-                // On drag end / tap: only preload data around destination, no scroll jump
-                viewModel.onEvent(DisasmEvent.Preload(targetAddr))
+                // On drag end / tap: treat as a full jump — reset data to avoid address gaps
+                viewModel.scrollbarJumpTo(targetAddr)
             }
         )
         

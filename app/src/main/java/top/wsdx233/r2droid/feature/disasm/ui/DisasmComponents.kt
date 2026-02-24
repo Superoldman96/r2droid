@@ -172,24 +172,10 @@ fun DisasmRow(
         if (instr.jump > instr.addr) "↓" else "↑"
     } else null
     
-    // Prepare bytes - always truncate with ... if too long (max 10 chars displayed)
-    val bytesStr = instr.bytes.lowercase()
-    val displayBytes = if (bytesStr.length > 10) bytesStr.take(8) + "…" else bytesStr
-    
-    // Prepare inline comment
-    val inlineComment = buildString {
-        if (instr.ptr != null) {
-            append("; ${formatCompactAddress(instr.ptr)}")
-        }
-        if (instr.refptr && instr.refs.isNotEmpty()) {
-            val dataRef = instr.refs.firstOrNull { it.type == "DATA" }
-            if (dataRef != null) {
-                if (isNotEmpty()) append(" ")
-                append("[${formatCompactAddress(dataRef.addr)}]")
-            }
-        }
-    }.trim()
-    
+    // Prepare bytes and inline comment from pre-computed fields
+    val displayBytes = instr.displayBytes
+    val inlineComment = instr.inlineComment
+
     // Only comments go to secondary row (not bytes)
     val hasInlineComment = inlineComment.isNotEmpty()
     
@@ -367,7 +353,7 @@ fun DisasmRow(
                     contentAlignment = Alignment.CenterEnd
                 ) {
                     Text(
-                        text = formatCompactAddress(instr.addr),
+                        text = instr.displayAddress,
                         color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else addressColor,
                         fontFamily = LocalAppFont.current,
                         fontSize = 11.sp,

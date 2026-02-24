@@ -277,6 +277,20 @@ class DisasmViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Jump to a distant address via scrollbar drag or explicit jump.
+     * Resets all cached data to avoid address discontinuities, then scrolls to target.
+     */
+    fun scrollbarJumpTo(addr: Long) {
+        val manager = disasmDataManager ?: return
+        scrollJob?.cancel()
+        scrollJob = viewModelScope.launch {
+            val index = manager.jumpToAddress(addr)
+            _disasmCacheVersion.value++
+            _scrollTarget.value = Pair(addr, index)
+        }
+    }
+
     // 初始化 ESIL 环境
     fun initEsil() {
         viewModelScope.launch {

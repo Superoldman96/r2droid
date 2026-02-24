@@ -48,6 +48,16 @@ class DisasmDataManager(
     
     // Callback to notify when a chunk is loaded (for UI refresh)
     var onChunkLoaded: ((Long) -> Unit)? = null
+
+    // Pre-computed jump maps — rebuilt in mergeInstructions on background thread.
+    // jumpToIndex: jump instruction addr -> assigned jump index
+    // targetToIndex: jump target addr -> same assigned jump index
+    @Volatile
+    var jumpToIndexMap: Map<Long, Int> = emptyMap()
+        private set
+    @Volatile
+    var targetToIndexMap: Map<Long, Int> = emptyMap()
+        private set
     
     // Estimated total instruction count based on address range
     val estimatedTotalInstructions: Int
@@ -311,15 +321,41 @@ class DisasmDataManager(
     /**
      * Merge new instructions into the sorted list.
      * Uses atomic reference swap - readers always see a consistent snapshot.
+     *
+     * Gap detection: if the new chunk has no overlap or adjacency with existing data
+     * (distance > CHUNK_GAP_THRESHOLD), the old data is discarded to prevent
+     * address discontinuities that cause the LazyColumn to skip over unloaded regions.
      */
     @Synchronized
     private fun mergeInstructions(newInstructions: List<DisasmInstruction>) {
+        if (newInstructions.isEmpty()) return
+
         val current = allInstructions
+
+        if (current.isNotEmpty()) {
+            val currentFirst = current.first().addr
+            val currentLast = current.last().addr
+            val newFirst = newInstructions.first().addr
+            val newLast = newInstructions.last().addr
+
+            // Check if new data is adjacent or overlapping with existing data
+            val gapThreshold = INSTRUCTIONS_PER_CHUNK.toLong() * AVG_INSTRUCTION_SIZE * 2
+            val hasOverlap = !(newLast < currentFirst - gapThreshold || newFirst > currentLast + gapThreshold)
+
+            if (!hasOverlap) {
+                // Gap detected — discard old data to prevent address discontinuity
+                allInstructions = newInstructions.distinctBy { it.addr }.sortedBy { it.addr }
+                rebuildJumpMaps()
+                return
+            }
+        }
+
         val combined = (current + newInstructions)
             .distinctBy { it.addr }
             .sortedBy { it.addr }
         // Atomic swap - no clear+addAll race condition
         allInstructions = combined
+        rebuildJumpMaps()
     }
     
     /**
@@ -366,6 +402,42 @@ class DisasmDataManager(
             loadFromAddress(prevAddr, true)
         }
 
+        return findClosestIndex(addr).coerceAtLeast(0)
+    }
+
+    /**
+     * Rebuild jump maps from current instruction list.
+     * Called inside @Synchronized mergeInstructions, so no extra locking needed.
+     */
+    private fun rebuildJumpMaps() {
+        val snapshot = allInstructions
+        val jumpTo = mutableMapOf<Long, Int>()
+        val targetTo = mutableMapOf<Long, Int>()
+        var counter = 1
+
+        for (instr in snapshot) {
+            if (instr.type in listOf("jmp", "cjmp", "ujmp") && instr.jump != null) {
+                val isInternal = instr.fcnAddr > 0 &&
+                        instr.jump >= instr.fcnAddr &&
+                        instr.jump <= instr.fcnLast
+                if (isInternal) {
+                    jumpTo[instr.addr] = counter
+                    targetTo[instr.jump] = counter
+                    counter++
+                }
+            }
+        }
+
+        jumpToIndexMap = jumpTo
+        targetToIndexMap = targetTo
+    }
+
+    /**
+     * Jump to a distant address — resets all cached data and loads fresh around the target.
+     * Use this for scrollbar drag-end and explicit address jumps to avoid data discontinuities.
+     */
+    suspend fun jumpToAddress(addr: Long): Int {
+        resetAndLoadAround(addr)
         return findClosestIndex(addr).coerceAtLeast(0)
     }
 

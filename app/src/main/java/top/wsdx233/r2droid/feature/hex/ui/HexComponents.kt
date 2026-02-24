@@ -16,6 +16,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -28,7 +32,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.wsdx233.r2droid.R
 import top.wsdx233.r2droid.ui.theme.LocalAppFont
-import androidx.compose.foundation.clickable
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 
 @Composable
 fun HexPlaceholderRow(
@@ -151,88 +156,83 @@ fun HexVisualRow(
         
         VerticalDivider()
         
-        // Hex - with divider between 4th and 5th columns, and column highlighting
-        Row(Modifier.weight(1f).fillMaxHeight()) {
+        // Hex area — single gesture handler at Row level instead of per-byte pointerInput.
+        // Column is computed from tap X coordinate, reducing gesture node count from 8 to 1.
+        val primaryContainer = MaterialTheme.colorScheme.primaryContainer
+        val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
+        val tertiaryColor = MaterialTheme.colorScheme.tertiary
+        val density = LocalDensity.current
+        val dividerPx = with(density) { 1.dp.toPx() }
+
+        var hexRowWidthPx by remember { mutableIntStateOf(0) }
+
+        Row(
+            Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .onSizeChanged { hexRowWidthPx = it.width }
+                .pointerInput(addr, bytes.size) {
+                    detectTapGestures(
+                        onTap = { offset ->
+                            val col = computeHexColumn(offset.x, hexRowWidthPx.toFloat(), dividerPx, bytes.size)
+                            if (col in 0 until bytes.size) onByteClick(addr + col)
+                        },
+                        onLongPress = { offset ->
+                            val col = computeHexColumn(offset.x, hexRowWidthPx.toFloat(), dividerPx, bytes.size)
+                            if (col in 0 until bytes.size) onByteLongClick(addr + col)
+                        }
+                    )
+                }
+        ) {
              bytes.forEachIndexed { i, b ->
                 val byteAddr = addr + i
                 val isSelected = (byteAddr == cursorAddress)
                 val isColumnHighlighted = (i == selectedColumn)
-                
-                // Add divider before column 4 (between 3rd and 4th column, 0-indexed)
-                if (i == 4) {
-                    Box(
-                        modifier = Modifier
-                            .width(1.dp)
-                            .fillMaxHeight()
-                            .background(hexDivider)
-                    )
-                }
-                
-                // Background: base stays transparent, overlay highlight if needed
-                // For selected cell: use primary container
-                // For column/row highlight: use semi-transparent yellow overlay
-                
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .pointerInput(byteAddr) {
-                                detectTapGestures(
-                                    onTap = { onByteClick(byteAddr) },
-                                    onLongPress = { onByteLongClick(byteAddr) }
-                                )
-                            }
-                            .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        // Overlay: row highlight or column highlight (30% transparent yellow)
-                        if (!isSelected && (isRowSelected || isColumnHighlighted)) {
-                            Box(
-                                modifier = Modifier
-                                    .matchParentSize()
-                                    .background(highlightColor)
-                            )
-                        }
-                        
-                        // Show editing buffer overlay if selected and typing
-                        val displayText = if (isSelected && editingBuffer.isNotEmpty()) {
-                             editingBuffer
-                        } else {
-                             "%02X".format(b)
-                        }
-                        
-                        val textColor = if (isSelected) {
-                            if (editingBuffer.isNotEmpty()) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onPrimaryContainer
-                        } else {
-                            hexByteText
-                        }
 
-                        Text(
-                             text = displayText,
-                             fontFamily = appFont,
-                             fontSize = 13.sp,
-                             color = textColor,
-                             textAlign = TextAlign.Center,
-                             fontWeight = FontWeight.Medium
-                        )
-                        
-                        // Render menu if this specific byte is the target and menu is showing
-                        if (showMenu && byteAddr == menuTargetAddress) {
-                             menuContent()
-                        }
+                if (i == 4) {
+                    Box(Modifier.width(1.dp).fillMaxHeight().background(hexDivider))
+                }
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(if (isSelected) primaryContainer else Color.Transparent),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (!isSelected && (isRowSelected || isColumnHighlighted)) {
+                        Box(Modifier.matchParentSize().background(highlightColor))
                     }
+
+                    val displayText = if (isSelected && editingBuffer.isNotEmpty()) {
+                         editingBuffer
+                    } else {
+                         "%02X".format(b)
+                    }
+                    val textColor = if (isSelected) {
+                        if (editingBuffer.isNotEmpty()) tertiaryColor else onPrimaryContainer
+                    } else {
+                        hexByteText
+                    }
+
+                    Text(
+                         text = displayText,
+                         fontFamily = appFont,
+                         fontSize = 13.sp,
+                         color = textColor,
+                         textAlign = TextAlign.Center,
+                         fontWeight = FontWeight.Medium
+                    )
+
+                    if (showMenu && byteAddr == menuTargetAddress) {
+                         menuContent()
+                    }
+                }
              }
-             // Padding if < 8 bytes
              repeat(8 - bytes.size) { padIndex ->
                  val actualIndex = bytes.size + padIndex
-                 // Add divider before column 4 even in padding area
                  if (actualIndex == 4) {
-                     Box(
-                         modifier = Modifier
-                             .width(1.dp)
-                             .fillMaxHeight()
-                             .background(hexDivider)
-                     )
+                     Box(Modifier.width(1.dp).fillMaxHeight().background(hexDivider))
                  }
                  Spacer(Modifier.weight(1f))
              }
@@ -240,9 +240,24 @@ fun HexVisualRow(
         
         VerticalDivider()
         
-        // ASCII with column highlighting
+        // ASCII area — single gesture handler instead of per-char clickable
+        val charWidthDp = 12.dp
+        val asciiPaddingDp = 4.dp
+        val charWidthPx = with(density) { charWidthDp.toPx() }
+        val asciiPaddingPx = with(density) { asciiPaddingDp.toPx() }
+
         Row(
-            Modifier.width(100.dp).padding(start = 4.dp)
+            Modifier
+                .width(100.dp)
+                .padding(start = asciiPaddingDp)
+                .pointerInput(addr, bytes.size) {
+                    detectTapGestures(
+                        onTap = { offset ->
+                            val col = ((offset.x) / charWidthPx).toInt().coerceIn(0, bytes.size - 1)
+                            onByteClick(addr + col)
+                        }
+                    )
+                }
         ) {
             bytes.forEachIndexed { i, b ->
                 val byteAddr = addr + i
@@ -250,30 +265,42 @@ fun HexVisualRow(
                 val isColumnHighlighted = (i == selectedColumn)
                 val c = b.toInt().toChar()
                 val charStr = if (c.isISOControl() || !c.isDefined()) "." else c.toString()
-                
+
                 Box(
                     modifier = Modifier
-                        .width(12.dp) // Fixed width per char approx
-                        .clickable { onByteClick(byteAddr) }
-                        .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent),
+                        .width(charWidthDp)
+                        .background(if (isSelected) primaryContainer else Color.Transparent),
                     contentAlignment = Alignment.Center
                 ) {
-                    // Overlay: row highlight or column highlight (30% transparent yellow)
                     if (!isSelected && (isRowSelected || isColumnHighlighted)) {
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .background(highlightColor)
-                        )
+                        Box(Modifier.matchParentSize().background(highlightColor))
                     }
-                     Text(
+                    Text(
                         text = charStr,
                         fontFamily = FontFamily.Monospace,
                         fontSize = 13.sp,
-                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else hexByteText
+                        color = if (isSelected) onPrimaryContainer else hexByteText
                     )
                 }
             }
         }
     }
+}
+
+/**
+ * Compute which byte column (0..byteCount-1) was tapped in the hex area.
+ * Accounts for the 1dp divider between columns 3 and 4.
+ */
+private fun computeHexColumn(tapX: Float, totalWidth: Float, dividerPx: Float, byteCount: Int): Int {
+    if (byteCount <= 0 || totalWidth <= 0f) return -1
+    val cellWidth = (totalWidth - dividerPx) / 8f
+    // Left half: columns 0-3
+    if (tapX < cellWidth * 4) {
+        return (tapX / cellWidth).toInt().coerceIn(0, minOf(3, byteCount - 1))
+    }
+    // Divider zone
+    if (tapX < cellWidth * 4 + dividerPx) return 3.coerceAtMost(byteCount - 1)
+    // Right half: columns 4-7
+    val rightX = tapX - cellWidth * 4 - dividerPx
+    return (4 + (rightX / cellWidth).toInt()).coerceIn(4, minOf(7, byteCount - 1))
 }

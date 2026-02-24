@@ -328,6 +328,40 @@ data class DisasmInstruction(
             xref.type == "CODE" && (xref.addr < fcnAddr || xref.addr > fcnLast)
         }
     }
+
+    // --- Pre-computed display strings (lazy, not part of equals/hashCode) ---
+
+    /** Compact hex address without leading zeros, min 4 chars */
+    val displayAddress: String by lazy {
+        val hex = "%X".format(addr)
+        if (hex.length <= 4) hex else hex.trimStart('0').ifEmpty { "0" }
+    }
+
+    /** Lowercase bytes, truncated to 8 chars + ellipsis if longer than 10 */
+    val displayBytes: String by lazy {
+        val lower = bytes.lowercase()
+        if (lower.length > 10) lower.take(8) + "\u2026" else lower
+    }
+
+    /** Pre-built inline comment from ptr/refs */
+    val inlineComment: String by lazy {
+        buildString {
+            if (ptr != null) {
+                val pHex = "%X".format(ptr)
+                val pDisplay = if (pHex.length <= 4) pHex else pHex.trimStart('0').ifEmpty { "0" }
+                append("; $pDisplay")
+            }
+            if (refptr && refs.isNotEmpty()) {
+                val dataRef = refs.firstOrNull { it.type == "DATA" }
+                if (dataRef != null) {
+                    if (isNotEmpty()) append(" ")
+                    val rHex = "%X".format(dataRef.addr)
+                    val rDisplay = if (rHex.length <= 4) rHex else rHex.trimStart('0').ifEmpty { "0" }
+                    append("[$rDisplay]")
+                }
+            }
+        }.trim()
+    }
 }
 
 private val BASE64_REGEX = Regex("^[A-Za-z0-9+/]+=*$")
