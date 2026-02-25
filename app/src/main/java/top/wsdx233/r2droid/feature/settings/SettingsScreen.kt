@@ -862,7 +862,27 @@ fun SettingsToggleItem(
         headlineContent = { Text(title) },
         supportingContent = { Text(subtitle) },
         trailingContent = {
-            Switch(checked = checked, onCheckedChange = onCheckedChange)
+            Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            thumbContent = if (checked) {
+            {
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                )
+            }
+            } else {
+                {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = null,
+                        modifier = Modifier.size(SwitchDefaults.IconSize),
+                        )
+                    }
+                }
+            )
         },
         modifier = Modifier.clickable { onCheckedChange(!checked) }
     )
