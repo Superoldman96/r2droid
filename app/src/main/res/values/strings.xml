@@ -131,7 +131,7 @@
     <string name="settings_decompiler_default_desc">Decompiler engine to use</string>
     <string name="decompiler_r2ghidra">r2ghidra</string>
     <string name="decompiler_native">native</string>
-    <string name="decompiler_jsdec">jsdec</string>
+    <string name="decompiler_r2dec">r2dec</string>
     <string name="decompiler_aipdg">AIPdg</string>
     <string name="decompiler_switch">Switch Decompiler</string>
     <string name="decompiler_section_decompiler">Decompiler</string>

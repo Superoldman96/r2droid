@@ -122,10 +122,10 @@ dependencies {
     implementation(libs.quickjs.kt)
     implementation(libs.kotlinx.serialization.json)
 
-    implementation(platform("io.github.rosemoe:editor-bom:0.24.4"))
-    implementation("io.github.rosemoe:editor")
-    implementation("io.github.rosemoe:language-textmate")
+    implementation(platform(libs.editor.bom))
+    implementation(libs.editor)
+    implementation(libs.language.textmate)
 
 
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
 }

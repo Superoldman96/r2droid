@@ -1,5 +1,6 @@
 package top.wsdx233.r2droid.feature.ai.ui
 
+import android.R.attr.checked
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
@@ -326,7 +328,7 @@ private fun ProviderEditDialog(
                     Switch(
                         checked = useResponsesApi,
                         onCheckedChange = { useResponsesApi = it },
-                        thumbContent = if (checked) {
+                        thumbContent = if (useResponsesApi) {
                             {
                                 Icon(
                                     imageVector = Icons.Filled.Check,

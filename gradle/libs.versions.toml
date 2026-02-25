@@ -2,6 +2,8 @@
 agp = "9.0.0"
 commonsCompress = "1.28.0"
 coreKtx = "1.17.0"
+editorBom = "0.24.4"
+desugar_jdk_libs = "2.1.5"
 junit = "4.13.2"
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
@@ -26,6 +28,10 @@ pagingCompose = "3.2.1"
 
 [libraries]
 compose-markdown = { module = "com.github.jeziellago:compose-markdown", version.ref = "composeMarkdown" }
+editor = { module = "io.github.rosemoe:editor" }
+language-textmate = { module = "io.github.rosemoe:language-textmate" }
+desugar_jdk_libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugar_jdk_libs" }
+editor-bom = { module = "io.github.rosemoe:editor-bom", version.ref = "editorBom" }
 openai-client = { module = "com.aallam.openai:openai-client", version.ref = "openaiClient" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 quickjs-kt = { module = "io.github.dokar3:quickjs-kt-android", version.ref = "quickjsKt" }

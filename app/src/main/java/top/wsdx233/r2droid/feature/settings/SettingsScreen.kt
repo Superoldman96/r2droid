@@ -20,7 +20,8 @@ import androidx.compose.material.icons.filled.FontDownload
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.BatteryAlert
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Settings
@@ -37,7 +38,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -497,7 +497,7 @@ fun SettingsScreen(
             item {
                 val decompilerLabel = when(decompilerDefault) {
                     "native" -> stringResource(R.string.decompiler_native)
-                    "jsdec" -> stringResource(R.string.decompiler_jsdec)
+                    "r2dec" -> stringResource(R.string.decompiler_r2dec)
                     "aipdg" -> stringResource(R.string.decompiler_aipdg)
                     else -> stringResource(R.string.decompiler_r2ghidra)
                 }
@@ -692,7 +692,7 @@ fun SettingsScreen(
             text = {
                 Column {
                     LanguageOption(stringResource(R.string.decompiler_r2ghidra), "r2ghidra", decompilerDefault) { viewModel.setDecompilerDefault(it); showDecompilerDialog = false }
-                    LanguageOption(stringResource(R.string.decompiler_jsdec), "jsdec", decompilerDefault) { viewModel.setDecompilerDefault(it); showDecompilerDialog = false }
+                    LanguageOption(stringResource(R.string.decompiler_r2dec), "r2dec", decompilerDefault) { viewModel.setDecompilerDefault(it); showDecompilerDialog = false }
                     LanguageOption(stringResource(R.string.decompiler_native), "native", decompilerDefault) { viewModel.setDecompilerDefault(it); showDecompilerDialog = false }
                     LanguageOption(stringResource(R.string.decompiler_aipdg), "aipdg", decompilerDefault) { viewModel.setDecompilerDefault(it); showDecompilerDialog = false }
                 }

@@ -223,7 +223,7 @@ class ProjectRepository @Inject constructor(
                 )
             }
         }
-        if (decompilerType == "jsdec") {
+        if (decompilerType == "r2dec") {
             return R2PipeManager.executeJson("pddj @ $offset").mapCatching { output ->
                 if (output.isBlank()) throw RuntimeException("Empty decompilation output")
                 DecompilationData.fromPddj(JSONObject(output))

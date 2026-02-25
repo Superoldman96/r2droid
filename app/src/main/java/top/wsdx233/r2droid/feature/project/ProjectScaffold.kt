@@ -277,10 +277,10 @@ fun ProjectScaffold(
                                         color = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                                     )
-                                    listOf("r2ghidra", "jsdec", "native", "aipdg").forEach { type ->
+                                    listOf("r2ghidra", "r2dec", "native", "aipdg").forEach { type ->
                                         val labelRes = when (type) {
                                             "r2ghidra" -> R.string.decompiler_r2ghidra
-                                            "jsdec" -> R.string.decompiler_jsdec
+                                            "r2dec" -> R.string.decompiler_r2dec
                                             "native" -> R.string.decompiler_native
                                             else -> R.string.decompiler_aipdg
                                         }
