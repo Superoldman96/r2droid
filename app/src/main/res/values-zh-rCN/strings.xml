@@ -761,6 +761,11 @@
     <string name="export_report_n_functions">%1$d 个函数</string>
     <string name="export_report_include_strings">包含硬编码字符串列表</string>
     <string name="export_report_include_symbols">包含动态导入 / 导出表</string>
+    <string name="export_report_include_disassembly">包含函数反汇编</string>
+    <string name="export_report_include_decompilation">包含函数反编译</string>
+    <string name="export_report_decompiler">反编译器:</string>
+    <string name="export_report_decompiler_r2">r2 (pdc)</string>
+    <string name="export_report_decompiler_ghidra">Ghidra (pdg)</string>
     <string name="export_report_confirm">确认导出</string>
     <string name="export_report_success">报告导出完成</string>
     <string name="export_report_error">导出错误: %1$s</string>
@@ -768,6 +773,8 @@
     <string name="export_report_progress_functions">正在提取函数列表…</string>
     <string name="export_report_progress_strings">正在提取字符串列表…</string>
     <string name="export_report_progress_symbols">正在提取导入/导出表…</string>
+    <string name="export_report_progress_disassembly">正在提取反汇编 (%1$d/%2$d)…</string>
+    <string name="export_report_progress_decompilation">正在提取反编译 (%1$d/%2$d)…</string>
     <string name="export_report_progress_generating">正在生成报告…</string>
     <string name="export_report_progress_writing">正在写入文件…</string>
     <string name="export_report_error_write">无法打开写入流</string>
@@ -785,6 +792,8 @@
     <string name="report_doc_col_type">类型</string>
     <string name="report_doc_col_length">长度</string>
     <string name="report_doc_col_content">内容</string>
+    <string name="report_doc_disassembly">反汇编</string>
+    <string name="report_doc_decompilation">反编译</string>
 
     <!-- Multi-select -->
     <string name="multiselect_copy">复制</string>

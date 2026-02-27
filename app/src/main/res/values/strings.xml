@@ -759,6 +759,11 @@
     <string name="export_report_n_functions">%1$d functions</string>
     <string name="export_report_include_strings">Include hardcoded string list</string>
     <string name="export_report_include_symbols">Include dynamic imports / exports</string>
+    <string name="export_report_include_disassembly">Include function disassembly</string>
+    <string name="export_report_include_decompilation">Include function decompilation</string>
+    <string name="export_report_decompiler">Decompiler:</string>
+    <string name="export_report_decompiler_r2">r2 (pdc)</string>
+    <string name="export_report_decompiler_ghidra">Ghidra (pdg)</string>
     <string name="export_report_confirm">Export</string>
     <string name="export_report_success">Report exported successfully</string>
     <string name="export_report_error">Export error: %1$s</string>
@@ -766,6 +771,8 @@
     <string name="export_report_progress_functions">Extracting function list…</string>
     <string name="export_report_progress_strings">Extracting string list…</string>
     <string name="export_report_progress_symbols">Extracting imports/exports…</string>
+    <string name="export_report_progress_disassembly">Extracting disassembly (%1$d/%2$d)…</string>
+    <string name="export_report_progress_decompilation">Extracting decompilation (%1$d/%2$d)…</string>
     <string name="export_report_progress_generating">Generating report…</string>
     <string name="export_report_progress_writing">Writing file…</string>
     <string name="export_report_error_write">Failed to open output stream</string>
@@ -783,6 +790,8 @@
     <string name="report_doc_col_type">Type</string>
     <string name="report_doc_col_length">Length</string>
     <string name="report_doc_col_content">Content</string>
+    <string name="report_doc_disassembly">Disassembly</string>
+    <string name="report_doc_decompilation">Decompilation</string>
 
     <!-- Multi-select -->
     <string name="multiselect_copy">Copy</string>

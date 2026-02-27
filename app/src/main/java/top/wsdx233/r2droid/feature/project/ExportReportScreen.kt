@@ -64,6 +64,9 @@ fun ExportReportScreen(onDismiss: () -> Unit) {
     var maxFunctions by remember { mutableFloatStateOf(100f) }
     var includeStrings by remember { mutableStateOf(true) }
     var includeSymbols by remember { mutableStateOf(true) }
+    var includeDisassembly by remember { mutableStateOf(false) }
+    var includeDecompilation by remember { mutableStateOf(false) }
+    var decompiler by remember { mutableStateOf(Decompiler.R2_PDC) }
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -95,9 +98,12 @@ fun ExportReportScreen(onDismiss: () -> Unit) {
                 val opts = ExportOptions(
                     format = format,
                     includeFunctions = includeFunctions,
-                    maxFunctions = maxFunctions.toInt(),
+                    maxFunctions = if (maxFunctions >= 1000f) Int.MAX_VALUE else maxFunctions.toInt(),
                     includeStrings = includeStrings,
-                    includeSymbols = includeSymbols
+                    includeSymbols = includeSymbols,
+                    includeDisassembly = includeDisassembly,
+                    includeDecompilation = includeDecompilation,
+                    decompiler = decompiler
                 )
                 val res = ReportExporter.exportReport(context, uri, opts) { status ->
                     exportStatus = status
@@ -221,6 +227,47 @@ fun ExportReportScreen(onDismiss: () -> Unit) {
                 Text(stringResource(R.string.export_report_include_symbols), style = MaterialTheme.typography.bodyLarge)
             }
 
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = includeDisassembly,
+                    onCheckedChange = { includeDisassembly = it },
+                    enabled = includeFunctions
+                )
+                Text(stringResource(R.string.export_report_include_disassembly), style = MaterialTheme.typography.bodyLarge)
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = includeDecompilation,
+                    onCheckedChange = { includeDecompilation = it },
+                    enabled = includeFunctions
+                )
+                Text(stringResource(R.string.export_report_include_decompilation), style = MaterialTheme.typography.bodyLarge)
+            }
+            if (includeDecompilation && includeFunctions) {
+                Row(
+                    modifier = Modifier.padding(start = 48.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.export_report_decompiler),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    DecompilerChip(
+                        label = stringResource(R.string.export_report_decompiler_r2),
+                        selected = decompiler == Decompiler.R2_PDC,
+                        onClick = { decompiler = Decompiler.R2_PDC }
+                    )
+                    DecompilerChip(
+                        label = stringResource(R.string.export_report_decompiler_ghidra),
+                        selected = decompiler == Decompiler.GHIDRA_PDG,
+                        onClick = { decompiler = Decompiler.GHIDRA_PDG }
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(32.dp))
 
             // Actions
@@ -311,5 +358,32 @@ fun FormatCard(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun DecompilerChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.clickable { onClick() },
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+        )
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

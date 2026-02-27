@@ -14,12 +14,20 @@ enum class ExportFormat {
     MARKDOWN, HTML, JSON, FRIDA
 }
 
+enum class Decompiler(val command: String) {
+    R2_PDC("pdc"),
+    GHIDRA_PDG("pdg")
+}
+
 data class ExportOptions(
     val format: ExportFormat,
     val includeFunctions: Boolean,
     val maxFunctions: Int,
     val includeStrings: Boolean,
-    val includeSymbols: Boolean // Imports and Exports
+    val includeSymbols: Boolean, // Imports and Exports
+    val includeDisassembly: Boolean = false,
+    val includeDecompilation: Boolean = false,
+    val decompiler: Decompiler = Decompiler.R2_PDC
 )
 
 object ReportExporter {
@@ -63,6 +71,27 @@ object ReportExporter {
                 } catch (_: Exception) {}
             }
 
+            // Collect disassembly / decompilation per function
+            val disasmMap = mutableMapOf<String, String>() // addr -> disasm text
+            val decompMap = mutableMapOf<String, String>() // addr -> decomp text
+            if (functionsArray != null && (options.includeDisassembly || options.includeDecompilation)) {
+                val total = functionsArray.length()
+                for (i in 0 until total) {
+                    val f = functionsArray.optJSONObject(i) ?: continue
+                    val addr = "0x${java.lang.Long.toHexString(f.optLong("offset"))}"
+                    if (options.includeDisassembly) {
+                        onProgress(context.getString(R.string.export_report_progress_disassembly, i + 1, total))
+                        val asm = R2PipeManager.execute("pdf @ $addr").getOrNull()
+                        if (!asm.isNullOrBlank()) disasmMap[addr] = asm
+                    }
+                    if (options.includeDecompilation) {
+                        onProgress(context.getString(R.string.export_report_progress_decompilation, i + 1, total))
+                        val dec = R2PipeManager.execute("${options.decompiler.command} @ $addr").getOrNull()
+                        if (!dec.isNullOrBlank()) decompMap[addr] = dec
+                    }
+                }
+            }
+
             var stringsArray: JSONArray? = null
             if (options.includeStrings) {
                 onProgress(context.getString(R.string.export_report_progress_strings))
@@ -80,9 +109,9 @@ object ReportExporter {
 
             onProgress(context.getString(R.string.export_report_progress_generating))
             val content = when (options.format) {
-                ExportFormat.MARKDOWN -> generateMarkdown(context, fileName, archStr, formatStr, functionsArray, stringsArray, importsArray, exportsArray)
-                ExportFormat.HTML -> generateHtml(context, fileName, archStr, formatStr, functionsArray, stringsArray, importsArray, exportsArray)
-                ExportFormat.JSON -> generateJson(fileName, functionsArray, stringsArray, importsArray, exportsArray)
+                ExportFormat.MARKDOWN -> generateMarkdown(context, fileName, archStr, formatStr, functionsArray, stringsArray, importsArray, exportsArray, disasmMap, decompMap)
+                ExportFormat.HTML -> generateHtml(context, fileName, archStr, formatStr, functionsArray, stringsArray, importsArray, exportsArray, disasmMap, decompMap)
+                ExportFormat.JSON -> generateJson(fileName, functionsArray, stringsArray, importsArray, exportsArray, disasmMap, decompMap)
                 ExportFormat.FRIDA -> generateFrida(fileName, functionsArray, importsArray, exportsArray)
             }
 
@@ -100,7 +129,9 @@ object ReportExporter {
     private fun generateMarkdown(
         ctx: Context, fileName: String, arch: String, format: String,
         functions: JSONArray?, strings: JSONArray?,
-        imports: JSONArray?, exports: JSONArray?
+        imports: JSONArray?, exports: JSONArray?,
+        disasmMap: Map<String, String> = emptyMap(),
+        decompMap: Map<String, String> = emptyMap()
     ): String {
         val sb = StringBuilder()
         sb.append("# ${ctx.getString(R.string.report_doc_title, fileName)}\n\n")
@@ -116,6 +147,22 @@ object ReportExporter {
                 sb.append("| `0x${java.lang.Long.toHexString(f.optLong("offset"))}` | ${f.optInt("size")} | `${f.optString("name")}` |\n")
             }
             sb.append("\n")
+        }
+
+        if (disasmMap.isNotEmpty()) {
+            sb.append("## ${ctx.getString(R.string.report_doc_disassembly)}\n\n")
+            for ((addr, asm) in disasmMap) {
+                sb.append("### $addr\n\n")
+                sb.append("```asm\n$asm\n```\n\n")
+            }
+        }
+
+        if (decompMap.isNotEmpty()) {
+            sb.append("## ${ctx.getString(R.string.report_doc_decompilation)}\n\n")
+            for ((addr, dec) in decompMap) {
+                sb.append("### $addr\n\n")
+                sb.append("```c\n$dec\n```\n\n")
+            }
         }
 
         imports?.let {
@@ -158,7 +205,9 @@ object ReportExporter {
     private fun generateHtml(
         ctx: Context, fileName: String, arch: String, format: String,
         functions: JSONArray?, strings: JSONArray?,
-        imports: JSONArray?, exports: JSONArray?
+        imports: JSONArray?, exports: JSONArray?,
+        disasmMap: Map<String, String> = emptyMap(),
+        decompMap: Map<String, String> = emptyMap()
     ): String {
         val body = StringBuilder()
 
@@ -169,6 +218,22 @@ object ReportExporter {
                 body.append("<tr><td><code>0x${java.lang.Long.toHexString(f.optLong("offset"))}</code></td><td>${f.optInt("size")}</td><td><code>${f.optString("name")}</code></td></tr>")
             }
             body.append("</table>")
+        }
+
+        if (disasmMap.isNotEmpty()) {
+            body.append("<h2>${ctx.getString(R.string.report_doc_disassembly)}</h2>")
+            for ((addr, asm) in disasmMap) {
+                val escaped = asm.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                body.append("<h3>$addr</h3><pre><code>$escaped</code></pre>")
+            }
+        }
+
+        if (decompMap.isNotEmpty()) {
+            body.append("<h2>${ctx.getString(R.string.report_doc_decompilation)}</h2>")
+            for ((addr, dec) in decompMap) {
+                val escaped = dec.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                body.append("<h3>$addr</h3><pre><code>$escaped</code></pre>")
+            }
         }
 
         imports?.let {
@@ -212,6 +277,8 @@ object ReportExporter {
                     th, td { padding: 8px 12px; border: 1px solid #ddd; text-align: left; }
                     th { background-color: #f5f6fa; }
                     code { background: #f4f4f4; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+                    pre { background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 8px; overflow-x: auto; }
+                    pre code { background: transparent; padding: 0; color: inherit; }
                 </style>
             </head>
             <body>
@@ -229,7 +296,9 @@ object ReportExporter {
     private fun generateJson(
         fileName: String,
         functions: JSONArray?, strings: JSONArray?,
-        imports: JSONArray?, exports: JSONArray?
+        imports: JSONArray?, exports: JSONArray?,
+        disasmMap: Map<String, String> = emptyMap(),
+        decompMap: Map<String, String> = emptyMap()
     ): String {
         val root = JSONObject()
         root.put("file", fileName)
@@ -237,6 +306,16 @@ object ReportExporter {
         root.put("strings", strings ?: JSONArray())
         root.put("imports", imports ?: JSONArray())
         root.put("exports", exports ?: JSONArray())
+        if (disasmMap.isNotEmpty()) {
+            val obj = JSONObject()
+            for ((addr, asm) in disasmMap) obj.put(addr, asm)
+            root.put("disassembly", obj)
+        }
+        if (decompMap.isNotEmpty()) {
+            val obj = JSONObject()
+            for ((addr, dec) in decompMap) obj.put(addr, dec)
+            root.put("decompilation", obj)
+        }
         return root.toString(2)
     }
 
