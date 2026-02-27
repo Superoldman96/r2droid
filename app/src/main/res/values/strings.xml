@@ -367,6 +367,18 @@
     <string name="menu_function_xrefs">Function References</string>
     <string name="menu_function_variables">Function Variables</string>
 
+    <!-- Frida Context Menu -->
+    <string name="menu_frida">Frida</string>
+    <string name="menu_frida_monitor">Monitor</string>
+    <string name="menu_frida_code">Code...</string>
+    <string name="menu_frida_code_hook">Hook Function</string>
+    <string name="menu_frida_code_replace">Replace Function</string>
+    <string name="menu_frida_code_native_func">NativeFunction Call</string>
+    <string name="menu_frida_code_read_mem">Read Memory</string>
+    <string name="menu_frida_code_write_mem">Write Memory</string>
+    <string name="menu_frida_code_watch">Watch Memory Access</string>
+    <string name="menu_frida_code_stalker">Stalker Trace</string>
+
     <!-- Function Info Dialog -->
     <string name="func_info_title">Function Info</string>
     <string name="func_info_name">Name</string>
@@ -782,4 +794,13 @@
     <string name="multiselect_extend">Extend</string>
     <string name="multiselect_close">Close</string>
     <string name="multiselect_count">%d selected</string>
+
+    <!-- Switch Arch -->
+    <string name="switch_arch_title">Switch Architecture</string>
+    <string name="switch_arch_desc">Quickly switch the current analysis architecture</string>
+    <string name="switch_arch_default">Restore Default</string>
+    <string name="switch_arch_default_desc">Restore architecture settings to their initial state</string>
+    <string name="switch_arch_manual">Manual Setup (Terminal)</string>
+    <string name="switch_arch_manual_desc">Execute custom commands in the terminal for setup</string>
+    <string name="switch_arch_toast">Architecture switched</string>
 </resources>

@@ -5,16 +5,29 @@ object FridaCustomScripts {
     val GET_FUNCTIONS_SCRIPT = """
         try {
             var results = [];
+            var currentOffset = r2frida.offset;
+            var targetMod = null;
             var modules = Process.enumerateModules();
-            if (modules.length > 0) {
-                var mainMod = modules[0];
-                var exports = mainMod.enumerateExports();
+            for (var m = 0; m < modules.length; m++) {
+                var mod = modules[m];
+                var base = mod.base;
+                var end = base.add(mod.size);
+                if (currentOffset.compare(base) >= 0 && currentOffset.compare(end) < 0) {
+                    targetMod = mod;
+                    break;
+                }
+            }
+            if (!targetMod && modules.length > 0) {
+                targetMod = modules[0];
+            }
+            if (targetMod) {
+                var exports = targetMod.enumerateExports();
                 for (var i = 0; i < exports.length; i++) {
                     if (exports[i].type === 'function') {
                         results.push({ name: exports[i].name, address: exports[i].address.toString() });
                     }
                 }
-                var symbols = mainMod.enumerateSymbols();
+                var symbols = targetMod.enumerateSymbols();
                 for (var i = 0; i < symbols.length; i++) {
                     if (symbols[i].type === 'function') {
                         results.push({ name: symbols[i].name, address: symbols[i].address.toString() });

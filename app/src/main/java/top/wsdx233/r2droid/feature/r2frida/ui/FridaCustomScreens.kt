@@ -868,10 +868,19 @@ fun FridaMonitorScreen(
     onStopMonitor: (String) -> Unit,
     onFilterChange: (String, MonitorFilter) -> Unit,
     onClearEvents: (String) -> Unit,
-    actions: ListItemActions
+    actions: ListItemActions,
+    prefillAddress: String? = null,
+    onPrefillConsumed: () -> Unit = {}
 ) {
     var address by remember { mutableStateOf("") }
     var size by remember { mutableStateOf("4096") }
+
+    LaunchedEffect(prefillAddress) {
+        if (!prefillAddress.isNullOrBlank()) {
+            address = prefillAddress
+            onPrefillConsumed()
+        }
+    }
 
     Column(Modifier.fillMaxSize()) {
         // Add monitor row
@@ -1058,11 +1067,12 @@ private fun MonitorEventRow(
     val isWrite = event.operation.equals("write", true)
     val opColor = if (isWrite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
 
+    val fromAddr = event.from.removePrefix("0x").removePrefix("0X").toLongOrNull(16) ?: 0L
     UnifiedListItemWrapper(
-        title = event.address,
+        title = event.from,
         fullText = "${event.address} ${event.operation} from ${event.from}",
         actions = actions,
-        address = event.address.removePrefix("0x").removePrefix("0X").toLongOrNull(16) ?: 0L
+        address = fromAddr
     ) {
         ListItem(
             headlineContent = {

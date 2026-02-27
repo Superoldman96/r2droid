@@ -804,6 +804,13 @@ fun ProjectScaffold(
                                     },
                                     onShowXrefs = { addr ->
                                         disasmViewModel.onEvent(top.wsdx233.r2droid.feature.disasm.DisasmEvent.FetchXrefs(addr))
+                                    },
+                                    onFridaMonitor = { addrHex ->
+                                        r2fridaViewModel.setMonitorPrefillAddress(addrHex)
+                                        selectedR2FridaTabIndex = 11
+                                    },
+                                    onFridaCopyCode = { code ->
+                                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(code))
                                     }
                                 )
                             }
@@ -844,6 +851,7 @@ fun ProjectScaffold(
                             val fridaMaxResults by r2fridaViewModel.maxResults.collectAsState()
 
                             val fridaMonitors by r2fridaViewModel.monitors.collectAsState()
+                            val fridaMonitorPrefill by r2fridaViewModel.monitorPrefillAddress.collectAsState()
 
                             androidx.compose.runtime.LaunchedEffect(selectedR2FridaTabIndex) {
                                 when (selectedR2FridaTabIndex) {
@@ -959,7 +967,9 @@ fun ProjectScaffold(
                                     onStopMonitor = { r2fridaViewModel.stopMonitor(it) },
                                     onFilterChange = { id, f -> r2fridaViewModel.updateMonitorFilter(id, f) },
                                     onClearEvents = { r2fridaViewModel.clearMonitorEvents(it) },
-                                    actions = fridaActions
+                                    actions = fridaActions,
+                                    prefillAddress = fridaMonitorPrefill,
+                                    onPrefillConsumed = { r2fridaViewModel.consumeMonitorPrefillAddress() }
                                 )
                             }
                         }

@@ -369,6 +369,18 @@
     <string name="menu_function_xrefs">函数引用</string>
     <string name="menu_function_variables">函数变量</string>
 
+    <!-- Frida Context Menu -->
+    <string name="menu_frida">Frida</string>
+    <string name="menu_frida_monitor">监控</string>
+    <string name="menu_frida_code">代码...</string>
+    <string name="menu_frida_code_hook">Hook 函数</string>
+    <string name="menu_frida_code_replace">替换函数</string>
+    <string name="menu_frida_code_native_func">NativeFunction 调用</string>
+    <string name="menu_frida_code_read_mem">读取内存</string>
+    <string name="menu_frida_code_write_mem">写入内存</string>
+    <string name="menu_frida_code_watch">监控内存访问</string>
+    <string name="menu_frida_code_stalker">Stalker 追踪</string>
+
     <!-- Function Info Dialog -->
     <string name="func_info_title">函数信息</string>
     <string name="func_info_name">名称</string>
@@ -784,4 +796,13 @@
     <string name="multiselect_extend">扩展</string>
     <string name="multiselect_close">关闭</string>
     <string name="multiselect_count">已选中 %d 条</string>
+
+    <!-- Switch Arch -->
+    <string name="switch_arch_title">切换架构</string>
+    <string name="switch_arch_desc">快速切换当前分析架构</string>
+    <string name="switch_arch_default">恢复默认</string>
+    <string name="switch_arch_default_desc">将架构设置恢复为初始状态</string>
+    <string name="switch_arch_manual">手动设置 (终端)</string>
+    <string name="switch_arch_manual_desc">在终端中执行自定义命令进行设置</string>
+    <string name="switch_arch_toast">架构已切换</string>
 </resources>

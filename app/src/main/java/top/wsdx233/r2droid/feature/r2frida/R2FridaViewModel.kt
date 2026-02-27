@@ -105,6 +105,12 @@ class R2FridaViewModel @Inject constructor(
     private val monitorJobs = mutableMapOf<String, kotlinx.coroutines.Job>()
     private val monitorFiles = mutableMapOf<String, java.io.File>()
 
+    /** Pre-fill address for the monitor input field, consumed once by the UI. */
+    private val _monitorPrefillAddress = MutableStateFlow<String?>(null)
+    val monitorPrefillAddress: StateFlow<String?> = _monitorPrefillAddress.asStateFlow()
+    fun setMonitorPrefillAddress(addr: String) { _monitorPrefillAddress.value = addr }
+    fun consumeMonitorPrefillAddress() { _monitorPrefillAddress.value = null }
+
     fun updateScriptContent(content: String) {
         _scriptContent.value = content
     }
