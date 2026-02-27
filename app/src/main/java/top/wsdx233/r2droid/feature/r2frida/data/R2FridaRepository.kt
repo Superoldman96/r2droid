@@ -106,8 +106,10 @@ class R2FridaRepository {
         val doneFile = java.io.File(resultDir, "frida_res_${ts}.json.done")
         
         // Ensure result directory exists
-        if (!resultFile.parentFile.exists()) {
-            resultFile.parentFile.mkdirs()
+        resultFile.parentFile?.exists()?.let {
+            if (!it) {
+                resultFile.parentFile?.mkdirs()
+            }
         }
         
         resultFile.delete()
