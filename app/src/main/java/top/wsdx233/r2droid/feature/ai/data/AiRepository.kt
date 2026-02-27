@@ -71,9 +71,11 @@ class AiRepository @Inject constructor() {
             streamOptions = StreamOptions(includeUsage = true)
         )
 
-        return client.chatCompletions(request).mapNotNull { chunk ->
-            chunk.choices.firstOrNull()?.delta?.content
-        }
+        return client.chatCompletions(request)
+            .mapNotNull { chunk ->
+                chunk.choices.firstOrNull()?.delta?.content
+            }
+            .flowOn(Dispatchers.IO)
     }
 
     private fun streamResponsesApi(
