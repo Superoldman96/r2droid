@@ -82,7 +82,6 @@
     <string name="settings_default_jump_target_ask">每次询问</string>
     <string name="settings_default_jump_target_hex">十六进制视图</string>
     <string name="settings_default_jump_target_disasm">反汇编视图</string>
-    <string name="dialog_quick_jump_prompt">请选择本次条目的跳转位置。</string>
     <string name="settings_restart_title">需要重启</string>
     <string name="settings_restart_message">语言更改将在重启应用后生效，是否立即重启？</string>
     <string name="settings_restart_now">立即重启</string>

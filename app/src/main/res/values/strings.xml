@@ -118,7 +118,6 @@
     <string name="settings_default_jump_target_ask">Ask Every Time</string>
     <string name="settings_default_jump_target_hex">Hex Viewer</string>
     <string name="settings_default_jump_target_disasm">Disassembly</string>
-    <string name="dialog_quick_jump_prompt">Choose where to jump for this item.</string>
     <string name="settings_restart_title">Restart Required</string>
     <string name="settings_restart_message">Language change will take effect after restarting the app. Restart now?</string>
     <string name="settings_restart_now">Restart</string>

@@ -163,7 +163,6 @@ fun ProjectScaffold(
     var selectedAiTabIndex by remember { mutableIntStateOf(0) }
     var selectedR2FridaTabIndex by remember { mutableIntStateOf(0) }
     var showJumpDialog by remember { mutableStateOf(false) }
-    var pendingQuickJumpAddress by remember { mutableStateOf<Long?>(null) }
     val visitedAddresses = remember { mutableStateListOf<Long>() }
     val isR2Frida = R2PipeManager.isR2FridaSession
     val isAiEnabled = SettingsManager.aiEnabled
@@ -241,21 +240,15 @@ fun ProjectScaffold(
         R.string.r2frida_tab_functions, R.string.r2frida_tab_search, R.string.r2frida_tab_monitor
     )
 
-    val quickJumpToDetail: (Long) -> Unit = { addr ->
-        val target = when (SettingsManager.defaultJumpTarget) {
-            "hex" -> 0
-            "disasm" -> 1
-            else -> -1
-        }
-        if (target == -1) {
-            pendingQuickJumpAddress = addr
-            showJumpDialog = true
-        } else {
+    val quickJumpToDetail: ((Long) -> Unit)? = when (SettingsManager.defaultJumpTarget) {
+        "hex", "disasm" -> { addr: Long ->
+            val target = if (SettingsManager.defaultJumpTarget == "hex") 0 else 1
             selectedCategory = MainCategory.Detail
             selectedDetailTabIndex = target
             viewModel.currentDetailTab = target
             viewModel.onEvent(ProjectEvent.JumpToAddress(addr))
         }
+        else -> null // "ask" → fall back to dropdown submenu
     }
 
     val markVisited: (Long) -> Unit = { addr ->
@@ -808,9 +801,7 @@ fun ProjectScaffold(
                                     viewModel.currentDetailTab = tabIdx
                                     viewModel.onEvent(ProjectEvent.JumpToAddress(addr))
                                 },
-                                onQuickNavigateToDetail = { addr ->
-                                    quickJumpToDetail(addr)
-                                },
+                                onQuickNavigateToDetail = quickJumpToDetail,
                                 onMarkVisited = markVisited,
                                 isVisited = isVisited
                             )
@@ -859,7 +850,7 @@ fun ProjectScaffold(
                                         viewModel.currentDetailTab = 1
                                         viewModel.onEvent(ProjectEvent.JumpToAddress(addr))
                                     },
-                                    onQuickJump = { addr -> quickJumpToDetail(addr) },
+                                    onQuickJump = quickJumpToDetail,
                                     onMarkVisited = markVisited,
                                     isVisited = isVisited,
                                     onShowXrefs = { addr ->
@@ -1065,55 +1056,6 @@ fun ProjectScaffold(
                 }
             )
         }
-    }
-
-    if (showJumpDialog && pendingQuickJumpAddress != null) {
-        AlertDialog(
-            onDismissRequest = {
-                showJumpDialog = false
-                pendingQuickJumpAddress = null
-            },
-            title = { Text(stringResource(R.string.settings_default_jump_target_ask)) },
-            text = { Text(stringResource(R.string.dialog_quick_jump_prompt)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    val addr = pendingQuickJumpAddress
-                    if (addr != null) {
-                        selectedCategory = MainCategory.Detail
-                        selectedDetailTabIndex = 1
-                        viewModel.currentDetailTab = 1
-                        viewModel.onEvent(ProjectEvent.JumpToAddress(addr))
-                    }
-                    showJumpDialog = false
-                    pendingQuickJumpAddress = null
-                }) {
-                    Text(stringResource(R.string.menu_disassembly))
-                }
-            },
-            dismissButton = {
-                Row {
-                    TextButton(onClick = {
-                        val addr = pendingQuickJumpAddress
-                        if (addr != null) {
-                            selectedCategory = MainCategory.Detail
-                            selectedDetailTabIndex = 0
-                            viewModel.currentDetailTab = 0
-                            viewModel.onEvent(ProjectEvent.JumpToAddress(addr))
-                        }
-                        showJumpDialog = false
-                        pendingQuickJumpAddress = null
-                    }) {
-                        Text(stringResource(R.string.menu_hex_viewer))
-                    }
-                    TextButton(onClick = {
-                        showJumpDialog = false
-                        pendingQuickJumpAddress = null
-                    }) {
-                        Text(stringResource(R.string.settings_cancel))
-                    }
-                }
-            }
-        )
     }
 
     // External export
