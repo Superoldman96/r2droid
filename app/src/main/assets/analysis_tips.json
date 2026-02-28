@@ -1,0 +1,20 @@
+{
+  "tips": [
+    {
+      "zh": "如果你只想快速浏览结构，可以先选择较轻量的分析选项，进入后再按需深入。",
+      "en": "If you only need a quick overview, start with a lighter analysis mode and dive deeper later."
+    },
+    {
+      "zh": "分析期间日志会持续更新，出现 WARN/ERR 时可以优先定位对应命令。",
+      "en": "Logs update continuously during analysis. If you see WARN/ERR, check the related command first."
+    },
+    {
+      "zh": "大文件分析可能较慢，保持应用前台可减少被系统回收的概率。",
+      "en": "Large file analysis can be slow; keeping the app in foreground reduces the chance of being killed."
+    },
+    {
+      "zh": "进入项目后可按模块进行局部分析，通常比一次性全量分析更高效。",
+      "en": "After entering the project, analyzing specific modules is often more efficient than all-at-once full analysis."
+    }
+  ]
+}

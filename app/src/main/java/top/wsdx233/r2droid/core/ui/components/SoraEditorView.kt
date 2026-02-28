@@ -80,6 +80,7 @@ fun SoraCodeEditor(
                 } catch (_: Exception) {}
                 editorRef.value = this
                 onEditorReady(this)
+                isHardwareAcceleratedDrawAllowed = true
             }
         },
         modifier = modifier,

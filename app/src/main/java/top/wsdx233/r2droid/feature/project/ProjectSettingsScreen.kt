@@ -2,20 +2,25 @@ package top.wsdx233.r2droid.feature.project
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Architecture
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material3.Card
@@ -24,12 +29,15 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,15 +46,30 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import top.wsdx233.r2droid.core.data.model.SavedProject
 import top.wsdx233.r2droid.R
 import top.wsdx233.r2droid.feature.manual.R2ManualScreen
+import top.wsdx233.r2droid.feature.r2frida.R2FridaViewModel
+import top.wsdx233.r2droid.feature.r2frida.StaticProjectLoadState
+import top.wsdx233.r2droid.feature.r2frida.data.FridaMapping
 import top.wsdx233.r2droid.util.R2PipeManager
+import kotlinx.coroutines.launch
 
 @Composable
-fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
+fun ProjectSettingsScreen(
+    viewModel: ProjectViewModel,
+    r2fridaViewModel: R2FridaViewModel
+) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val saveState by viewModel.saveProjectState.collectAsState()
+    val staticProjectLoadState by r2fridaViewModel.staticProjectLoadState.collectAsState()
+    val fridaMappings by r2fridaViewModel.mappings.collectAsState()
+    val isFridaSession = R2PipeManager.isR2FridaSession
     var showSaveDialog by remember { mutableStateOf(false) }
+    var showLoadStaticProjectDialog by remember { mutableStateOf(false) }
+    var savedProjects by remember { mutableStateOf<List<SavedProject>>(emptyList()) }
+    var loadingSavedProjects by remember { mutableStateOf(false) }
     var showManual by remember { mutableStateOf(false) }
     var showExportReport by remember { mutableStateOf(false) }
     var showAnalysis by remember { mutableStateOf(false) }
@@ -60,6 +83,19 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
     }
     if (showSwitchArch) {
         SwitchArchBottomSheet(onDismiss = { showSwitchArch = false })
+    }
+
+    if (showLoadStaticProjectDialog) {
+        LoadStaticProjectDialog(
+            mappings = fridaMappings ?: emptyList(),
+            loading = staticProjectLoadState is StaticProjectLoadState.Loading,
+            projects = savedProjects,
+            projectsLoading = loadingSavedProjects,
+            onDismiss = { showLoadStaticProjectDialog = false },
+            onLoad = { projectFilePath, moduleBaseHex ->
+                r2fridaViewModel.loadRebasedStaticProject(projectFilePath, moduleBaseHex)
+            }
+        )
     }
 
     // Manual dialog
@@ -99,9 +135,32 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
             else -> {}
         }
     }
+
+    androidx.compose.runtime.LaunchedEffect(staticProjectLoadState) {
+        when (val state = staticProjectLoadState) {
+            is StaticProjectLoadState.Success -> {
+                android.widget.Toast.makeText(
+                    context,
+                    context.getString(R.string.frida_load_static_project_success, state.replacedCount),
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+                showLoadStaticProjectDialog = false
+                r2fridaViewModel.resetStaticProjectLoadState()
+            }
+            is StaticProjectLoadState.Error -> {
+                android.widget.Toast.makeText(
+                    context,
+                    state.message,
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+                r2fridaViewModel.resetStaticProjectLoadState()
+            }
+            else -> Unit
+        }
+    }
     
     // Save dialog
-    if (showSaveDialog) {
+    if (showSaveDialog && !isFridaSession) {
         SaveProjectDialog(
             existingProjectId = viewModel.getCurrentProjectId(),
             onDismiss = { showSaveDialog = false },
@@ -156,65 +215,122 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
             }
         }
         
-        // Save Project Section
-        Text(
-            text = stringResource(top.wsdx233.r2droid.R.string.project_save),
-            style = MaterialTheme.typography.titleMedium
-        )
-        
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(enabled = saveState !is SaveProjectState.Saving) { 
-                    showSaveDialog = true 
-                },
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
+        if (!isFridaSession) {
+            // Save Project Section
+            Text(
+                text = stringResource(top.wsdx233.r2droid.R.string.project_save),
+                style = MaterialTheme.typography.titleMedium
             )
-        ) {
-            Row(
+
+            Card(
                 modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    .fillMaxWidth()
+                    .clickable(enabled = saveState !is SaveProjectState.Saving) {
+                        showSaveDialog = true
+                    },
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
             ) {
-                if (saveState is SaveProjectState.Saving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.padding(8.dp),
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Build,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                Row(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    if (saveState is SaveProjectState.Saving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(8.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Build,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (R2PipeManager.currentProjectId != null)
+                                stringResource(R.string.proj_save_update_title)
+                            else
+                                stringResource(top.wsdx233.r2droid.R.string.project_save_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = if (R2PipeManager.currentProjectId != null)
+                                stringResource(R.string.proj_save_update_desc)
+                            else
+                                stringResource(R.string.proj_save_new_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                        )
+                    }
                 }
-                
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = if (R2PipeManager.currentProjectId != null) 
-                            stringResource(R.string.proj_save_update_title) 
-                        else 
-                            stringResource(top.wsdx233.r2droid.R.string.project_save_title),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    Text(
-                        text = if (R2PipeManager.currentProjectId != null)
-                            stringResource(R.string.proj_save_update_desc)
-                        else
-                            stringResource(R.string.proj_save_new_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                    )
+            }
+        } else {
+            Text(
+                text = stringResource(R.string.frida_load_static_project_title),
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = staticProjectLoadState !is StaticProjectLoadState.Loading) {
+                        r2fridaViewModel.loadMappings(force = true)
+                        scope.launch {
+                            loadingSavedProjects = true
+                            savedProjects = viewModel.getAllSavedProjects()
+                            loadingSavedProjects = false
+                            showLoadStaticProjectDialog = true
+                        }
+                    },
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    if (staticProjectLoadState is StaticProjectLoadState.Loading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(8.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.FileOpen,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.frida_load_static_project_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = stringResource(R.string.frida_load_static_project_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                        )
+                    }
                 }
             }
         }
         
         // Startup Flags Section (for saved projects)
-        if (R2PipeManager.currentProjectId != null) {
+        if (!isFridaSession && R2PipeManager.currentProjectId != null) {
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = stringResource(top.wsdx233.r2droid.R.string.project_startup_flags),
@@ -470,4 +586,237 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
             }
         }
     }
+}
+
+@Composable
+private fun LoadStaticProjectDialog(
+    mappings: List<FridaMapping>,
+    loading: Boolean,
+    projects: List<SavedProject>,
+    projectsLoading: Boolean,
+    onDismiss: () -> Unit,
+    onLoad: (projectFilePath: String, moduleBaseHex: String) -> Unit
+) {
+    var selectedMappingBase by remember { mutableStateOf<String?>(null) }
+    var selectedMappingLabel by remember { mutableStateOf("") }
+    var selectedProjectPath by remember { mutableStateOf<String?>(null) }
+    var selectedProjectLabel by remember { mutableStateOf("") }
+    var showMappingPickerDialog by remember { mutableStateOf(false) }
+    var showProjectPickerDialog by remember { mutableStateOf(false) }
+    var mappingSearchQuery by remember { mutableStateOf("") }
+    var projectSearchQuery by remember { mutableStateOf("") }
+
+    val filteredMappings = remember(mappings, mappingSearchQuery) {
+        if (mappingSearchQuery.isBlank()) {
+            mappings
+        } else {
+            mappings.filter { mapping ->
+                val target = "${mapping.filePath ?: ""} ${mapping.base} ${mapping.protection}".lowercase()
+                target.contains(mappingSearchQuery.lowercase())
+            }
+        }
+    }
+
+    val filteredProjects = remember(projects, projectSearchQuery) {
+        if (projectSearchQuery.isBlank()) {
+            projects
+        } else {
+            projects.filter { project ->
+                val target = "${project.name} ${project.binaryPath} ${project.scriptPath}".lowercase()
+                target.contains(projectSearchQuery.lowercase())
+            }
+        }
+    }
+
+    androidx.compose.runtime.LaunchedEffect(mappings) {
+        if (selectedMappingBase == null && mappings.isNotEmpty()) {
+            val first = mappings.first()
+            selectedMappingBase = first.base
+            selectedMappingLabel = first.filePath ?: first.base
+        }
+    }
+
+    if (showMappingPickerDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showMappingPickerDialog = false },
+            title = { Text(stringResource(R.string.frida_load_static_project_mapping_label)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = mappingSearchQuery,
+                        onValueChange = { mappingSearchQuery = it },
+                        label = { Text(stringResource(R.string.common_search)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 360.dp)
+                    ) {
+                        items(filteredMappings, key = { "${it.base}_${it.filePath ?: ""}" }) { mapping ->
+                            val label = buildString {
+                                append(mapping.filePath ?: stringResource(R.string.frida_load_static_project_mapping_unknown_file))
+                                append(" @ ")
+                                append(mapping.base)
+                            }
+                            Text(
+                                text = label,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedMappingBase = mapping.base
+                                        selectedMappingLabel = label
+                                        showMappingPickerDialog = false
+                                    }
+                                    .padding(vertical = 10.dp),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showMappingPickerDialog = false }) {
+                    Text(stringResource(R.string.fsearch_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMappingPickerDialog = false }) {
+                    Text(stringResource(R.string.fsearch_cancel))
+                }
+            }
+        )
+    }
+
+    if (showProjectPickerDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showProjectPickerDialog = false },
+            title = { Text(stringResource(R.string.frida_load_static_project_select_project)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = projectSearchQuery,
+                        onValueChange = { projectSearchQuery = it },
+                        label = { Text(stringResource(R.string.common_search)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    if (projectsLoading) {
+                        CircularProgressIndicator()
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 360.dp)
+                        ) {
+                            items(filteredProjects, key = { it.id }) { project ->
+                                val label = "${project.name} (${project.getFormattedLastModified()})"
+                                Text(
+                                    text = label,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            selectedProjectPath = project.scriptPath
+                                            selectedProjectLabel = label
+                                            showProjectPickerDialog = false
+                                        }
+                                        .padding(vertical = 10.dp),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showProjectPickerDialog = false }) {
+                    Text(stringResource(R.string.fsearch_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showProjectPickerDialog = false }) {
+                    Text(stringResource(R.string.fsearch_cancel))
+                }
+            }
+        )
+    }
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.frida_load_static_project_dialog_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = if (selectedMappingLabel.isBlank()) stringResource(R.string.frida_load_static_project_select_mapping) else selectedMappingLabel,
+                    onValueChange = {},
+                    readOnly = true,
+                    enabled = false,
+                    label = { Text(stringResource(R.string.frida_load_static_project_mapping_label)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = TextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledContainerColor = MaterialTheme.colorScheme.surface,
+                        disabledIndicatorColor = MaterialTheme.colorScheme.outline,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+
+                androidx.compose.material3.Button(
+                    onClick = { showMappingPickerDialog = true },
+                    enabled = mappings.isNotEmpty() && !loading,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(stringResource(R.string.frida_load_static_project_select_mapping))
+                }
+
+                OutlinedTextField(
+                    value = selectedProjectLabel,
+                    onValueChange = {},
+                    readOnly = true,
+                    enabled = false,
+                    label = { Text(stringResource(R.string.frida_load_static_project_file_label)) },
+                    placeholder = { Text(stringResource(R.string.frida_load_static_project_select_project)) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                androidx.compose.material3.Button(
+                    onClick = { showProjectPickerDialog = true },
+                    enabled = !loading && !projectsLoading,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(stringResource(R.string.frida_load_static_project_choose_from_projects))
+                }
+            }
+        },
+        confirmButton = {
+                TextButton(
+                    onClick = {
+                        val filePath = selectedProjectPath
+                        val base = selectedMappingBase
+                        if (!filePath.isNullOrBlank() && !base.isNullOrBlank()) {
+                            projectSearchQuery = ""
+                            mappingSearchQuery = ""
+                            onLoad(filePath, base)
+                        }
+                    },
+                enabled = !loading && !selectedProjectPath.isNullOrBlank() && !selectedMappingBase.isNullOrBlank()
+            ) {
+                if (loading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(end = 8.dp),
+                        strokeWidth = 2.dp
+                    )
+                }
+                Text(stringResource(R.string.frida_load_static_project_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !loading) {
+                Text(stringResource(R.string.home_delete_cancel))
+            }
+        }
+    )
 }

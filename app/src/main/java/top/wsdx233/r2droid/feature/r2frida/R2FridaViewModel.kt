@@ -1,6 +1,7 @@
 package top.wsdx233.r2droid.feature.r2frida
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -9,16 +10,29 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.launch
 import top.wsdx233.r2droid.feature.r2frida.data.*
 import top.wsdx233.r2droid.util.LogManager
+import top.wsdx233.r2droid.util.LogType
+import top.wsdx233.r2droid.util.R2PipeManager
 import java.io.File
 import javax.inject.Inject
+
+sealed class StaticProjectLoadState {
+    object Idle : StaticProjectLoadState()
+    object Loading : StaticProjectLoadState()
+    data class Success(val replacedCount: Int) : StaticProjectLoadState()
+    data class Error(val message: String) : StaticProjectLoadState()
+}
 
 @HiltViewModel
 class R2FridaViewModel @Inject constructor(
     @ApplicationContext private val context: Context
 ) : ViewModel() {
+    companion object {
+        private const val TAG = "R2FridaViewModel"
+    }
 
     private val repo = R2FridaRepository()
 
@@ -62,6 +76,9 @@ class R2FridaViewModel @Inject constructor(
     // Script file list
     private val _scriptFiles = MutableStateFlow<List<String>>(emptyList())
     val scriptFiles: StateFlow<List<String>> = _scriptFiles.asStateFlow()
+
+    private val _staticProjectLoadState = MutableStateFlow<StaticProjectLoadState>(StaticProjectLoadState.Idle)
+    val staticProjectLoadState: StateFlow<StaticProjectLoadState> = _staticProjectLoadState.asStateFlow()
 
     // --- Custom Functions ---
     private val _customFunctions = MutableStateFlow<List<FridaFunction>?>(null)
@@ -591,6 +608,88 @@ class R2FridaViewModel @Inject constructor(
     }
 
     fun clearScriptLogs() = LogManager.clear()
+
+    fun resetStaticProjectLoadState() {
+        _staticProjectLoadState.value = StaticProjectLoadState.Idle
+    }
+
+    fun loadRebasedStaticProject(projectScriptPath: String, moduleBaseHex: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _staticProjectLoadState.value = StaticProjectLoadState.Loading
+            runCatching {
+                LogManager.log(LogType.INFO, "Loading static project script…")
+                Log.i(TAG, "loadRebasedStaticProject start: script=$projectScriptPath base=$moduleBaseHex")
+                val moduleBase = parseHexToULong(moduleBaseHex)
+                    ?: error("Invalid module base address: $moduleBaseHex")
+                val sourceFile = File(projectScriptPath)
+                if (!sourceFile.exists() || !sourceFile.isFile) {
+                    error("Project script file not found")
+                }
+                if (!R2PipeManager.isConnected) {
+                    error("R2 session is not connected")
+                }
+
+                val addressRegex = Regex("\\b0x[0-9a-fA-F]+\\b")
+                var replacedCount = 0
+
+                val tempFile = File(context.cacheDir, "frida_rebased_project_${System.currentTimeMillis()}.r2")
+                sourceFile.bufferedReader().use { reader ->
+                    tempFile.bufferedWriter().use { writer ->
+                        reader.forEachLine { line ->
+                            val transformedLine = addressRegex.replace(line) { match ->
+                                val raw = match.value
+                                val parsed = parseHexToULong(raw)
+                                if (parsed == null) {
+                                    raw
+                                } else {
+                                    replacedCount += 1
+                                    "0x${(parsed + moduleBase).toString(16)}"
+                                }
+                            }
+                            writer.appendLine(transformedLine)
+                        }
+                    }
+                }
+
+                LogManager.log(
+                    LogType.INFO,
+                    "Rebased project prepared (${replacedCount} addresses): ${tempFile.absolutePath}"
+                )
+                Log.i(TAG, "rebase finished: replacedCount=$replacedCount temp=${tempFile.absolutePath}")
+
+                if (!tempFile.exists() || !tempFile.isFile) {
+                    error("Rebased script file was not created")
+                }
+                LogManager.log(LogType.INFO, "Rebased script size: ${tempFile.length()} bytes")
+
+                // r2 dot-command treats quotes as literal characters in script path.
+                // Use plain absolute path to avoid ERROR: Cannot find script '"..."'
+                val loadCmd = ". ${tempFile.absolutePath}"
+                LogManager.log(LogType.COMMAND, loadCmd)
+
+                withTimeout(90_000) {
+                    R2PipeManager.execute(loadCmd).getOrThrow()
+                }
+                LogManager.log(LogType.INFO, "Static project loaded into current Frida session")
+                Log.i(TAG, "loadRebasedStaticProject execute success")
+
+                replacedCount
+            }.onSuccess { count ->
+                _staticProjectLoadState.value = StaticProjectLoadState.Success(count)
+            }.onFailure { e ->
+                LogManager.log(LogType.ERROR, "Static project load failed: ${e.message ?: "unknown error"}")
+                Log.e(TAG, "loadRebasedStaticProject failed", e)
+                _staticProjectLoadState.value = StaticProjectLoadState.Error(
+                    e.message ?: "Failed to load rebased project"
+                )
+            }
+        }
+    }
+
+    private fun parseHexToULong(text: String): ULong? {
+        val normalized = text.trim().removePrefix("0x").removePrefix("0X")
+        return normalized.toULongOrNull(16)
+    }
 
     fun runScript(script: String) {
         _scriptContent.value = script

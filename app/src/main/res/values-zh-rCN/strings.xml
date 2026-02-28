@@ -133,6 +133,11 @@
     <!-- Project Analysis -->
     <string name="analysis_analyzing">正在分析...</string>
     <string name="analysis_loading">正在加载...</string>
+    <string name="analysis_tips_title">小贴士</string>
+    <string name="analysis_tips_empty">暂时没有可显示的小贴士。</string>
+    <string name="analysis_tips_previous">上一条</string>
+    <string name="analysis_tips_next">下一条</string>
+    <string name="analysis_tips_index">第 %1$d / %2$d 条</string>
 
     <!-- Project Components -->
     <string name="menu_copy">复制</string>
@@ -707,6 +712,19 @@
     <string name="r2frida_no_data">无数据</string>
     <string name="r2frida_no_overview">r2frida 模式下无标准概览信息。\n请切换到「r2frida」标签查看会话信息。</string>
     <string name="r2frida_lib_version">版本: %1$s</string>
+    <string name="frida_load_static_project_title">加载静态项目</string>
+    <string name="frida_load_static_project_desc">选择一个映射基址与本地项目脚本，重定位地址后加载到当前 Frida 会话</string>
+    <string name="frida_load_static_project_dialog_title">加载静态项目到 Frida</string>
+    <string name="frida_load_static_project_mapping_label">映射</string>
+    <string name="frida_load_static_project_select_mapping">请选择一个映射</string>
+    <string name="frida_load_static_project_mapping_unknown_file">[匿名映射]</string>
+    <string name="frida_load_static_project_file_label">项目脚本</string>
+    <string name="frida_load_static_project_select_file">请选择本地 .r2 项目脚本</string>
+    <string name="frida_load_static_project_pick_file">选择本地文件</string>
+    <string name="frida_load_static_project_select_project">请选择项目</string>
+    <string name="frida_load_static_project_choose_from_projects">从项目列表选择</string>
+    <string name="frida_load_static_project_confirm">加载</string>
+    <string name="frida_load_static_project_success">已加载重定位项目（替换 %1$d 个地址）</string>
 
     <!-- Frida Search -->
     <string name="fsearch_new_search">新搜索</string>

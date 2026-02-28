@@ -63,6 +63,7 @@ fun ProjectScreen(
     // Handle back press with save/update confirmation
     androidx.activity.compose.BackHandler(
         enabled = uiState is ProjectUiState.Success &&
+                !R2PipeManager.isR2FridaSession &&
                 (R2PipeManager.currentProjectId == null || R2PipeManager.isDirtyAfterSave)
     ) {
         showExitDialog = true

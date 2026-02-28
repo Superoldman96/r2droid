@@ -169,6 +169,11 @@
     <!-- Project Analysis -->
     <string name="analysis_analyzing">Analyzing...</string>
     <string name="analysis_loading">Loading...</string>
+    <string name="analysis_tips_title">Tips</string>
+    <string name="analysis_tips_empty">No tips available right now.</string>
+    <string name="analysis_tips_previous">Previous</string>
+    <string name="analysis_tips_next">Next</string>
+    <string name="analysis_tips_index">Tip %1$d / %2$d</string>
 
     <!-- Project Components -->
     <string name="menu_copy">Copy</string>
@@ -705,6 +710,19 @@
     <string name="r2frida_no_data">No data</string>
     <string name="r2frida_no_overview">No standard overview in r2frida mode.\nSwitch to the \"r2frida\" tab for session info.</string>
     <string name="r2frida_lib_version">ver: %1$s</string>
+    <string name="frida_load_static_project_title">Load Static Project</string>
+    <string name="frida_load_static_project_desc">Select a mapping base and a local project script, then rebase addresses and load into current Frida session</string>
+    <string name="frida_load_static_project_dialog_title">Load Static Project into Frida</string>
+    <string name="frida_load_static_project_mapping_label">Mapping</string>
+    <string name="frida_load_static_project_select_mapping">Select a mapping</string>
+    <string name="frida_load_static_project_mapping_unknown_file">[anonymous mapping]</string>
+    <string name="frida_load_static_project_file_label">Project Script</string>
+    <string name="frida_load_static_project_select_file">Select a local .r2 project script</string>
+    <string name="frida_load_static_project_pick_file">Choose Local File</string>
+    <string name="frida_load_static_project_select_project">Select a project</string>
+    <string name="frida_load_static_project_choose_from_projects">Choose from project list</string>
+    <string name="frida_load_static_project_confirm">Load</string>
+    <string name="frida_load_static_project_success">Loaded rebased project (%1$d addresses replaced)</string>
 
     <!-- Frida Search -->
     <string name="fsearch_new_search">New Search</string>

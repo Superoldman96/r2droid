@@ -823,7 +823,7 @@ fun ProjectScaffold(
                         MainCategory.Project -> {
                             val logs by viewModel.logs.collectAsState()
                             when (selectedProjectTabIndex) {
-                                0 -> ProjectSettingsScreen(viewModel)
+                                0 -> ProjectSettingsScreen(viewModel, r2fridaViewModel)
                                 1 -> CommandScreen(
                                     command = cmdInput,
                                     onCommandChange = { cmdInput = it },

@@ -3,11 +3,14 @@ package top.wsdx233.r2droid.feature.project
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -18,20 +21,29 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import org.json.JSONObject
 import top.wsdx233.r2droid.R
 import top.wsdx233.r2droid.core.ui.components.AutoHideScrollbar
 import top.wsdx233.r2droid.util.LogEntry
@@ -44,6 +56,14 @@ fun AnalysisProgressScreen(
     isRestoring: Boolean = false,
     onClearLogs: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val tips = remember { loadAnalysisTips(context) }
+    val isChinese = remember(configuration) {
+        configuration.locales[0]?.language?.startsWith("zh") == true
+    }
+    var currentTipIndex by rememberSaveable { mutableIntStateOf(0) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -79,13 +99,36 @@ fun AnalysisProgressScreen(
                 .padding(paddingValues)
                 .fillMaxSize()
         ) {
-            LogList(logs, onClearLogs)
+            LogList(
+                logs = logs,
+                onClearLogs = onClearLogs,
+                modifier = Modifier.weight(1f)
+            )
+            AnalysisTipsCarousel(
+                tips = tips,
+                isChinese = isChinese,
+                currentTipIndex = currentTipIndex,
+                onPrevious = {
+                    if (tips.isNotEmpty()) {
+                        currentTipIndex = (currentTipIndex - 1 + tips.size) % tips.size
+                    }
+                },
+                onNext = {
+                    if (tips.isNotEmpty()) {
+                        currentTipIndex = (currentTipIndex + 1) % tips.size
+                    }
+                }
+            )
         }
     }
 }
 
 @Composable
-fun LogList(logs: List<LogEntry>, onClearLogs: () -> Unit = {}) {
+fun LogList(
+    logs: List<LogEntry>,
+    onClearLogs: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
     val listState = rememberLazyListState()
 
     // Auto scroll to bottom
@@ -96,7 +139,8 @@ fun LogList(logs: List<LogEntry>, onClearLogs: () -> Unit = {}) {
     }
 
     Surface(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxWidth(),
         color = Color(0xFF1E1E1E) // Dark background for logs
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -133,6 +177,110 @@ fun LogList(logs: List<LogEntry>, onClearLogs: () -> Unit = {}) {
             }
         }
     }
+}
+
+@Composable
+private fun AnalysisTipsCarousel(
+    tips: List<AnalysisTip>,
+    isChinese: Boolean,
+    currentTipIndex: Int,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.analysis_tips_title),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            if (tips.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.analysis_tips_empty),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                val tip = tips[currentTipIndex.coerceIn(0, tips.lastIndex)]
+                Text(
+                    text = if (isChinese) tip.zh else tip.en,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = stringResource(
+                        R.string.analysis_tips_index,
+                        currentTipIndex + 1,
+                        tips.size
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TipNavButton(
+                    text = stringResource(R.string.analysis_tips_previous),
+                    enabled = tips.size > 1,
+                    onClick = onPrevious
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                TipNavButton(
+                    text = stringResource(R.string.analysis_tips_next),
+                    enabled = tips.size > 1,
+                    onClick = onNext
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RowScope.TipNavButton(
+    text: String,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    TextButton(onClick = onClick, enabled = enabled) {
+        Text(text)
+    }
+}
+
+private data class AnalysisTip(
+    val zh: String,
+    val en: String
+)
+
+private fun loadAnalysisTips(context: android.content.Context): List<AnalysisTip> {
+    return runCatching {
+        val json = context.assets.open("analysis_tips.json")
+            .bufferedReader(Charsets.UTF_8)
+            .use { it.readText() }
+        val root = JSONObject(json)
+        val tipsArray = root.optJSONArray("tips") ?: return emptyList()
+        buildList {
+            for (i in 0 until tipsArray.length()) {
+                val item = tipsArray.optJSONObject(i) ?: continue
+                val zh = item.optString("zh").trim()
+                val en = item.optString("en").trim()
+                if (zh.isNotEmpty() && en.isNotEmpty()) {
+                    add(AnalysisTip(zh = zh, en = en))
+                }
+            }
+        }
+    }.getOrDefault(emptyList())
 }
 
 @Composable

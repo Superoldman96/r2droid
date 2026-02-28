@@ -910,6 +910,10 @@ class ProjectViewModel @Inject constructor(
      * Check if current session is from a restored project.
      */
     fun getCurrentProjectId(): String? = R2PipeManager.currentProjectId
+
+    suspend fun getAllSavedProjects(): List<SavedProject> {
+        return savedProjectRepository.getAllProjects()
+    }
     
     /**
      * Save current analysis as a new project.
