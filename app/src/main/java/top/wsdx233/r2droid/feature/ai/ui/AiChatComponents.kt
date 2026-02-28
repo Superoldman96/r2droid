@@ -405,6 +405,7 @@ fun ActionResultBlock(result: ActionResult) {
     val typeLabel = when (result.type) {
         ActionType.R2Command -> "R2"
         ActionType.JavaScript -> "JS"
+        ActionType.FridaScript -> "Frida"
     }
     val statusColor = if (result.success) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
 

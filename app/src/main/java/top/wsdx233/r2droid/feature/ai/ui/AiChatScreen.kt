@@ -47,6 +47,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -62,8 +63,10 @@ import kotlinx.coroutines.launch
 import top.wsdx233.r2droid.R
 import top.wsdx233.r2droid.feature.ai.AiEvent
 import top.wsdx233.r2droid.feature.ai.AiViewModel
+import top.wsdx233.r2droid.feature.ai.data.AiExecutionMode
 import top.wsdx233.r2droid.feature.ai.data.ChatRole
 import top.wsdx233.r2droid.feature.ai.data.ChatSession
+import top.wsdx233.r2droid.util.R2PipeManager
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -71,7 +74,10 @@ import java.util.Locale
 @Composable
 fun AiChatScreen(viewModel: AiViewModel) {
     val uiState by viewModel.uiState.collectAsState()
+    val r2State by R2PipeManager.state.collectAsState()
     val context = LocalContext.current
+    val isFridaSession = remember(r2State) { R2PipeManager.isR2FridaSession }
+    val currentSessionId = remember(r2State) { R2PipeManager.sessionId }
     var inputText by remember { mutableStateOf("") }
     var showSystemPromptDialog by remember { mutableStateOf(false) }
     var showModelSelector by remember { mutableStateOf(false) }
@@ -82,6 +88,15 @@ fun AiChatScreen(viewModel: AiViewModel) {
     var deletingSessionId by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+
+    var syncedSessionId by remember { mutableIntStateOf(-1) }
+    LaunchedEffect(currentSessionId) {
+        if (currentSessionId != syncedSessionId) {
+            val defaultMode = if (isFridaSession) AiExecutionMode.Frida else AiExecutionMode.R2
+            viewModel.onEvent(AiEvent.SetExecutionMode(defaultMode))
+            syncedSessionId = currentSessionId
+        }
+    }
 
     // Filter out ExecutionResult messages for display
     val displayMessages = remember(uiState.messages) {
@@ -200,6 +215,27 @@ fun AiChatScreen(viewModel: AiViewModel) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.ai_no_provider_hint)) },
                                 onClick = { showModelSelector = false }
+                            )
+                        }
+                    }
+                }
+
+                if (isFridaSession) {
+                    Box {
+                        TextButton(onClick = {
+                            viewModel.onEvent(
+                                AiEvent.SetExecutionMode(
+                                    if (uiState.executionMode == AiExecutionMode.R2) AiExecutionMode.Frida else AiExecutionMode.R2
+                                )
+                            )
+                        }) {
+                            Text(
+                                text = if (uiState.executionMode == AiExecutionMode.Frida) {
+                                    stringResource(R.string.ai_mode_frida)
+                                } else {
+                                    stringResource(R.string.ai_mode_r2)
+                                },
+                                style = MaterialTheme.typography.labelLarge
                             )
                         }
                     }

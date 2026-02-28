@@ -13,6 +13,7 @@ class R2ActionExecutor {
 
     private val r2CmdPattern = Regex("""\[\[(.+?)]]""")
     private val jsCmdPattern = Regex("""<js>(.*?)</js>""", RegexOption.DOT_MATCHES_ALL)
+    private val fridaCmdPattern = Regex("""<frida>(.*?)</frida>""", RegexOption.DOT_MATCHES_ALL)
     private val endPattern = Regex("""\[end]""", RegexOption.IGNORE_CASE)
 
     data class ParsedResponse(
@@ -39,6 +40,10 @@ class R2ActionExecutor {
 
         jsCmdPattern.findAll(text).forEach { match ->
             actions.add(ActionBlock(ActionType.JavaScript, match.groupValues[1].trim(), match.range.first))
+        }
+
+        fridaCmdPattern.findAll(text).forEach { match ->
+            actions.add(ActionBlock(ActionType.FridaScript, match.groupValues[1].trim(), match.range.first))
         }
 
         actions.sortBy { it.startIndex }

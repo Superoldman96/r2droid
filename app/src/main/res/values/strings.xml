@@ -505,6 +505,9 @@
     <string name="ai_tab_chat">Chat</string>
     <string name="ai_tab_settings">Providers</string>
     <string name="ai_tab_prompts">Prompts</string>
+    <string name="ai_mode_r2">R2</string>
+    <string name="ai_mode_frida">Frida</string>
+    <string name="ai_mode_frida_unavailable">Frida mode requires an active r2frida session</string>
     <string name="ai_role_you">You</string>
     <string name="ai_role_assistant">Assistant</string>
     <string name="ai_role_execution">Execution Result</string>

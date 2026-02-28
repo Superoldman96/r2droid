@@ -1,8 +1,10 @@
 package top.wsdx233.r2droid.feature.ai
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -10,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import top.wsdx233.r2droid.feature.ai.data.ActionType
+import top.wsdx233.r2droid.feature.ai.data.AiExecutionMode
 import top.wsdx233.r2droid.feature.ai.data.AiProviderConfig
 import top.wsdx233.r2droid.feature.ai.data.AiRepository
 import top.wsdx233.r2droid.core.data.prefs.SettingsManager
@@ -21,6 +24,8 @@ import top.wsdx233.r2droid.feature.ai.data.R2ActionExecutor
 import top.wsdx233.r2droid.feature.ai.data.ActionResult
 import top.wsdx233.r2droid.feature.ai.data.ThinkingLevel
 import kotlinx.coroutines.CompletableDeferred
+import top.wsdx233.r2droid.feature.r2frida.data.R2FridaRepository
+import top.wsdx233.r2droid.util.R2PipeManager
 import javax.inject.Inject
 
 sealed interface AiEvent {
@@ -40,6 +45,7 @@ sealed interface AiEvent {
     object ApproveCommand : AiEvent
     object DenyCommand : AiEvent
     data class SetThinkingLevel(val level: ThinkingLevel) : AiEvent
+    data class SetExecutionMode(val mode: AiExecutionMode) : AiEvent
 }
 
 data class PendingApproval(
@@ -57,12 +63,14 @@ data class AiUiState(
     val chatSessions: List<ChatSession> = emptyList(),
     val currentChatId: String? = null,
     val pendingApproval: PendingApproval? = null,
-    val thinkingLevel: ThinkingLevel = ThinkingLevel.Auto
+    val thinkingLevel: ThinkingLevel = ThinkingLevel.Auto,
+    val executionMode: AiExecutionMode = AiExecutionMode.R2
 )
 
 @HiltViewModel
 class AiViewModel @Inject constructor(
-    private val aiRepository: AiRepository
+    private val aiRepository: AiRepository,
+    @param:ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AiUiState())
@@ -70,6 +78,7 @@ class AiViewModel @Inject constructor(
 
     private var generationJob: Job? = null
     private val actionExecutor = R2ActionExecutor()
+    private val r2FridaRepository = R2FridaRepository()
     private var approvalDeferred: CompletableDeferred<Boolean>? = null
 
     init {
@@ -87,7 +96,12 @@ class AiViewModel @Inject constructor(
                 _uiState.update { it.copy(chatSessions = sessions) }
             }
         }
-        _uiState.update { it.copy(systemPrompt = AiSettingsManager.systemPrompt) }
+        _uiState.update {
+            it.copy(
+                systemPrompt = AiSettingsManager.systemPrompt,
+                executionMode = if (R2PipeManager.isR2FridaSession) AiExecutionMode.Frida else AiExecutionMode.R2
+            )
+        }
     }
 
     fun onEvent(event: AiEvent) {
@@ -108,6 +122,7 @@ class AiViewModel @Inject constructor(
             is AiEvent.ApproveCommand -> resolveApproval(true)
             is AiEvent.DenyCommand -> resolveApproval(false)
             is AiEvent.SetThinkingLevel -> _uiState.update { it.copy(thinkingLevel = event.level) }
+            is AiEvent.SetExecutionMode -> _uiState.update { it.copy(executionMode = event.mode) }
         }
     }
 
@@ -120,6 +135,8 @@ class AiViewModel @Inject constructor(
     private fun startGeneration() {
         val state = _uiState.value
         val config = state.config
+        val turnMode = state.executionMode
+        val turnHasFridaSession = R2PipeManager.isR2FridaSession
         val provider = config.providers.find { it.id == config.activeProviderId }
         if (provider == null) {
             _uiState.update { it.copy(error = "No AI provider configured") }
@@ -141,7 +158,7 @@ class AiViewModel @Inject constructor(
                 aiRepository.streamChat(
                     messages = state.messages,
                     modelName = model,
-                    systemPrompt = state.systemPrompt,
+                    systemPrompt = buildSystemPromptForMode(state.systemPrompt, turnMode, turnHasFridaSession),
                     useResponsesApi = provider.useResponsesApi,
                     thinkingLevel = state.thinkingLevel
                 )
@@ -200,10 +217,20 @@ class AiViewModel @Inject constructor(
                                 }
                                 actionExecutor.executeJavaScript(action.content)
                             }
+                            ActionType.FridaScript -> {
+                                _uiState.update {
+                                    it.copy(streamingContent = "$responseText\n\n⏳ Running Frida script...")
+                                }
+                                executeFridaScript(action.content, turnMode, turnHasFridaSession)
+                            }
                         }
                         results.add(result)
 
-                        val typeLabel = if (action.type == ActionType.R2Command) "R2 Command" else "JavaScript"
+                        val typeLabel = when (action.type) {
+                            ActionType.R2Command -> "R2 Command"
+                            ActionType.JavaScript -> "JavaScript"
+                            ActionType.FridaScript -> "Frida Script"
+                        }
                         feedbackBuilder.appendLine("$typeLabel: ${action.content}")
                         feedbackBuilder.appendLine("Output:")
                         feedbackBuilder.appendLine(result.output)
@@ -266,6 +293,52 @@ class AiViewModel @Inject constructor(
     private fun resolveApproval(approved: Boolean) {
         approvalDeferred?.complete(approved)
         approvalDeferred = null
+    }
+
+    private suspend fun executeFridaScript(
+        script: String,
+        turnMode: AiExecutionMode,
+        turnHasFridaSession: Boolean
+    ): ActionResult {
+        val fridaReady = turnMode == AiExecutionMode.Frida && turnHasFridaSession
+        return if (!fridaReady) {
+            ActionResult(
+                type = ActionType.FridaScript,
+                input = script,
+                output = "Frida script rejected: Frida mode/session is not active",
+                success = false
+            )
+        } else {
+            val result = r2FridaRepository.executeScript(script, context.cacheDir.absolutePath)
+            ActionResult(
+                type = ActionType.FridaScript,
+                input = script,
+                output = result.getOrElse { "Frida Error: ${it.message}" },
+                success = result.isSuccess
+            )
+        }
+    }
+
+    private fun buildSystemPromptForMode(
+        basePrompt: String,
+        mode: AiExecutionMode,
+        hasFridaSession: Boolean
+    ): String {
+        val effectiveFridaMode = mode == AiExecutionMode.Frida && hasFridaSession
+        val modeContext = when (mode) {
+            AiExecutionMode.R2 -> {
+                "[Runtime Mode]\nselected_mode=R2\nfrida_session_active=$hasFridaSession\nis_frida_mode=false\nUse [[cmd]] and <js> as primary tools. Do not emit <frida> blocks."
+            }
+            AiExecutionMode.Frida -> {
+                "[Runtime Mode]\nselected_mode=Frida\nfrida_session_active=$hasFridaSession\nis_frida_mode=$effectiveFridaMode\n" +
+                        if (effectiveFridaMode) {
+                            "Prefer <frida>...</frida> for runtime instrumentation. Use [[cmd]] only when necessary for session checks."
+                        } else {
+                            "Frida session is not active now. Do not emit <frida> blocks; use [[cmd]] and <js> instead."
+                        }
+            }
+        }
+        return "$basePrompt\n\n$modeContext"
     }
 
     private fun stopGeneration() {

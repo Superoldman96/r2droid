@@ -42,7 +42,10 @@ data class ActionResult(
 )
 
 @Serializable
-enum class ActionType { R2Command, JavaScript }
+enum class ActionType { R2Command, JavaScript, FridaScript }
+
+@Serializable
+enum class AiExecutionMode { R2, Frida }
 
 enum class ThinkingLevel(val labelResKey: String, val apiEffort: String?) {
     None("ai_thinking_none", null),

@@ -507,6 +507,9 @@
     <string name="ai_tab_chat">聊天</string>
     <string name="ai_tab_settings">提供商</string>
     <string name="ai_tab_prompts">提示词</string>
+    <string name="ai_mode_r2">R2</string>
+    <string name="ai_mode_frida">Frida</string>
+    <string name="ai_mode_frida_unavailable">Frida 模式需要先进入 r2frida 会话</string>
     <string name="ai_role_you">你</string>
     <string name="ai_role_assistant">助手</string>
     <string name="ai_role_execution">执行结果</string>
