@@ -5,49 +5,54 @@
 ![Compose](https://img.shields.io/badge/Jetpack%20Compose-Material3-blue.svg)
 ![Radare2](https://img.shields.io/badge/Engine-Radare2-orange.svg)
 
-**R2Droid** 是一个基于 [Radare2](https://github.com/radareorg/radare2) 逆向工程框架的现代化 Android 原生 GUI 工具。它使用 Kotlin 和 Jetpack Compose 构建，将强大的静态分析、动态插桩以及 AI 辅助逆向能力直接带到您的移动设备上。
+**R2Droid** 是一款基于 [Radare2](https://github.com/radareorg/radare2) 的 Android 原生逆向分析应用。项目使用 Kotlin + Jetpack Compose 开发，重点覆盖移动端静态分析、动态插桩与 AI 辅助分析流程。
 
 [**🇺🇸 English README**](README.md)
 
 ![R2droid](preview/preview.png)
 
-## ✨ 核心亮点
+## ✨ 当前亮点
 
-*   🤖 **AI 逆向助手**: 接入兼容 OpenAI 格式的 API。AI 可自主分析二进制文件、在应用内执行 Radare2 命令以及运行 JavaScript 脚本，智能解答您的逆向问题。
-*   💉 **R2Frida 动态插桩**: 强大的移动端动态调试能力。支持自动下载配置插件、列出本地/远程进程、附加/启动 App，并在界面内直接执行 Frida 脚本。
-*   📊 **可视化图形视图**: 专为触摸屏优化的交互式节点图。支持查看函数控制流图（基本块）、函数调用图、全局调用图以及交叉引用图。
-*   📑 **分析报告导出**: 一键生成详尽的分析报告，支持 Markdown、HTML、JSON 格式，甚至可根据当前分析自动生成 Frida Hook 脚本模板。
+- 🤖 **AI 逆向助手（OpenAI 兼容）**：支持流式对话、可配置提示词，并可通过 `[[cmd]]` / `<js>` 在会话内执行动作。
+- 💉 **R2Frida 工作流**：内置 r2frida 安装器、本地/远程进程连接流程、自定义脚本管理与专用分析页面。
+- 📊 **图形分析视图**：触屏友好的图形界面，采用 Sugiyama 分层布局；支持函数流程图、Xref 图、调用图、全局调用图和数据引用图。
+- 📑 **报告导出**：支持导出 Markdown / HTML / JSON 报告，并可根据分析结果生成 Frida Hook 模板。
 
-## 🛠️ 主要功能
+## 🛠️ 核心能力
 
-*   **项目管理**：保存、加载和恢复分析会话，支持自定义项目保存路径。
-*   **十六进制视图**：高性能、虚拟化加载的十六进制编辑器，支持直接修改数据（`wx`, `w`, `wa`）。
-*   **反汇编与反编译**：支持无限滚动的反汇编列表（含语法高亮、跳转指示、导航历史），以及通过 `r2ghidra` / `r2dec` 生成的伪代码视图。
-*   **全局搜索**：快速检索字符串、十六进制、汇编指令、正则表达式、ROP Gadgets 以及特定数值。
-*   **内置终端**：基于 `r2pipe` 和 `termux-view` 的全功能原生终端，支持执行复杂的 R2 命令。
-*   **深度分析视图**：二进制概览（架构、系统等）、段、符号、导入、重定位、字符串、函数列表及详细的交叉引用 (Xrefs)。
-*   **后台保活**：提供常驻通知服务，确保在进行耗时的深度分析时应用不会被系统杀后台。
-*   **个性化设置**：深色/浅色主题、自定义字体、多语言切换（中/英）、自定义 `.radare2rc` 配置。
+- **项目生命周期管理**：支持文件选择器与外部 Intent 打开二进制，选择分析等级后可保存/恢复项目及元数据。
+- **Hex + 反汇编编辑**：大文件虚拟化加载（分块 + 缓存）、`wx`/`wa`/字符串/注释修改、Xrefs 与函数信息弹窗、地址历史回退。
+- **反编译器切换**：支持 `r2ghidra`、`r2dec`、`native`、`aipdg`；提供内置编辑模式、缩放、换行、行号等显示选项。
+- **调试能力（ESIL 优先）**：支持 ESIL 初始化、断点、步进/步过/继续/暂停、寄存器面板与 PC 自动跟随。
+- **搜索与分析列表**：总览 + 段/符号/导入/重定位/字符串/函数分页加载，支持搜索过滤。
+- **终端体验**：内置终端支持额外按键栏（ESC/TAB/CTRL/ALT/方向键/PGUP/PGDN）与命令建议面板。
+- **系统集成**：后台保活通知、版本更新检查弹窗、语言/主题/字体设置与自定义 `.radare2rc`。
 
-## 🚀 开发计划 (TODO)
+## 截图
 
-*   [ ] **终端快捷键栏**：在虚拟键盘上方添加辅助按键（ESC, Tab, Ctrl, 方向键等）。
-*   [ ] **ESIL 模拟执行**：使用 ESIL 进行代码可视化模拟步过与调试的 UI。
-*   [ ] **插件管理器**：提供便捷的 UI 用于安装和管理 Radare2 的扩展插件。
+![preview_aichat](preview/preview_aichat.jpg)
+![preview_graph](preview/preview_graph.jpg)
+
+## 🚀 当前 TODO
+
+- [ ] 插件管理器 UI（扩展工具链/插件管理）。
+- [ ] 调试后端扩展与 native/frida 调试路径体验完善。
+- [ ] 更多分析自动化模板（AI + 报告预设 + 动作宏）。
 
 ## 📦 构建说明
 
-1.  克隆本仓库。
-2.  使用 Android Studio (推荐 Ladybug 或更新版本) 打开。
-3.  确保 Gradle JVM 设置为 JDK 17。
-4.  连接 Android 设备（最低要求 SDK 24）进行编译运行。
+1. 克隆本仓库。
+2. 使用 Android Studio（建议 Ladybug 或更新版本）打开。
+3. Gradle JVM 选择 **JDK 17**。
+4. 在 Android 设备/模拟器上运行（**minSdk 24**）。
 
-> **注意**：应用内包含预编译的 `radare2` 二进制文件和相关资源，会在首次启动时自动解压安装。
+> 注意：应用内包含预编译 `radare2` 资源（`r2.tar`、`r2dir.tar`），首次启动会自动解压安装。
 
 ## 📄 许可证
 
 本项目基于 [MIT License](LICENSE) 开源。
-特别鸣谢 **Radare2** 团队、**Frida** 项目以及 **Termux** 项目提供的底层技术支持。
+
+感谢 **Radare2**、**Frida** 与 **Termux** 社区。
 
 ---
 ## Star History
