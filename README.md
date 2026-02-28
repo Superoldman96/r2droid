@@ -54,6 +54,13 @@ This project is open-source under the [MIT License](LICENSE).
 
 Thanks to the **Radare2**, **Frida**, and **Termux** communities.
 
+## 🤝 Contributors
+
+- [@wsdx233](https://github.com/wsdx233)
+- [@binx6](https://github.com/binx6)
+
+See the latest list on GitHub: [Contributors](https://github.com/wsdx233/r2droid/graphs/contributors)
+
 ---
 ## Star History
 

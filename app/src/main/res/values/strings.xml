@@ -89,6 +89,11 @@
     <string name="about_repo_comment">// Source Code</string>
     <string name="about_core_value">radare2 @ 6.1.0</string>
     <string name="about_core_comment">// Powering the engine</string>
+    <string name="about_contributors_comment">// GitHub contributors (live)</string>
+    <string name="about_contributors_loading">// loading contributors from GitHub API...</string>
+    <string name="about_contributors_error">// fetch failed: %1$s</string>
+    <string name="about_contributors_retry">Retry</string>
+    <string name="about_contributors_empty">// no contributors found</string>
     <string name="about_footer">Build with ❤️ &amp; Kotlin</string>
     <string name="about_logo_desc">App Logo</string>
     <string name="about_r2droid">R2Droid</string>

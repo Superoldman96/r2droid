@@ -53,6 +53,11 @@
     <string name="about_repo_comment">// 源代码</string>
     <string name="about_core_value">radare2 @ 6.1.0</string>
     <string name="about_core_comment">// 核心引擎</string>
+    <string name="about_contributors_comment">// GitHub 贡献者（实时）</string>
+    <string name="about_contributors_loading">// 正在从 GitHub API 获取贡献者...</string>
+    <string name="about_contributors_error">// 获取失败: %1$s</string>
+    <string name="about_contributors_retry">重试</string>
+    <string name="about_contributors_empty">// 未找到贡献者</string>
     <string name="about_footer">Build with ❤️ &amp; Kotlin</string>
     <string name="about_logo_desc">应用图标</string>
     <string name="about_r2droid">R2Droid</string>

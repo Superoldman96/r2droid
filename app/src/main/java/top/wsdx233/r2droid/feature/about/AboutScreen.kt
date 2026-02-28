@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,7 +40,10 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Commit
 import androidx.compose.material.icons.rounded.DataObject
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -56,6 +60,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -82,7 +87,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import top.wsdx233.r2droid.R
+import java.net.HttpURLConnection
+import java.net.URL
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -206,6 +216,11 @@ fun AboutScreen(
                     icon = Icons.Rounded.DataObject,
                     onClick = {}
                 )
+
+                ContributorsCodeCard(
+                    index = 4,
+                    onOpenProfile = { uriHandler.openUri(it) }
+                )
                 
                 Spacer(modifier = Modifier.height(50.dp))
                 
@@ -217,6 +232,60 @@ fun AboutScreen(
                 )
                  Spacer(modifier = Modifier.height(30.dp))
             }
+        }
+    }
+}
+
+private data class GitHubContributor(
+    val login: String,
+    val profileUrl: String,
+    val contributions: Int
+)
+
+private suspend fun fetchGitHubContributors(
+    owner: String = "wsdx233",
+    repo: String = "r2droid"
+): Result<List<GitHubContributor>> = withContext(Dispatchers.IO) {
+    runCatching {
+        val apiUrl = "https://api.github.com/repos/$owner/$repo/contributors?per_page=100"
+        val connection = (URL(apiUrl).openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = 10000
+            readTimeout = 10000
+            setRequestProperty("Accept", "application/vnd.github+json")
+            setRequestProperty("User-Agent", "R2Droid-Android")
+        }
+
+        try {
+            val code = connection.responseCode
+            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+            val body = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+
+            if (code !in 200..299) {
+                throw IllegalStateException("HTTP $code: ${body.take(180)}")
+            }
+
+            val arr = JSONArray(body)
+            buildList {
+                for (i in 0 until arr.length()) {
+                    val item = arr.optJSONObject(i) ?: continue
+                    val login = item.optString("login").trim()
+                    if (login.contains("[bot]")) continue
+                    val profile = item.optString("html_url").trim()
+                    val contributions = item.optInt("contributions", 0)
+                    if (login.isNotEmpty() && profile.isNotEmpty()) {
+                        add(
+                            GitHubContributor(
+                                login = login,
+                                profileUrl = profile,
+                                contributions = contributions
+                            )
+                        )
+                    }
+                }
+            }.sortedByDescending { it.contributions }
+        } finally {
+            connection.disconnect()
         }
     }
 }
@@ -433,6 +502,187 @@ fun StaggeredCodeCard(
                         lineHeight = 20.sp
                     )
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun ContributorsCodeCard(
+    index: Int,
+    onOpenProfile: (String) -> Unit
+) {
+    var visible by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }
+    var loading by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var reloadTick by remember { mutableIntStateOf(0) }
+    var contributors by remember { mutableStateOf<List<GitHubContributor>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        delay(index * 150L)
+        visible = true
+    }
+
+    LaunchedEffect(expanded, reloadTick) {
+        if (!expanded) return@LaunchedEffect
+        loading = true
+        error = null
+        val result = fetchGitHubContributors()
+        result.onSuccess { contributors = it }
+            .onFailure { error = it.message ?: "Unknown error" }
+        loading = false
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(300)) +
+                slideInVertically(
+                    initialOffsetY = { 50 },
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                )
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 6.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f)
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            expanded = !expanded
+                        },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.about_contributors_comment),
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "val contributors = arrayOf(",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        )
+                    }
+                    Icon(
+                        imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                if (expanded) {
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    when {
+                        loading -> {
+                            Text(
+                                text = stringResource(R.string.about_contributors_loading),
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            )
+                        }
+
+                        error != null -> {
+                            Text(
+                                text = stringResource(R.string.about_contributors_error, error ?: ""),
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        reloadTick++
+                                    }
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Refresh,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = stringResource(R.string.about_contributors_retry),
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontFamily = FontFamily.Monospace,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                )
+                            }
+                        }
+
+                        contributors.isEmpty() -> {
+                            Text(
+                                text = stringResource(R.string.about_contributors_empty),
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            )
+                        }
+
+                        else -> {
+                            contributors.forEach { c ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onOpenProfile(c.profileUrl) }
+                                        .padding(vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "  Contributor(login = \"${c.login}\", contributions = ${c.contributions}),",
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            fontFamily = FontFamily.Monospace,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        ),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Text(
+                        text = ")",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+                }
             }
         }
     }

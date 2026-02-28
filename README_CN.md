@@ -54,6 +54,13 @@
 
 感谢 **Radare2**、**Frida** 与 **Termux** 社区。
 
+## 🤝 贡献者
+
+- [@wsdx233](https://github.com/wsdx233)
+- [@binx6](https://github.com/binx6)
+
+最新完整列表请查看 GitHub: [Contributors](https://github.com/wsdx233/r2droid/graphs/contributors)
+
 ---
 ## Star History
 
