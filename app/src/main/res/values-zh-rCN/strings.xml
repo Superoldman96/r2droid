@@ -69,6 +69,7 @@
     <string name="settings_language_system">系统默认</string>
     <string name="settings_language_english">English</string>
     <string name="settings_language_chinese">中文</string>
+    <string name="settings_language_russian">俄语</string>
     <string name="settings_cancel">取消</string>
     <string name="settings_save">保存</string>
     <string name="settings_content_label">内容</string>

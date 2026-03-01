@@ -511,6 +511,7 @@ fun SettingsScreen(
                 val languageLabel = when(language) {
                     "en" -> stringResource(R.string.settings_language_english)
                     "zh" -> stringResource(R.string.settings_language_chinese)
+                    "ru" -> stringResource(R.string.settings_language_russian)
                     else -> stringResource(R.string.settings_font_default) // "Default" (System)
                 }
                 SettingsItem(
@@ -690,6 +691,7 @@ fun SettingsScreen(
                     LanguageOption(stringResource(R.string.settings_language_system), "system", language) { viewModel.setLanguage(it); showLanguageDialog = false; showRestartDialog = true }
                     LanguageOption(stringResource(R.string.settings_language_english), "en", language) { viewModel.setLanguage(it); showLanguageDialog = false; showRestartDialog = true }
                     LanguageOption(stringResource(R.string.settings_language_chinese), "zh", language) { viewModel.setLanguage(it); showLanguageDialog = false; showRestartDialog = true }
+                    LanguageOption(stringResource(R.string.settings_language_russian), "ru", language) { viewModel.setLanguage(it); showLanguageDialog = false; showRestartDialog = true }
                 }
             },
             confirmButton = {

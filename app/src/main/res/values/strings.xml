@@ -105,6 +105,7 @@
     <string name="settings_language_system">System Default</string>
     <string name="settings_language_english">English</string>
     <string name="settings_language_chinese">中文</string>
+    <string name="settings_language_russian">Русский</string>
     <string name="settings_cancel">Cancel</string>
     <string name="settings_save">Save</string>
     <string name="settings_content_label">Content</string>
