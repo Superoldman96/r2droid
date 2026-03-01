@@ -379,6 +379,10 @@ class ProjectViewModel @Inject constructor(
     private fun clearFunctionsCache() {
         viewModelScope.launch {
             functionDao.clearAll()
+            val current = _uiState.value as? ProjectUiState.Success
+            if (current != null) {
+                _uiState.value = current.copy(functions = null)
+            }
         }
     }
 
