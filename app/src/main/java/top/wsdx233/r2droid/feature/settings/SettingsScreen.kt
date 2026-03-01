@@ -324,7 +324,7 @@ fun SettingsScreen(
     // R2RC Dialog state
     var tempR2rcContent by remember { mutableStateOf("") }
     
-    val fontPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+    val fontPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
              viewModel.setFontPath(UriUtils.getPath(context, it))
         }
@@ -503,7 +503,7 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_font),
                     subtitle = fontPath ?: stringResource(R.string.settings_font_default),
                     icon = Icons.Default.FontDownload,
-                    onClick = { fontPicker.launch(arrayOf("font/ttf", "font/otf", "*/*")) }
+                    onClick = { fontPicker.launch("*/*") }
                 )
             }
             

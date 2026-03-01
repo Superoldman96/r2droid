@@ -81,7 +81,7 @@ fun HomeScreen(
     }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
+        contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let { viewModel.onFileSelected(context, it) }
     }
@@ -158,7 +158,7 @@ fun HomeScreen(
                 // Left pane: header + actions + bottom bar
                 HomeLeftPane(
                     modifier = Modifier.weight(0.4f),
-                    onOpenFile = { filePickerLauncher.launch(arrayOf("*/*")) },
+                    onOpenFile = { filePickerLauncher.launch("*/*") },
                     onFeatures = viewModel::onFeaturesClicked,
                     onSettings = viewModel::onSettingsClicked,
                     onAbout = viewModel::onAboutClicked
@@ -174,7 +174,7 @@ fun HomeScreen(
         } else {
             // --- Portrait / Phone: original single-column layout ---
             HomeCompactLayout(
-                onOpenFile = { filePickerLauncher.launch(arrayOf("*/*")) },
+                onOpenFile = { filePickerLauncher.launch("*/*") },
                 viewModel = viewModel,
                 context = context,
                 onDeleteRequest = { showDeleteDialog = it }
