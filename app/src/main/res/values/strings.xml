@@ -83,7 +83,8 @@
     <string name="about_back_desc">Back</string>
     <string name="about_author_name">Wsdx233</string>
     <string name="about_author_comment">// The Creator</string>
-    <string name="about_contact_value">QQ(1284321744)\nQQGroup(1014171868)</string>
+    <string name="about_contact_value">\"Discord R2droid\"</string>
+    <string name="about_contact_url">https://discord.gg/MuCrmvJby</string>
     <string name="about_contact_comment">// Reach out</string>
     <string name="about_repo_value">git clone .../r2droid</string>
     <string name="about_repo_comment">// Source Code</string>

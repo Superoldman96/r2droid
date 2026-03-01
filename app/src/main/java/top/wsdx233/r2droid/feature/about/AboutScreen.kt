@@ -186,6 +186,7 @@ fun AboutScreen(
                     }
                 )
 
+                val contactUrl = stringResource(R.string.about_contact_url)
                 StaggeredCodeCard(
                     index = 1,
                     variableName = "contact",
@@ -193,7 +194,7 @@ fun AboutScreen(
                     comment = stringResource(R.string.about_contact_comment),
                     icon = Icons.Rounded.Commit, // Use distinct icon
                     onClick = {
-                        uriHandler.openUri("https://qm.qq.com/q/WUGtRZbDiO")
+                        uriHandler.openUri(contactUrl)
                     }
                 )
 
