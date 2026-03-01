@@ -59,11 +59,7 @@ android {
     packaging {
         resources {
             excludes += setOf(
-                "META-INF/native-image/**", // Optional: Prevents potential metadata conflicts
-                "kotlin/**",
-                "tables/**",
-                "org/**",
-                "**.properties",
+                "META-INF/native-image/**",
                 "DebugProbesKt.bin"
             )
         }
