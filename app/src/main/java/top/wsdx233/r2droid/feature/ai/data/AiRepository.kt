@@ -201,9 +201,7 @@ class AiRepository @Inject constructor() {
         return when {
             json.optString("type") == "response.output_text.delta" -> json.optString("delta", "")
             json.has("delta") -> json.optString("delta", "")
-            json.optString("type") == "response.completed" -> {
-                extractResponsesText(json.optJSONObject("response")?.toString().orEmpty())
-            }
+            json.optString("type") == "response.completed" -> ""
             else -> ""
         }
     }
