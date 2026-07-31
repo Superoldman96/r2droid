@@ -723,6 +723,7 @@
     <string name="ai_provider_models_hint">Модели (через запятую)</string>
     <string name="ai_provider_fetch_models">Получить модели</string>
     <string name="ai_provider_select_models">Выбрать модели</string>
+    <string name="ai_provider_select_all">Выбрать все</string>
     <string name="ai_provider_fetching_models">Загрузка моделей…</string>
     <string name="ai_provider_fetch_error">Ошибка загрузки моделей: %1$s</string>
     <string name="ai_provider_fetch_need_url_key">Пожалуйста, сначала заполните Базовый URL и API Ключ</string>

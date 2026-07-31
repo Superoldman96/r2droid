@@ -747,6 +747,7 @@
     <string name="ai_provider_models_hint">Models (comma separated)</string>
     <string name="ai_provider_fetch_models">Fetch Models</string>
     <string name="ai_provider_select_models">Select Models</string>
+    <string name="ai_provider_select_all">Select all</string>
     <string name="ai_provider_fetching_models">Fetching models…</string>
     <string name="ai_provider_fetch_error">Failed to fetch models: %1$s</string>
     <string name="ai_provider_fetch_need_url_key">Please fill in Base URL and API Key first</string>

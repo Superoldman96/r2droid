@@ -474,6 +474,28 @@ private fun ModelSelectionDialog(
                 Text(stringResource(R.string.ai_provider_no_models_found))
             } else {
                 LazyColumn {
+                    item {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.dp)
+                        ) {
+                            Checkbox(
+                                checked = selectedModels.all { it },
+                                onCheckedChange = { checked ->
+                                    selectedModels.indices.forEach { index ->
+                                        selectedModels[index] = checked
+                                    }
+                                }
+                            )
+                            Text(
+                                text = stringResource(R.string.ai_provider_select_all),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
                     items(availableModels.size) { index ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
