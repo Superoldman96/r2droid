@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.DataObject
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Extension
@@ -134,6 +135,9 @@ import top.wsdx233.r2droid.feature.hex.HexViewModel
 import top.wsdx233.r2droid.feature.r2frida.R2FridaViewModel
 import top.wsdx233.r2droid.feature.r2frida.data.*
 import top.wsdx233.r2droid.feature.r2frida.ui.*
+import top.wsdx233.r2droid.feature.r2flutter.R2FlutterViewModel
+import top.wsdx233.r2droid.feature.r2flutter.data.FlutterTargetStatus
+import top.wsdx233.r2droid.feature.r2flutter.ui.R2FlutterProjectScreen
 import top.wsdx233.r2droid.feature.terminal.ui.CommandScreen
 import top.wsdx233.r2droid.feature.tutorial.OnboardingTutorial
 import top.wsdx233.r2droid.feature.tutorial.TutorialOverlay
@@ -148,6 +152,7 @@ import top.wsdx233.r2droid.util.R2PipeManager
 enum class MainCategory(@StringRes val titleRes: Int, val icon: ImageVector) {
     List(R.string.proj_category_list, Icons.AutoMirrored.Filled.List),
     Detail(R.string.proj_category_detail, Icons.Filled.Info),
+    R2Flutter(R.string.proj_category_r2flutter, Icons.Filled.DataObject),
     R2Frida(R.string.proj_category_r2frida, Icons.Filled.BugReport),
     Project(R.string.proj_category_project, Icons.Filled.Build),
     AI(R.string.proj_category_ai, Icons.Filled.SmartToy)
@@ -164,6 +169,7 @@ fun ProjectScaffold(
     disasmViewModel: DisasmViewModel = hiltViewModel(key = "disasm-$sessionId"),
     aiViewModel: AiViewModel = hiltViewModel(key = "ai-$sessionId"),
     r2fridaViewModel: R2FridaViewModel = hiltViewModel(key = "frida-$sessionId"),
+    r2flutterViewModel: R2FlutterViewModel = hiltViewModel(key = "flutter-$sessionId"),
     onOpenDrawer: () -> Unit = {},
     onNavigateBack: () -> Unit
 ) {
@@ -211,9 +217,24 @@ fun ProjectScaffold(
     var showJumpDialog by remember { mutableStateOf(false) }
     val visitedAddresses = remember { mutableStateListOf<Long>() }
     val isR2Frida = R2PipeManager.isR2FridaSession
+    val r2FlutterTargetStatus by r2flutterViewModel.targetStatus.collectAsState()
+    val isR2Flutter = r2FlutterTargetStatus == FlutterTargetStatus.AVAILABLE
     val isAiEnabled = SettingsManager.aiEnabled
     val isWide = LocalWindowWidthClass.current != WindowWidthClass.Compact
     val tutorialState by OnboardingTutorial.state.collectAsState()
+
+    androidx.compose.runtime.LaunchedEffect(r2FlutterTargetStatus) {
+        if (r2FlutterTargetStatus == FlutterTargetStatus.CHECKING) return@LaunchedEffect
+        if (R2PipeManager.pendingOpenR2Flutter) {
+            if (isR2Flutter) {
+                selectBuiltinCategory(MainCategory.R2Flutter)
+            }
+            R2PipeManager.pendingOpenR2Flutter = false
+        }
+        if (!isR2Flutter && selectedCategory == MainCategory.R2Flutter) {
+            selectBuiltinCategory(MainCategory.List)
+        }
+    }
 
     androidx.activity.compose.BackHandler(enabled = tutorialState.active) {
         OnboardingTutorial.skip()
@@ -468,6 +489,8 @@ fun ProjectScaffold(
                 baseSize = baseDetailTabs.size,
                 pluginKeys = pluginDetailTabs.map { it.tab.key }
             )
+
+            MainCategory.R2Flutter -> setOf("flutter", "r2flutter")
 
             MainCategory.Project -> buildCurrentTabAliases(
                 selectedIndex = selectedProjectTabIndex,
@@ -1060,6 +1083,7 @@ fun ProjectScaffold(
                     r2fridaTabs = baseR2fridaTabs,
                     r2fridaTabTitles = r2fridaTabTitles,
                     isR2Frida = isR2Frida,
+                    isR2Flutter = isR2Flutter,
                     onSwipeUpCommand = { showCommandSheet = true }
                 )
             }
@@ -1074,6 +1098,7 @@ fun ProjectScaffold(
                     Spacer(Modifier.height(8.dp))
                     MainCategory.entries
                         .filter { it != MainCategory.R2Frida || isR2Frida }
+                        .filter { it != MainCategory.R2Flutter || isR2Flutter }
                         .filter { it != MainCategory.AI || isAiEnabled }
                         .forEach { category ->
                             NavigationRailItem(
@@ -1227,6 +1252,16 @@ fun ProjectScaffold(
                                     onJumpToDisasm = jumpToDisasmFromPlugin
                                 )
                             }
+                        }
+                        MainCategory.R2Flutter -> {
+                            R2FlutterProjectScreen(
+                                viewModel = r2flutterViewModel,
+                                onJumpToDisasm = jumpToDisasmFromPlugin,
+                                onAnalysisApplied = {
+                                    viewModel.onEvent(ProjectEvent.ClearFunctionsCache)
+                                    disasmViewModel.onEvent(DisasmEvent.RefreshData)
+                                }
+                            )
                         }
                         MainCategory.Project -> {
                             val logs by viewModel.logs.collectAsState()
@@ -1877,6 +1912,7 @@ private fun ProjectSubTabs(
                 Tab(selectedDetailTabIndex == i, { onDetailTabSelected(i) }, text = { Text(t) })
             }
         }
+        MainCategory.R2Flutter -> Unit
         MainCategory.Project -> TabRow(
             selectedTabIndex = selectedProjectTabIndex,
             containerColor = MaterialTheme.colorScheme.surface,
@@ -2013,6 +2049,7 @@ private fun ProjectBottomBar(
     r2fridaTabs: List<Int>,
     r2fridaTabTitles: List<String>,
     isR2Frida: Boolean,
+    isR2Flutter: Boolean,
     onSwipeUpCommand: () -> Unit
 ) {
     Surface(
@@ -2056,6 +2093,7 @@ private fun ProjectBottomBar(
             ) {
                 MainCategory.entries
                     .filter { it != MainCategory.R2Frida || isR2Frida }
+                    .filter { it != MainCategory.R2Flutter || isR2Flutter }
                     .filter { it != MainCategory.AI || SettingsManager.aiEnabled }
                     .forEach { category ->
                         NavigationBarItem(

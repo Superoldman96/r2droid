@@ -94,6 +94,9 @@ object R2PipeManager {
     )
 
     var pendingAutoSaveProject: PendingAutoSaveProject? = null
+
+    // One-shot navigation hint used by the Flutter target launcher.
+    var pendingOpenR2Flutter: Boolean = false
     
     // 当前已打开的文件路径（active session）
     val currentFilePath: String?

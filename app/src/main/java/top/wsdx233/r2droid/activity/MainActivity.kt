@@ -149,6 +149,7 @@ enum class AppScreen {
     Settings,
     Features,
     R2Frida,
+    R2Flutter,
     PluginManager,
     ProotSetup
 }
@@ -361,6 +362,7 @@ fun MainAppNavigation(
             top.wsdx233.r2droid.screen.home.FeaturesScreen(
                 onBackClick = { currentScreen = AppScreen.Home },
                 onNavigateToR2Frida = { currentScreen = AppScreen.R2Frida },
+                onNavigateToR2Flutter = { currentScreen = AppScreen.R2Flutter },
                 onNavigateToPlugins = { currentScreen = AppScreen.PluginManager },
                 onCustomStart = { command ->
                     val rawArgs = command.trim().removePrefix("r2 ").removePrefix("r2").trim()
@@ -374,6 +376,22 @@ fun MainAppNavigation(
                     } else {
                         currentScreen = AppScreen.Project
                     }
+                }
+            )
+        }
+        AppScreen.R2Flutter -> {
+            BackHandler {
+                currentScreen = AppScreen.Features
+            }
+            top.wsdx233.r2droid.feature.r2flutter.R2FlutterScreen(
+                onBack = { currentScreen = AppScreen.Features },
+                onOpenTarget = { path ->
+                    R2PipeManager.pendingFilePath = path
+                    R2PipeManager.pendingCustomCommand = null
+                    R2PipeManager.pendingRestoreFlags = null
+                    R2PipeManager.pendingAutoSaveProject = null
+                    R2PipeManager.pendingOpenR2Flutter = true
+                    currentScreen = AppScreen.Project
                 }
             )
         }
