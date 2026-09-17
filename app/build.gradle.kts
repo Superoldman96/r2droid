@@ -134,6 +134,7 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.material3)
     testImplementation(libs.junit)
+    testImplementation(libs.androidx.compose.ui.test.junit4)
     testImplementation("org.json:json:20231013")
     testImplementation("org.robolectric:robolectric:4.12.2")
     testImplementation("androidx.test.ext:junit:1.2.1")

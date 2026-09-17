@@ -1,5 +1,10 @@
 package top.wsdx233.r2droid.feature.disasm.data
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import top.wsdx233.r2droid.core.data.model.DisasmInstruction
@@ -15,17 +20,23 @@ import top.wsdx233.r2droid.core.data.source.R2DataSource
 import javax.inject.Inject
 class DisasmRepository @Inject constructor(private val r2DataSource: R2DataSource) {
 
-    suspend fun getDisassembly(offset: Long, count: Int): Result<List<DisasmInstruction>> {
-        // pdj: Print Disassembly
-        val cmd = "pdj $count @ $offset"
-        return r2DataSource.executeJson(cmd).mapCatching { output ->
-            if (output.isBlank()) return@mapCatching emptyList()
-            val jsonArray = JSONArray(output)
-            val list = mutableListOf<DisasmInstruction>()
-            for (i in 0 until jsonArray.length()) {
-                list.add(DisasmInstruction.fromJson(jsonArray.getJSONObject(i)))
+    suspend fun getDisassembly(offset: Long, count: Int): Result<List<DisasmInstruction>> = withContext(Dispatchers.Default) {
+        try {
+            // R2 serializes the pipe itself; only CPU parsing/model construction moves off Main.
+            val output = r2DataSource.executeJson("pdj $count @ $offset").getOrThrow()
+            currentCoroutineContext().ensureActive()
+            val list = if (output.isBlank()) emptyList() else {
+                val jsonArray = JSONArray(output)
+                List(jsonArray.length()) { i ->
+                    currentCoroutineContext().ensureActive()
+                    DisasmInstruction.fromJson(jsonArray.getJSONObject(i))
+                }
             }
-            resolveStringRefs(list)
+            Result.success(resolveStringRefs(list))
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Result.failure(error)
         }
     }
 
@@ -42,9 +53,12 @@ class DisasmRepository @Inject constructor(private val r2DataSource: R2DataSourc
         val stringMap = mutableMapOf<Long, String>()
         for (addr in strnAddrs) {
             try {
+                currentCoroutineContext().ensureActive()
                 val result = r2DataSource.execute("ps @ $addr")
-                val str = result.getOrNull()?.trim()
+                val str = result.getOrThrow().trim()
                 if (!str.isNullOrEmpty()) stringMap[addr] = str
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (_: Exception) {}
         }
         if (stringMap.isEmpty()) return instructions

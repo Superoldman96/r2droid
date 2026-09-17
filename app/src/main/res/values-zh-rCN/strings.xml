@@ -1252,4 +1252,6 @@
     <string name="switch_arch_thumb32">32位 ARM Thumb</string>
     <string name="switch_arch_arm64">64位 ARM</string>
     <string name="switch_arch_x64">x64 (x86-64)</string>
+    <string name="disasm_scrollbar_failed">无法加载此地址的指令</string>
+    <string name="disasm_scrollbar_back">返回已加载内容</string>
 </resources>

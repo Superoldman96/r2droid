@@ -20,6 +20,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,44 +40,6 @@ import top.wsdx233.r2droid.ui.theme.LocalDarkTheme
 @Composable
 private fun dc(light: Long, dark: Long): Color =
     if (LocalDarkTheme.current) Color(dark) else Color(light)
-
-/**
- * Placeholder row shown when instruction data is not yet loaded.
- */
-@Composable
-fun DisasmPlaceholderRow() {
-    val disasmPlaceholderBg = dc(0xFFE0E0E0, 0xFF3A3A3A)
-    
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 1.dp)
-    ) {
-        // Address placeholder
-        Box(
-            modifier = Modifier
-                .width(90.dp)
-                .height(18.dp)
-                .padding(end = 4.dp)
-                .background(disasmPlaceholderBg, androidx.compose.foundation.shape.RoundedCornerShape(2.dp))
-        )
-        // Bytes placeholder
-        Box(
-            modifier = Modifier
-                .width(100.dp)
-                .height(18.dp)
-                .padding(end = 4.dp)
-                .background(disasmPlaceholderBg, androidx.compose.foundation.shape.RoundedCornerShape(2.dp))
-        )
-        // Disasm placeholder
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .height(18.dp)
-                .background(disasmPlaceholderBg, androidx.compose.foundation.shape.RoundedCornerShape(2.dp))
-        )
-    }
-}
 
 /**
  * Helper function to format address in a compact way
@@ -151,11 +116,11 @@ fun DisasmRow(
     val isFunctionStart = instr.fcnAddr > 0 && instr.addr == instr.fcnAddr
     
     // Check for external jump out/in
-    val isExternalJumpOut = instr.isJumpOut()   
-    val hasExternalJumpIn = instr.hasJumpIn()
+    val isExternalJumpOut = remember(instr) { instr.isJumpOut() }
+    val hasExternalJumpIn = remember(instr) { instr.hasJumpIn() }
     
     // Check if this is a jump instruction (internal or external)
-    val isJumpInstruction = instr.type in listOf("jmp", "cjmp", "ujmp")
+    val isJumpInstruction = instr.type == "jmp" || instr.type == "cjmp" || instr.type == "ujmp"
     val isInternalJump = isJumpInstruction && instr.jump != null && !isExternalJumpOut
     
     // Determine jump direction for internal jumps
@@ -170,6 +135,8 @@ fun DisasmRow(
     // Only comments go to secondary row (not bytes)
     val hasInlineComment = inlineComment.isNotEmpty()
     
+    val currentOnClick by rememberUpdatedState(onClick)
+    val currentOnLongClick by rememberUpdatedState(onLongClick)
     Box {
         val pcHighlightColor = Color(0x40FFEB3B)
         Column(
@@ -184,10 +151,10 @@ fun DisasmRow(
                         else -> Color.Transparent
                     }
                 )
-                .pointerInput(onClick, onLongClick) {
+                .pointerInput(instr.addr) {
                     detectTapGestures(
-                        onTap = { offset -> onClick(offset, size.height) },
-                        onLongPress = { offset -> onLongClick(offset, size.height) }
+                        onTap = { offset -> currentOnClick(offset, size.height) },
+                        onLongPress = { offset -> currentOnLongClick(offset, size.height) }
                     )
                 }
         ) {
@@ -200,7 +167,7 @@ fun DisasmRow(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(if (highlighted) Color.Transparent else colFlagBg)
-                            .padding(start = 80.dp, top = 1.dp, bottom = 1.dp),
+                            .padding(start = DisasmRowLayout.AnnotationIndent, top = 1.dp, bottom = 1.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
@@ -224,7 +191,7 @@ fun DisasmRow(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(if (highlighted) Color.Transparent else colFuncHeaderBg)
-                        .padding(start = 80.dp, top = 2.dp, bottom = 1.dp),
+                        .padding(start = DisasmRowLayout.AnnotationIndent, top = 2.dp, bottom = 1.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Blue function icon
@@ -265,7 +232,7 @@ fun DisasmRow(
                 // Used as gutter for breakpoints and PC indicator
                 Box(
                     modifier = Modifier
-                        .width(26.dp)
+                        .width(DisasmRowLayout.GutterWidth)
                         .fillMaxHeight()
                         .background(if (highlighted) Color.Transparent else colJumpBg)
                         .clickable { onGutterClick() },
@@ -337,7 +304,7 @@ fun DisasmRow(
                 // Address column - compact format with background
                 Box(
                     modifier = Modifier
-                        .width(56.dp)
+                        .width(DisasmRowLayout.AddressWidth)
                         .fillMaxHeight()
                         .background(if (highlighted) Color.Transparent else colAddressBg)
                         .padding(horizontal = 2.dp),
@@ -355,7 +322,7 @@ fun DisasmRow(
                 // Bytes column - always visible, truncated with ...
                 Box(
                     modifier = Modifier
-                        .width(60.dp)
+                        .width(DisasmRowLayout.BytesWidth)
                         .fillMaxHeight()
                         .background(if (highlighted) Color.Transparent else colBytesBg)
                         .padding(horizontal = 2.dp),
@@ -382,8 +349,11 @@ fun DisasmRow(
                         text = instr.disasm,
                         color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else opcodeColor,
                         fontFamily = LocalAppFont.current,
-                        fontSize = 12.sp,
-                        fontWeight = if(instr.type in listOf("call", "jmp", "cjmp", "ret")) FontWeight.Bold else FontWeight.Normal
+                        fontSize = DisasmRowLayout.OpcodeFontSize,
+                        fontWeight = when (instr.type) {
+                            "call", "jmp", "cjmp", "ret" -> FontWeight.Bold
+                            else -> FontWeight.Normal
+                        }
                     )
                 }
                 
@@ -412,7 +382,7 @@ fun DisasmRow(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(if (highlighted) Color.Transparent else colInlineCommentBg)
-                        .padding(start = 80.dp, top = 1.dp, bottom = 1.dp),
+                        .padding(start = DisasmRowLayout.AnnotationIndent, top = 1.dp, bottom = 1.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
@@ -430,7 +400,7 @@ fun DisasmRow(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(if (highlighted) Color.Transparent else colR2CommentBg)
-                        .padding(start = 80.dp, top = 1.dp, bottom = 1.dp),
+                        .padding(start = DisasmRowLayout.AnnotationIndent, top = 1.dp, bottom = 1.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
@@ -444,13 +414,13 @@ fun DisasmRow(
             
             // Show xref comments for jump targets
             if (instr.xrefs.isNotEmpty()) {
-                val codeXrefs = instr.xrefs.filter { it.type == "CODE" }
+                val codeXrefs = remember(instr.xrefs) { instr.xrefs.filter { it.type == "CODE" } }
                 if (codeXrefs.isNotEmpty()) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(if (highlighted) Color.Transparent else colXrefBg)
-                            .padding(start = 80.dp, top = 1.dp, bottom = 1.dp),
+                            .padding(start = DisasmRowLayout.AnnotationIndent, top = 1.dp, bottom = 1.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         val xrefText = if (codeXrefs.size == 1) {

@@ -5,10 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import top.wsdx233.r2droid.core.data.model.FunctionDetailInfo
@@ -31,6 +34,8 @@ import top.wsdx233.r2droid.util.R2PipeManager
 import java.util.Locale
 import javax.inject.Inject
 
+
+data class DisasmScrollTarget(val address: Long, val index: Int, val animate: Boolean = true, val requestId: Long = 0)
 
 data class XrefsState(
     val visible: Boolean = false,
@@ -178,6 +183,7 @@ class DisasmViewModel @Inject constructor(
 ) : ViewModel() {
 
     // DisasmDataManager for virtualized disassembly viewing
+    @Volatile
     var disasmDataManager: DisasmDataManager? = null
         private set
 
@@ -216,9 +222,15 @@ class DisasmViewModel @Inject constructor(
     val multiSelectState: StateFlow<MultiSelectState> = _multiSelectState.asStateFlow()
 
     // Scroll target: emitted after data is loaded at target address
-    // Pair of (targetAddress, index) - UI observes this to scroll after data is ready
-    private val _scrollTarget = MutableStateFlow<Pair<Long, Int>?>(null)
-    val scrollTarget: StateFlow<Pair<Long, Int>?> = _scrollTarget.asStateFlow()
+    private val _scrollTarget = MutableStateFlow<DisasmScrollTarget?>(null)
+    val scrollTarget: StateFlow<DisasmScrollTarget?> = _scrollTarget.asStateFlow()
+    private val _isScrollbarSeeking = MutableStateFlow(false)
+    val isScrollbarSeeking = _isScrollbarSeeking.asStateFlow()
+    private val scrollbarNavigator = DisasmScrollbarNavigator(viewModelScope) { address, index ->
+        _disasmCacheVersion.update { it + 1 }
+        _scrollTarget.value = DisasmScrollTarget(address, index, animate = false, requestId = navigationRequestId)
+    }
+    val scrollbarPreview = scrollbarNavigator.preview
 
     // Event to notify that data has been modified
     private val _dataModifiedEvent = MutableStateFlow(0L)
@@ -335,7 +347,7 @@ class DisasmViewModel @Inject constructor(
         _debugBackend.value = defaultDebugBackendForCurrentSession()
         _debugError.value = null
         _debugStatus.value = DebugStatus.IDLE
-        _disasmCacheVersion.value++
+        _disasmCacheVersion.update { it + 1 }
     }
 
     fun onEvent(event: DisasmEvent) {
@@ -380,6 +392,14 @@ class DisasmViewModel @Inject constructor(
      * 重置所有数据，用于切换项目时清理旧数据。
      */
     fun reset() {
+        navigationRequestId++
+        cancelScrollLoads()
+        initialLoadJob?.cancel()
+        initialLoadJob = null
+        isScrollbarDragging = false
+        _isScrollbarSeeking.value = false
+        disasmDataManager?.onChunkLoaded = null
+        disasmDataManager?.clearCache()
         disasmDataManager = null
         _disasmDataManagerState.value = null
         _disasmCacheVersion.value = 0
@@ -389,38 +409,88 @@ class DisasmViewModel @Inject constructor(
         currentSessionId = -1
     }
 
-    // Job for scroll-related loading - cancelled on each new scroll request
     private var scrollJob: Job? = null
-    // Job for background preloading - cancelled on far jumps to prevent stale-address loads
     private var preloadJob: Job? = null
+    private var forwardLoadJob: Job? = null
+    private var backwardLoadJob: Job? = null
+    private var forwardLoadPending = false
+    private var backwardLoadPending = false
+    private var initialLoadJob: Job? = null
+    private var navigationRequestId = 0L
+    private var isScrollbarDragging = false
+    private var preloadAddress: Long? = null
 
-    /**
-     * Load data at target address, then emit scroll target with correct index.
-     * Cancels any previous scroll job to handle rapid scrollbar dragging.
-     */
-    fun loadAndScrollTo(addr: Long) {
-        val manager = disasmDataManager ?: return
+    private fun cancelScrollLoads() {
+        scrollbarNavigator.cancel()
         scrollJob?.cancel()
-        scrollJob = viewModelScope.launch {
-            val index = manager.loadAndFindIndex(addr)
-            _disasmCacheVersion.value++
-            _scrollTarget.value = Pair(addr, index)
+        preloadJob?.cancel()
+        forwardLoadJob?.cancel()
+        backwardLoadJob?.cancel()
+        scrollJob = null
+        preloadJob = null
+        forwardLoadJob = null
+        backwardLoadJob = null
+        forwardLoadPending = false
+        backwardLoadPending = false
+        preloadAddress = null
+    }
+
+    /** Pointer-down cancels obsolete work; region loads are independently dwell-debounced. */
+    fun onScrollbarDragStateChange(dragging: Boolean) {
+        isScrollbarDragging = dragging
+        if (dragging) {
+            initialLoadJob?.cancel()
+            navigationRequestId++
+            cancelScrollLoads()
+            disasmDataManager?.prepareForJump()
+            _scrollTarget.value = null
+            _isScrollbarSeeking.value = false
+            disasmDataManager?.let(scrollbarNavigator::begin)
+        } else {
+            scrollbarNavigator.endGesture()
         }
     }
 
-    /**
-     * Jump to a distant address via scrollbar drag or explicit jump.
-     * Cancels in-flight preloads and increments generation to discard stale loads.
-     */
+    fun previewScrollbarAddress(addr: Long) = scrollbarNavigator.preview(addr)
+
+    fun retryScrollbarPreview() = scrollbarNavigator.retry()
+
+    fun dismissScrollbarPreview() {
+        scrollbarNavigator.cancel()
+        _scrollTarget.value = null
+        _isScrollbarSeeking.value = false
+    }
+
+    fun loadAndScrollTo(addr: Long) {
+        if (!isScrollbarDragging) startScroll(addr, animate = true)
+    }
+
+    /** Called once on release/tap, not for each pointer movement. */
     fun scrollbarJumpTo(addr: Long) {
+        _isScrollbarSeeking.value = true
+        scrollbarNavigator.commit(addr)
+    }
+
+    private fun startScroll(addr: Long, animate: Boolean) {
         val manager = disasmDataManager ?: return
-        scrollJob?.cancel()
-        preloadJob?.cancel()   // kill stale-address preloads
+        cancelScrollLoads()
+        manager.prepareForJump()
+        val requestId = ++navigationRequestId
+        _scrollTarget.value = null
+        _isScrollbarSeeking.value = !animate
         scrollJob = viewModelScope.launch {
-            manager.prepareForJump()
-            val index = manager.loadAndFindIndex(addr)
-            _disasmCacheVersion.value++
-            _scrollTarget.value = Pair(addr, index)
+            try {
+                val index = manager.loadAndFindIndex(addr)
+                currentCoroutineContext().ensureActive()
+                if (disasmDataManager === manager && requestId == navigationRequestId && index >= 0) {
+                    _disasmCacheVersion.update { it + 1 }
+                    _scrollTarget.value = DisasmScrollTarget(addr, index, animate, requestId)
+                }
+            } finally {
+                if (requestId == navigationRequestId && _scrollTarget.value == null) {
+                    _isScrollbarSeeking.value = false
+                }
+            }
         }
     }
 
@@ -499,13 +569,13 @@ class DisasmViewModel @Inject constructor(
         val isAdd = !before.contains(addr)
 
         _breakpoints.value = if (isAdd) before + addr else before - addr
-        _disasmCacheVersion.value++
+        _disasmCacheVersion.update { it + 1 }
 
         viewModelScope.launch {
             val result = debuggerRepository.toggleBreakpoint(addr, isAdd)
             if (result.isFailure) {
                 _breakpoints.value = before
-                _disasmCacheVersion.value++
+                _disasmCacheVersion.update { it + 1 }
                 setDebugError(result.exceptionOrNull())
             } else {
                 debuggerRepository.getBreakpoints().getOrNull()?.let { _breakpoints.value = it }
@@ -711,8 +781,11 @@ class DisasmViewModel @Inject constructor(
         }
     }
 
-    fun clearScrollTarget() {
-        _scrollTarget.value = null
+    fun clearScrollTarget(target: DisasmScrollTarget) {
+        if (_scrollTarget.compareAndSet(target, null) && !target.animate) {
+            scrollbarNavigator.acknowledgeCommit(target.address)
+            _isScrollbarSeeking.value = false
+        }
     }
 
     /**
@@ -722,10 +795,16 @@ class DisasmViewModel @Inject constructor(
      */
     private suspend fun resetAndScrollTo(addr: Long) {
         val manager = disasmDataManager ?: return
+        val requestId = ++navigationRequestId
+        cancelScrollLoads()
+        _scrollTarget.value = null
+        _isScrollbarSeeking.value = false
         manager.resetAndLoadAround(addr)
+        currentCoroutineContext().ensureActive()
+        if (disasmDataManager !== manager || requestId != navigationRequestId) return
         val index = manager.findClosestIndex(addr)
-        _disasmCacheVersion.value++
-        _scrollTarget.value = Pair(addr, index)
+        _disasmCacheVersion.update { it + 1 }
+        if (index >= 0) _scrollTarget.value = DisasmScrollTarget(addr, index, requestId = requestId)
     }
 
     /**
@@ -740,14 +819,13 @@ class DisasmViewModel @Inject constructor(
             currentSessionId = newSessionId
         }
         if (disasmDataManager != null) {
-            // Already initialized, just preload around current cursor
-            viewModelScope.launch {
-                disasmDataManager?.preloadAround(currentOffset, 2)
-            }
+            // Already initialized; schedule a coalesced preload rather than an untracked job
+            preloadDisasmAround(currentOffset)
             return
         }
+        if (initialLoadJob?.isActive == true) return
 
-        viewModelScope.launch {
+        initialLoadJob = viewModelScope.launch {
             var startAddress = 0L
             var endAddress = 0L
 
@@ -818,11 +896,11 @@ class DisasmViewModel @Inject constructor(
             }
 
             // Create DisasmDataManager with virtual address range
-            val manager = DisasmDataManager(startAddress, endAddress, disasmRepository).apply {
-                onChunkLoaded = { _ ->
-                    // Increment version to trigger recomposition
-                    _disasmCacheVersion.value++
-                }
+            currentCoroutineContext().ensureActive()
+            val manager = DisasmDataManager(startAddress, endAddress, disasmRepository)
+            manager.onChunkLoaded = {
+                // The manager publishes on its worker dispatcher.
+                if (disasmDataManager === manager) _disasmCacheVersion.update { it + 1 }
             }
             disasmDataManager = manager
             _disasmDataManagerState.value = manager
@@ -830,7 +908,7 @@ class DisasmViewModel @Inject constructor(
             // Load initial data around cursor
             disasmDataManager?.resetAndLoadAround(currentOffset)
             
-            _disasmCacheVersion.value++
+            _disasmCacheVersion.update { it + 1 }
         }
     }
 
@@ -838,10 +916,7 @@ class DisasmViewModel @Inject constructor(
      * Load a disasm chunk for a specific address (called from UI during scroll).
      */
     fun loadDisasmChunkForAddress(addr: Long) {
-        val manager = disasmDataManager ?: return
-        viewModelScope.launch {
-            manager.loadChunkAroundAddress(addr)
-        }
+        preloadDisasmAround(addr)
     }
 
     /**
@@ -849,9 +924,13 @@ class DisasmViewModel @Inject constructor(
      */
     fun preloadDisasmAround(addr: Long) {
         val manager = disasmDataManager ?: return
+        if (isScrollbarDragging || scrollbarNavigator.isActive || scrollJob?.isActive == true || _scrollTarget.value != null) return
+        if (preloadJob?.isActive == true && preloadAddress == addr) return
         preloadJob?.cancel()
+        preloadAddress = addr
         preloadJob = viewModelScope.launch {
-            manager.preloadAround(addr, 2)
+            delay(120)
+            manager.preloadAround(addr, 1)
         }
     }
 
@@ -860,9 +939,21 @@ class DisasmViewModel @Inject constructor(
      */
     fun loadDisasmMore(forward: Boolean) {
         val manager = disasmDataManager ?: return
-        viewModelScope.launch {
-            manager.loadMore(forward)
+        if (isScrollbarDragging || scrollbarNavigator.isActive || scrollJob?.isActive == true || _scrollTarget.value != null) return
+        if ((if (forward) forwardLoadJob else backwardLoadJob)?.isActive == true) {
+            // A new window may be published before this job resumes on Main. Remember its
+            // edge demand instead of losing the only snapshotFlow emission for that boundary.
+            if (forward) forwardLoadPending = true else backwardLoadPending = true
+            return
         }
+        val job = viewModelScope.launch {
+            do {
+                if (forward) forwardLoadPending = false else backwardLoadPending = false
+                manager.loadMore(forward)
+                currentCoroutineContext().ensureActive()
+            } while (if (forward) forwardLoadPending else backwardLoadPending)
+        }
+        if (forward) forwardLoadJob = job else backwardLoadJob = job
     }
 
     fun writeAsm(addr: Long, asm: String) {
