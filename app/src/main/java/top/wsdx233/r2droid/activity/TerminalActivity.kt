@@ -168,6 +168,12 @@ class TerminalActivity : ComponentActivity() {
         attachSessionToTerminalView()
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        terminalSession?.finishIfRunning()
+        terminalSession = null
+    }
+
     private fun resolveTerminalMode(): String? {
         val requestedMode = intent.getStringExtra(TerminalLauncher.EXTRA_TERMINAL_MODE)
         if (!requestedMode.isNullOrBlank()) {

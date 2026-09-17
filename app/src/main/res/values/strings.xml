@@ -1245,4 +1245,8 @@
     <string name="switch_arch_default_desc">Restore architecture settings to their initial state</string>
     <string name="switch_arch_manual_desc">Execute custom commands in the terminal for setup</string>
     <string name="switch_arch_toast">Architecture switched</string>
+    <string name="switch_arch_arm32">32-bit ARM</string>
+    <string name="switch_arch_thumb32">32-bit ARM Thumb</string>
+    <string name="switch_arch_arm64">64-bit ARM</string>
+    <string name="switch_arch_x64">x64 (x86-64)</string>
 </resources>

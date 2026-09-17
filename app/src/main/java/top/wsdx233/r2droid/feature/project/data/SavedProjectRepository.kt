@@ -49,6 +49,18 @@ class SavedProjectRepository @Inject constructor(@ApplicationContext private val
     private val indexFile: File
         get() = File(projectsDir, INDEX_FILENAME)
 
+    private fun writeIndexAtomically(content: String) {
+        val atomicFile = android.util.AtomicFile(indexFile)
+        val fos = atomicFile.startWrite()
+        try {
+            fos.write(content.toByteArray(Charsets.UTF_8))
+            atomicFile.finishWrite(fos)
+        } catch (e: Exception) {
+            atomicFile.failWrite(fos)
+            throw e
+        }
+    }
+
     /**
      * Get all saved projects
      */
@@ -80,7 +92,7 @@ class SavedProjectRepository @Inject constructor(@ApplicationContext private val
                 }
             }
             if (indexDirty) {
-                try { indexFile.writeText(jsonArray.toString(2)) } catch (_: Exception) {}
+                try { writeIndexAtomically(jsonArray.toString(2)) } catch (_: Exception) {}
             }
             
             // Sort by last modified, newest first
@@ -338,7 +350,7 @@ class SavedProjectRepository @Inject constructor(@ApplicationContext private val
             // Write back
             val jsonArray = JSONArray()
             projects.forEach { jsonArray.put(it) }
-            indexFile.writeText(jsonArray.toString(2))
+            writeIndexAtomically(jsonArray.toString(2))
         } catch (e: Exception) {
             Log.e(TAG, "Failed to update index", e)
         }
@@ -361,7 +373,7 @@ class SavedProjectRepository @Inject constructor(@ApplicationContext private val
                 }
             }
 
-            indexFile.writeText(newArray.toString(2))
+            writeIndexAtomically(newArray.toString(2))
         } catch (e: Exception) {
             Log.e(TAG, "Failed to remove from index", e)
         }

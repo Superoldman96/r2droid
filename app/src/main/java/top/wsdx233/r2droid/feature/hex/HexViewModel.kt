@@ -120,8 +120,26 @@ class HexViewModel @Inject constructor(
                             }
                         }
                         if (maxAddr > minAddr && minAddr != Long.MAX_VALUE) {
-                            startAddress = minAddr
-                            endAddress = maxAddr
+                            val matchingMap = (0 until arr.length()).mapNotNull { idx ->
+                                val obj = arr.getJSONObject(idx)
+                                val base = java.lang.Long.decode(obj.optString("base", "0"))
+                                val size = obj.optLong("size", 0)
+                                if (base <= currentOffset && currentOffset < base + size) {
+                                    base to (base + size)
+                                } else null
+                            }.firstOrNull()
+
+                            if (matchingMap != null) {
+                                startAddress = matchingMap.first
+                                endAddress = matchingMap.second
+                            } else if (maxAddr - minAddr > 100L * 1024L * 1024L) {
+                                val window = 10L * 1024L * 1024L
+                                startAddress = (currentOffset - window / 2).coerceAtLeast(minAddr)
+                                endAddress = (startAddress + window).coerceAtMost(maxAddr)
+                            } else {
+                                startAddress = minAddr
+                                endAddress = maxAddr
+                            }
                         }
                     }
                 } catch (_: Exception) {}

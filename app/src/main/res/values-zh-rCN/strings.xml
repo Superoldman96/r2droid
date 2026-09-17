@@ -1248,4 +1248,8 @@
     <string name="switch_arch_default_desc">将架构设置恢复为初始状态</string>
     <string name="switch_arch_manual_desc">在终端中执行自定义命令进行设置</string>
     <string name="switch_arch_toast">架构已切换</string>
+    <string name="switch_arch_arm32">32位 ARM</string>
+    <string name="switch_arch_thumb32">32位 ARM Thumb</string>
+    <string name="switch_arch_arm64">64位 ARM</string>
+    <string name="switch_arch_x64">x64 (x86-64)</string>
 </resources>

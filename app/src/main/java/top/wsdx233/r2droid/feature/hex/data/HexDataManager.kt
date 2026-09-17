@@ -43,7 +43,11 @@ class HexDataManager(
      * Calculate total number of rows in the file.
      */
     val totalRows: Int
-        get() = ((totalSize + BYTES_PER_ROW - 1) / BYTES_PER_ROW).toInt()
+        get() {
+            if (totalSize <= 0L) return 0
+            val calculated = (totalSize + BYTES_PER_ROW - 1) / BYTES_PER_ROW
+            return calculated.coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
+        }
     
     /**
      * Get the start address of the hex view (minimum virtual address).
@@ -93,9 +97,11 @@ class HexDataManager(
      * Convert an address to row index.
      */
     fun getRowIndexForAddress(addr: Long): Int {
-        if (addr < startAddress) return 0
-        if (addr >= endAddress) return totalRows - 1
-        return ((addr - startAddress) / BYTES_PER_ROW).toInt()
+        if (addr <= startAddress) return 0
+        val maxIndex = (totalRows - 1).coerceAtLeast(0)
+        if (addr >= endAddress) return maxIndex
+        val calculated = (addr - startAddress) / BYTES_PER_ROW
+        return calculated.coerceIn(0L, maxIndex.toLong()).toInt()
     }
     
     /**

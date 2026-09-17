@@ -1051,4 +1051,8 @@
     <string name="switch_arch_default_desc">Сброс настроек архитектуры в исходное состояние</string>
     <string name="switch_arch_manual_desc">Выполните свои команды в терминале для настройки</string>
     <string name="switch_arch_toast">Архитектура переключена</string>
+    <string name="switch_arch_arm32">32-бит ARM</string>
+    <string name="switch_arch_thumb32">32-бит ARM Thumb</string>
+    <string name="switch_arch_arm64">64-бит ARM</string>
+    <string name="switch_arch_x64">x64 (x86-64)</string>
 </resources>

@@ -6,10 +6,13 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -26,7 +29,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.DpOffset
 import androidx.core.graphics.toColorInt
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withContext
 import top.wsdx233.r2droid.R
 import top.wsdx233.r2droid.core.data.model.GraphBlockInstruction
 import top.wsdx233.r2droid.core.data.model.GraphData
@@ -460,7 +465,18 @@ fun GraphViewer(
 ) {
     val density = LocalDensity.current
     val structuredNodeLayout = remember(graphType) { usesStructuredNodeLayout(graphType) }
-    val layoutResult = remember(graphData, graphType) { layoutGraph(graphData, graphType) }
+    val layoutResultState = produceState<GraphLayoutResult?>(initialValue = null, graphData, graphType) {
+        value = withContext(Dispatchers.Default) {
+            layoutGraph(graphData, graphType)
+        }
+    }
+    val layoutResult = layoutResultState.value
+    if (layoutResult == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+        }
+        return
+    }
     val layoutNodes = layoutResult.nodes
 
     val highlightNodeId = remember(layoutNodes, cursorAddress) {
@@ -604,11 +620,20 @@ fun GraphViewer(
                 translate(cx + offset.x, cy + offset.y)
                 scale(scale, scale, Offset.Zero)
             }) {
-                drawRoutedEdges(layoutResult.edges)
+                val cullMargin = 150f
+                val vLeft = (-cx - offset.x) / scale - cullMargin
+                val vTop = (-cy - offset.y) / scale - cullMargin
+                val vRight = (size.width - cx - offset.x) / scale + cullMargin
+                val vBottom = (size.height - cy - offset.y) / scale + cullMargin
+                val visibleRect = Rect(vLeft, vTop, vRight, vBottom)
+
+                drawRoutedEdges(layoutResult.edges, visibleRect)
 
                 for (ln in layoutNodes) {
-                    val isHighlighted = ln.node.id == highlightNodeId
-                    drawNode(ln, textPaint, titlePaint, addrPaint, density.density, structuredNodeLayout, isHighlighted, cursorAddress)
+                    if (!(ln.x + ln.width < vLeft || ln.x > vRight || ln.y + ln.height < vTop || ln.y > vBottom)) {
+                        val isHighlighted = ln.node.id == highlightNodeId
+                        drawNode(ln, textPaint, titlePaint, addrPaint, density.density, structuredNodeLayout, isHighlighted, cursorAddress)
+                    }
                 }
             }
         }
@@ -655,10 +680,24 @@ fun GraphViewer(
     }
 }
 
-private fun DrawScope.drawRoutedEdges(edges: List<RoutedEdge>) {
+private fun DrawScope.drawRoutedEdges(edges: List<RoutedEdge>, visibleRect: Rect) {
     for (edge in edges) {
         val pts = edge.points
         if (pts.size < 2) continue
+
+        var minX = Float.MAX_VALUE
+        var maxX = -Float.MAX_VALUE
+        var minY = Float.MAX_VALUE
+        var maxY = -Float.MAX_VALUE
+        for (pt in pts) {
+            if (pt.x < minX) minX = pt.x
+            if (pt.x > maxX) maxX = pt.x
+            if (pt.y < minY) minY = pt.y
+            if (pt.y > maxY) maxY = pt.y
+        }
+        if (maxX < visibleRect.left || minX > visibleRect.right || maxY < visibleRect.top || minY > visibleRect.bottom) {
+            continue
+        }
 
         val path = Path().apply {
             moveTo(pts.first().x, pts.first().y)

@@ -270,8 +270,11 @@ object R2Installer {
         while (tarIn.nextEntry.also { entry = it } != null) {
             val currentEntry = entry!!
             val outputFile = File(outputDir, currentEntry.name)
-
-            if (!outputFile.canonicalPath.startsWith(outputDir.canonicalPath)) {
+            val baseCanonical = outputDir.canonicalFile
+            val outCanonical = outputFile.canonicalFile
+            val basePath = baseCanonical.path
+            val outPath = outCanonical.path
+            if (!(outPath == basePath || outPath.startsWith(basePath + File.separator))) {
                 throw SecurityException("Zip Slip vulnerability detected: ${currentEntry.name}")
             }
 

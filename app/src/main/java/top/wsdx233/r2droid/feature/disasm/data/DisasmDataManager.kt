@@ -34,6 +34,9 @@ class DisasmDataManager(
 
         // Cache up to 50 chunks = ~5000 instructions max
         private const val CACHE_MAX_SIZE = 50
+
+        // Upper limit of instructions in active memory to maintain O(1) scrolling without GC pauses
+        const val MAX_LOADED_INSTRUCTIONS = 3000
     }
 
     // Sorted list of all loaded instructions (by address)
@@ -69,7 +72,11 @@ class DisasmDataManager(
     
     // Estimated total instruction count based on address range
     val estimatedTotalInstructions: Int
-        get() = ((addressRange + AVG_INSTRUCTION_SIZE - 1) / AVG_INSTRUCTION_SIZE).toInt()
+        get() {
+            if (addressRange <= 0L) return 0
+            val calculated = (addressRange + AVG_INSTRUCTION_SIZE - 1) / AVG_INSTRUCTION_SIZE
+            return calculated.coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
+        }
     
     // Get the start address of the valid disasm range
     val viewStartAddress: Long
@@ -386,8 +393,23 @@ class DisasmDataManager(
         val combined = (current + newInstructions)
             .distinctBy { it.addr }
             .sortedBy { it.addr }
+
+        val trimmed = if (combined.size > MAX_LOADED_INSTRUCTIONS) {
+            val currentFirst = current.firstOrNull()?.addr ?: 0L
+            val newFirst = newInstructions.firstOrNull()?.addr ?: 0L
+            if (newFirst < currentFirst) {
+                // Prepending earlier instructions: keep earlier range
+                combined.take(MAX_LOADED_INSTRUCTIONS)
+            } else {
+                // Appending later instructions: keep later range
+                combined.takeLast(MAX_LOADED_INSTRUCTIONS)
+            }
+        } else {
+            combined
+        }
+
         // Atomic swap - no clear+addAll race condition
-        allInstructions = combined
+        allInstructions = trimmed
         rebuildJumpMaps()
     }
     

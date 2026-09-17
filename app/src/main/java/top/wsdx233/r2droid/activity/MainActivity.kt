@@ -16,6 +16,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
@@ -211,7 +212,7 @@ fun MainAppNavigation(
     onPendingFileUriConsumed: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    var currentScreen by remember {
+    var currentScreen by rememberSaveable {
         mutableStateOf(
             when {
                 R2PipeManager.isConnected -> AppScreen.Project
@@ -220,7 +221,7 @@ fun MainAppNavigation(
             }
         )
     }
-    var showTutorialPrompt by remember { mutableStateOf(false) }
+    var showTutorialPrompt by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(currentScreen, pendingFileUri) {
         if (
