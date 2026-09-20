@@ -660,6 +660,17 @@
     <string name="graph_no_data">No graph data</string>
     <string name="menu_graph_xrefs">Cross References</string>
     <string name="menu_graph_detail">View Details</string>
+    <string name="graph_fab_menu">Flowchart Actions</string>
+    <string name="graph_close_menu">Close Menu</string>
+    <string name="graph_action_share">Share Flowchart</string>
+    <string name="graph_action_save_gallery">Save to Gallery</string>
+    <string name="graph_action_zoom_in">Zoom In</string>
+    <string name="graph_action_zoom_out">Zoom Out</string>
+    <string name="graph_action_fit">Fit to Screen</string>
+    <string name="graph_share_title">Share Flowchart</string>
+    <string name="graph_saved_to_gallery">Flowchart saved to gallery</string>
+    <string name="graph_export_failed">Export failed: %s</string>
+    <string name="graph_exporting">Exporting flowchart…</string>
 
     <!-- Instruction Detail Dialog -->
     <string name="instr_detail_title">Instruction Detail</string>

@@ -636,6 +636,17 @@
     <string name="graph_no_data">Нет данных для графа</string>
     <string name="menu_graph_xrefs">Перекрестные ссылки</string>
     <string name="menu_graph_detail">Показать детали</string>
+    <string name="graph_fab_menu">Действия с блок-схемой</string>
+    <string name="graph_close_menu">Закрыть меню</string>
+    <string name="graph_action_share">Поделиться блок-схемой</string>
+    <string name="graph_action_save_gallery">Сохранить в галерею</string>
+    <string name="graph_action_zoom_in">Увеличить</string>
+    <string name="graph_action_zoom_out">Уменьшить</string>
+    <string name="graph_action_fit">Вписать в экран</string>
+    <string name="graph_share_title">Поделиться блок-схемой</string>
+    <string name="graph_saved_to_gallery">Блок-схема сохранена в галерею</string>
+    <string name="graph_export_failed">Ошибка экспорта: %s</string>
+    <string name="graph_exporting">Экспорт блок-схемы…</string>
 
     <!-- Instruction Detail Dialog -->
     <string name="instr_detail_title">Детали инструкции</string>

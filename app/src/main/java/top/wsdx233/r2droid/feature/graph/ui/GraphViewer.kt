@@ -1,19 +1,48 @@
 package top.wsdx233.r2droid.feature.graph.ui
 
+import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.FitScreen
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -23,14 +52,17 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.wsdx233.r2droid.R
 import top.wsdx233.r2droid.core.data.model.GraphBlockInstruction
@@ -279,7 +311,7 @@ private fun displayInstrCount(node: GraphNode): Int {
     return if (total > MAX_INSTRUCTIONS_PER_NODE) MAX_INSTRUCTIONS_PER_NODE + 1 else total
 }
 
-private fun usesStructuredNodeLayout(graphType: GraphType): Boolean = graphType == GraphType.FunctionFlow
+internal fun usesStructuredNodeLayout(graphType: GraphType): Boolean = graphType == GraphType.FunctionFlow
 
 private fun singleNodeLines(node: GraphNode): List<String> {
     val title = node.title.ifBlank {
@@ -519,8 +551,43 @@ fun GraphViewer(
         val maxOx = -graphBounds.left * s + vw / 2f
         val minOy = -graphBounds.bottom * s - vh / 2f
         val maxOy = -graphBounds.top * s + vh / 2f
-        return Offset(off.x.coerceIn(minOx, maxOx), off.y.coerceIn(minOy, maxOy))
+        val lowerX = minOf(minOx, maxOx)
+        val upperX = maxOf(minOx, maxOx)
+        val lowerY = minOf(minOy, maxOy)
+        val upperY = maxOf(minOy, maxOy)
+        return Offset(off.x.coerceIn(lowerX, upperX), off.y.coerceIn(lowerY, upperY))
     }
+
+    fun zoomBy(factor: Float) {
+        val oldScale = scale
+        val newScale = (oldScale * factor).coerceIn(0.15f, 5f)
+        if (newScale != oldScale) {
+            val newOffset = clampOffset(offset * (newScale / oldScale), newScale)
+            scale = newScale
+            offset = newOffset
+            onScaleChanged(newScale)
+        }
+    }
+
+    fun zoomFit() {
+        if (graphBounds == Rect.Zero || graphBounds.width <= 0f || graphBounds.height <= 0f) return
+        val vw = if (viewportSize.width > 0f) viewportSize.width else 1080f
+        val vh = if (viewportSize.height > 0f) viewportSize.height else 1920f
+        val padding = 40f
+        val scaleX = (vw - padding * 2) / graphBounds.width
+        val scaleY = (vh - padding * 2) / graphBounds.height
+        val newScale = min(scaleX, scaleY).coerceIn(0.15f, 5f)
+        val centerX = (graphBounds.left + graphBounds.right) / 2f
+        val centerY = (graphBounds.top + graphBounds.bottom) / 2f
+        val newOffset = clampOffset(Offset(-centerX * newScale, -centerY * newScale), newScale)
+        scale = newScale
+        offset = newOffset
+        onScaleChanged(newScale)
+    }
+
+    val coroutineScope = rememberCoroutineScope()
+    var isExporting by remember { mutableStateOf(false) }
+    var speedDialExpanded by remember { mutableStateOf(false) }
 
     val scrollTrigger by scrollToSelectionTrigger.collectAsState()
     LaunchedEffect(scrollTrigger) {
@@ -677,10 +744,247 @@ fun GraphViewer(
                 }
             }
         }
+
+        if (speedDialExpanded) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { speedDialExpanded = false }
+            )
+        }
+
+        GraphFloatingActionsMenu(
+            expanded = speedDialExpanded,
+            onExpandedChange = { speedDialExpanded = it },
+            onZoomIn = { zoomBy(1.25f) },
+            onZoomOut = { zoomBy(0.8f) },
+            onZoomFit = { zoomFit() },
+            onShare = {
+                if (isExporting) return@GraphFloatingActionsMenu
+                coroutineScope.launch {
+                    isExporting = true
+                    Toast.makeText(context, R.string.graph_exporting, Toast.LENGTH_SHORT).show()
+                    val bitmap = withContext(Dispatchers.Default) {
+                        GraphExporter.renderGraphToBitmap(
+                            layoutResult = layoutResult,
+                            graphBounds = graphBounds,
+                            structuredNodeLayout = structuredNodeLayout,
+                            density = density.density
+                        )
+                    }
+                    if (bitmap != null) {
+                        val title = GraphExporter.getSanitizedGraphTitle(graphData)
+                        val result = GraphExporter.shareGraph(context, bitmap, title)
+                        if (result.isFailure) {
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.graph_export_failed, result.exceptionOrNull()?.message.orEmpty()),
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    } else {
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.graph_export_failed, "OOM / Null Bitmap"),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    isExporting = false
+                }
+            },
+            onSaveToGallery = {
+                if (isExporting) return@GraphFloatingActionsMenu
+                coroutineScope.launch {
+                    isExporting = true
+                    Toast.makeText(context, R.string.graph_exporting, Toast.LENGTH_SHORT).show()
+                    val bitmap = withContext(Dispatchers.Default) {
+                        GraphExporter.renderGraphToBitmap(
+                            layoutResult = layoutResult,
+                            graphBounds = graphBounds,
+                            structuredNodeLayout = structuredNodeLayout,
+                            density = density.density
+                        )
+                    }
+                    if (bitmap != null) {
+                        val title = GraphExporter.getSanitizedGraphTitle(graphData)
+                        val result = GraphExporter.saveGraphToGallery(context, bitmap, title)
+                        if (result.isSuccess) {
+                            Toast.makeText(context, R.string.graph_saved_to_gallery, Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.graph_export_failed, result.exceptionOrNull()?.message.orEmpty()),
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    } else {
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.graph_export_failed, "OOM / Null Bitmap"),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    isExporting = false
+                }
+            },
+            isExporting = isExporting,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+        )
     }
 }
 
-private fun DrawScope.drawRoutedEdges(edges: List<RoutedEdge>, visibleRect: Rect) {
+@Composable
+fun GraphFloatingActionsMenu(
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onZoomIn: () -> Unit,
+    onZoomOut: () -> Unit,
+    onZoomFit: () -> Unit,
+    onShare: () -> Unit,
+    onSaveToGallery: () -> Unit,
+    isExporting: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.BottomEnd
+    ) {
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            AnimatedVisibility(
+                visible = expanded,
+                enter = fadeIn(animationSpec = tween(150)) + expandVertically(
+                    animationSpec = tween(200),
+                    expandFrom = Alignment.Bottom
+                ),
+                exit = fadeOut(animationSpec = tween(150)) + shrinkVertically(
+                    animationSpec = tween(200),
+                    shrinkTowards = Alignment.Bottom
+                )
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // 1. 分享流程图
+                    SpeedDialActionItem(
+                        icon = Icons.Default.Share,
+                        label = stringResource(R.string.graph_action_share),
+                        onClick = {
+                            onExpandedChange(false)
+                            onShare()
+                        }
+                    )
+                    // 2. 流程图保存到相册
+                    SpeedDialActionItem(
+                        icon = Icons.Default.PhotoLibrary,
+                        label = stringResource(R.string.graph_action_save_gallery),
+                        onClick = {
+                            onExpandedChange(false)
+                            onSaveToGallery()
+                        }
+                    )
+                    // 3. 增大缩放
+                    SpeedDialActionItem(
+                        icon = Icons.Default.ZoomIn,
+                        label = stringResource(R.string.graph_action_zoom_in),
+                        onClick = onZoomIn
+                    )
+                    // 4. 减小缩放
+                    SpeedDialActionItem(
+                        icon = Icons.Default.ZoomOut,
+                        label = stringResource(R.string.graph_action_zoom_out),
+                        onClick = onZoomOut
+                    )
+                    // 5. fit缩放
+                    SpeedDialActionItem(
+                        icon = Icons.Default.FitScreen,
+                        label = stringResource(R.string.graph_action_fit),
+                        onClick = onZoomFit
+                    )
+                }
+            }
+
+            // Main FAB with rotating '+' icon
+            val rotation by animateFloatAsState(
+                targetValue = if (expanded) 45f else 0f,
+                label = "fab_rotation"
+            )
+            FloatingActionButton(
+                onClick = { onExpandedChange(!expanded) },
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            ) {
+                if (isExporting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.5.dp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = if (expanded) stringResource(R.string.graph_close_menu) else stringResource(R.string.graph_fab_menu),
+                        modifier = Modifier.rotate(rotation)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SpeedDialActionItem(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    contentColor: Color = MaterialTheme.colorScheme.onSurface
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = onClick
+        )
+    ) {
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = containerColor,
+            shadowElevation = 3.dp
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = contentColor,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+            )
+        }
+        SmallFloatingActionButton(
+            onClick = onClick,
+            containerColor = containerColor,
+            contentColor = contentColor,
+            shape = CircleShape
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+internal fun DrawScope.drawRoutedEdges(edges: List<RoutedEdge>, visibleRect: Rect) {
     for (edge in edges) {
         val pts = edge.points
         if (pts.size < 2) continue
@@ -713,7 +1017,7 @@ private fun DrawScope.drawRoutedEdges(edges: List<RoutedEdge>, visibleRect: Rect
     }
 }
 
-private fun DrawScope.drawArrowHead(tip: Offset, from: Offset, color: Color) {
+internal fun DrawScope.drawArrowHead(tip: Offset, from: Offset, color: Color) {
     val dx = tip.x - from.x
     val dy = tip.y - from.y
     val len = sqrt(dx * dx + dy * dy)
@@ -737,7 +1041,7 @@ private fun DrawScope.drawArrowHead(tip: Offset, from: Offset, color: Color) {
     drawPath(path, color)
 }
 
-private fun DrawScope.drawNode(
+internal fun DrawScope.drawNode(
     ln: LayoutNode,
     textPaint: android.graphics.Paint,
     titlePaint: android.graphics.Paint,
